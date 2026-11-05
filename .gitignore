@@ -19,3 +19,7 @@ design-ref/
 apps/client/src/assets/icons/
 apps/client/src/assets/brand/
 .tome-docs/
+
+# 이 저장소는 pnpm만 씁니다
+package-lock.json
+yarn.lock

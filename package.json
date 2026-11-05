@@ -9,6 +9,8 @@
     "node": ">=22.22.0 <23"
   },
   "scripts": {
+    "preinstall": "node scripts/only-pnpm.mjs",
+    "prepare": "node scripts/install-git-hooks.mjs",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",

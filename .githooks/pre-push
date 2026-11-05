@@ -1,0 +1,10 @@
+#!/bin/sh
+# main 직접 push 차단 (약속용 장치, 강제 아님). 우회: git push --no-verify
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "main에 직접 push하지 마세요. 브랜치를 만들어 push한 뒤 PR로 올리세요. (정말 필요하면: git push --no-verify)" >&2
+    echo "Direct push to main is blocked: push a branch and open a PR (override: git push --no-verify)." >&2
+    exit 1
+  fi
+done
+exit 0
