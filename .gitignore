@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.log
+.DS_Store
+Thumbs.db
+
+# Environment files (keep the example)
+.env
+.env.*
+!.env.example
+
+# Design assets and internal team docs are shared outside the repo
+design-ref/
+apps/client/src/assets/icons/
+apps/client/src/assets/brand/
+.tome-docs/
+
+# 이 저장소는 pnpm만 씁니다
+package-lock.json
+yarn.lock
