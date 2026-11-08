@@ -18,6 +18,7 @@ export default tseslint.config(
       'apps/client/design-check/results/**',
       '.tome-docs/**',
       'design-ref/**',
+      'apps/server/src/generated/**',
     ],
   },
   js.configs.recommended,

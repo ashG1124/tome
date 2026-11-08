@@ -1,0 +1,50 @@
+# 로컬 개발용. 프로젝트 이름을 따로 둬서 다른 compose 프로젝트와 컨테이너·볼륨이 섞이지 않게 한다.
+name: tome-dev
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      # 로컬 개발용 리터럴이며 비밀이 아니다.
+      POSTGRES_USER: tome
+      POSTGRES_PASSWORD: tome
+      POSTGRES_DB: tome
+    ports:
+      - '55433:5432'
+    volumes:
+      - tome-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tome -d tome']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tome:tome@db:5432/tome?schema=public
+      PORT: '3000'
+      AI_PROVIDER: mock
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - '3001:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+volumes:
+  tome-db-data:
