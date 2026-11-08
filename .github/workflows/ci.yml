@@ -27,6 +27,8 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build shared
+        run: pnpm --filter @tome/shared build
       - name: Lint
         run: pnpm lint
       - name: Typecheck
