@@ -1,0 +1,158 @@
+/*
+ * 디자인 토큰. 컴포넌트는 이 변수만 쓴다(hex·px 직접 사용 금지).
+ * 이름 규칙: 디자인 변수 경로를 kebab-case로 → --<분류>-<그룹>-<이름>. 괄호·* 는 뺀다.
+ * 원본 변수 이름의 철자 오류(Deault, Boarder, Strock, Medieum)는 고쳐 쓰고, 줄마다 원래 이름을 주석으로 남긴다.
+ * 글자로 쓰려고 값을 바꾼 토큰은 주석에 이유를 적는다.
+ */
+
+:root {
+  /* ===== 배경 Color/Background ===== */
+  --color-background-default: #ffffff; /* Color/Background/Deault */
+  --color-background-weak: #f6f8fa; /* Color/Background/Weak */
+  --color-background-lower: #f4f7fa; /* Color/Background/Lower */
+  --color-background-dim: rgb(42 42 42 / 0.2); /* Color/Background/DIM (#2A2A2A33) */
+
+  /* ===== 면 Color/Fill Color ===== */
+  --color-fill-neutral: #43464d; /* Color/Fill Color/Neutral */
+  --color-fill-neutral-weak: #f4f7fa; /* Color/Fill Color/Neutral Weak */
+  --color-fill-card: #e8eef3; /* Color/Fill Color/Card */
+  --color-fill-brand: #fff294; /* Color/Fill Color/Brand — 노랑은 면 전용. 위 글자는 --color-font-main-text */
+  --color-fill-brand-med: #fcffda; /* Color/Fill Color/Brand(Med) */
+  --color-fill-brand-weak: #fffdf0; /* Color/Fill Color/Brand(Weak) */
+  --color-fill-point: #ffa3b3; /* Color/Fill Color/Point */
+
+  /* ===== 글자 Color/Font Color — disable 제외 모두 흰 바탕 4.5:1 이상 ===== */
+  --color-font-strong: #121212; /* Color/Font Color/*Strong */
+  --color-font-main-text: #2a2a2a; /* Color/Font Color/Main Text */
+  --color-font-sub-text: #43464d; /* Color/Font Color/Sub Text */
+  --color-font-helper-text: #6a7281; /* Color/Font Color/Helper Text — 원값 #A4A9B3(2.36:1)을 글자용으로 진하게 바꿈. 회색 바탕 위 4.5:1을 지키려고 명도만 낮춤. fill-card 위에는 main/sub-text만 쓴다 */
+  --color-font-disable: #c5cbd7; /* Color/Font Color/Disable — 비활성 전용. 일반 글자에 쓰지 않는다 */
+  --color-font-on-fill: #ffffff; /* Color/Font Color/*On Fill — 어두운 면(--color-fill-neutral) 위 전용 */
+  --color-font-point: #121212; /* Color/Font Color/*Point — 원값 #FFFFFF는 Point 면(#FFA3B3) 위 1.88:1 → Strong으로 대체 */
+  /* Color/Font Color/*Brand(#FFF294)는 넣지 않는다: 노랑은 면 전용 */
+  --color-peach-text: #ab5869; /* Color/Tome Peach/5 #FFA3B3 글자용 — 회색 바탕 위 4.5:1을 지키려고 명도만 낮춤. fill-card 위에는 main/sub-text만 쓴다 */
+  --color-orange-text: #986646; /* Color/Tome Orange/5, Node line #FFC6A3 글자용 — 회색 바탕 위 4.5:1을 지키려고 명도만 낮춤. fill-card 위에는 main/sub-text만 쓴다 */
+
+  /* ===== 선 Color/Boarder Line ===== */
+  --color-border-default: rgb(
+    197 203 215 / 0.5
+  ); /* Color/Boarder Line/Default (#C5CBD780) — 장식 테두리 */
+  --color-border-dark: rgb(164 169 179 / 0.5); /* Color/Boarder Line/Dark (#A4A9B380) */
+  --color-border-thick: rgb(197 203 215 / 0.3); /* Color/Boarder Line/Thick (#C5CBD74D) */
+  --color-border-input: #898f9c; /* 디자인 변수에 없는 새 토큰 — 입력칸·버튼 경계 3:1 */
+
+  /* ===== 회색 Color/GrayScale + 별도 GRAY·GrayScale 변수 ===== */
+  --color-grayscale-3: #c5cbd7; /* Color/GrayScale/3 */
+  --color-grayscale-5: #43464d; /* Color/GrayScale/5 */
+  --color-grayscale-6: #2a2a2a; /* Color/GrayScale/6 */
+  --color-grayscale-white: #ffffff; /* Color/GrayScale/White */
+  --color-grayscale-50: #fefefe; /* GrayScale/50 */
+  --color-gray-0: #ffffff; /* GRAY/0 */
+  --color-gray-20: #f4f7fa; /* GRAY/20 */
+  --color-gray-700: #545863; /* GRAY/700 */
+
+  /* ===== 브랜드 팔레트(장식·면) Color/Tome * ===== */
+  --color-tome-yellow-4: #fff8c3; /* Color/Tome Yellow/4 */
+  --color-tome-yellow-7: #fdea5f; /* Color/Tome Yellow/7 */
+  --color-tome-orange-5: #ffc6a3; /* Color/Tome Orange/5 */
+  --color-tome-peach-5: #ffa3b3; /* Color/Tome Peach/5 */
+
+  /* ===== 캔버스 ===== */
+  --color-node-line: #ffc6a3; /* Node line */
+  --color-dot-pattern: #f6f8fa; /* Dot pattern */
+  --color-prompt: #fffdf0; /* Prompt */
+
+  /* ===== 그림자 색 Color/Shadow ===== */
+  --color-shadow-weak: rgb(84 88 99 / 0.1); /* Color/Shadow/Weak (#5458631A) */
+  --color-shadow-medium: rgb(48 53 66 / 0.15); /* Color/Shadow/Medieum (#30354226) */
+
+  /* ===== 글자 Typography ===== */
+  --font-family-contents:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+    'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; /* Typography/Fontfamily/Contents = Pretendard */
+  --font-weight-regular: 400; /* Typography/Font Weight/Regular */
+  --font-weight-medium: 500; /* Typography/Font Weight/Medium */
+  --font-weight-semibold: 600; /* Typography/Font Weight/Semibold */
+  --font-size-h1: 40px; /* Font Size/H1 */
+  --font-size-h2: 24px; /* Font Size/H2 */
+  --font-size-h3: 22px; /* Font Size/H3 */
+  --font-size-b1: 20px; /* Font Size/B1 */
+  --font-size-b2: 18px; /* Font Size/B2 */
+  --font-size-c1: 16px; /* Font Size/C1 */
+  --font-size-c2: 14px; /* Font Size/C2 */
+  --line-height-default: 1.5; /* 모든 텍스트 스타일 */
+  --letter-spacing-default: -0.03em; /* -3% */
+
+  /*
+   * 텍스트 스타일(font 단축 속성) — 디자인 스타일 이름 기준. letter-spacing은 따로 --letter-spacing-default.
+   * 스타일 이름(Heading/H1 = 24px)과 크기 변수 이름(Font Size/H2 = 24)이 어긋나지만 원본 그대로 둠.
+   */
+  --text-heading-t1: var(--font-weight-semibold) var(--font-size-h1) / var(--line-height-default)
+    var(--font-family-contents); /* Heading/T1 */
+  --text-heading-h1: var(--font-weight-semibold) var(--font-size-h2) / var(--line-height-default)
+    var(--font-family-contents); /* Heading/H1 (24px) */
+  --text-heading-h2: var(--font-weight-semibold) var(--font-size-h3) / var(--line-height-default)
+    var(--font-family-contents); /* Heading/H2 (22px) */
+  --text-subtitle-st1-sb: var(--font-weight-semibold) var(--font-size-b1) /
+    var(--line-height-default) var(--font-family-contents); /* Sub Title/ST1(SB) */
+  --text-subtitle-st1-m: var(--font-weight-medium) var(--font-size-b1) / var(--line-height-default)
+    var(--font-family-contents); /* Sub Title/ST1(M) */
+  --text-subtitle-st2-sb: var(--font-weight-semibold) var(--font-size-b2) /
+    var(--line-height-default) var(--font-family-contents); /* Sub Title/ST2(SB) */
+  --text-subtitle-st2-m: var(--font-weight-medium) var(--font-size-b2) / var(--line-height-default)
+    var(--font-family-contents); /* Sub Title/ST2(M) */
+  --text-body-b1-m: var(--font-weight-medium) var(--font-size-c1) / var(--line-height-default)
+    var(--font-family-contents); /* Body/B1(M) */
+  --text-body-b1-r: var(--font-weight-regular) var(--font-size-c1) / var(--line-height-default)
+    var(--font-family-contents); /* Body/B1(R) */
+  --text-body-b2-m: var(--font-weight-medium) var(--font-size-c2) / var(--line-height-default)
+    var(--font-family-contents); /* Body/B2(M) */
+  --text-body-b2-r: var(--font-weight-regular) var(--font-size-c2) / var(--line-height-default)
+    var(--font-family-contents); /* Body/B2(R) */
+
+  /* ===== 간격 Spacing/Gap, Spacing/Padding ===== */
+  --space-gap-4: 12px; /* Spacing/Gap/4 */
+  --space-gap-5: 16px; /* Spacing/Gap/5 */
+  --space-padding-2: 4px; /* Spacing/Padding/2 */
+  --space-padding-3: 8px; /* Spacing/Padding/3 */
+  --space-padding-4: 10px; /* Spacing/Padding/4 */
+  --space-padding-5: 12px; /* Spacing/Padding/5 */
+  --space-padding-6: 16px; /* Spacing/Padding/6 */
+  --space-padding-8: 24px; /* Spacing/Padding/8 */
+
+  /* ===== 그리드 Spacing/Grid ===== */
+  --grid-columns-horizontal: 5; /* Spacing/Grid/Columns-horizontal */
+  --grid-columns-vertical: 12; /* Spacing/Grid/Columns-vertical */
+  --grid-gutter: 20px; /* Spacing/Grid/Gutters */
+  --grid-margin: 64px; /* Spacing/Grid/Margin */
+
+  /* ===== 모서리 Spacing/Radius ===== */
+  --radius-1: 4px; /* Spacing/Radius/1 */
+  --radius-2: 10px; /* Spacing/Radius/2 */
+  --radius-node: 20px; /* Spacing/Radius/Node */
+  --radius-max: 1000px; /* Spacing/Radius/max */
+  --radius-input: 8px; /* 디자인 변수 없음, 원값 8px — 제목 입력칸 모서리 */
+
+  /* ===== 크기 (디자인 변수 없는 원값) ===== */
+  --size-input-height: 48px; /* 디자인 변수 없음, 원값 48px — 제목 입력칸 높이 */
+  --size-dialog-width: 480px; /* 디자인 변수 없음 — 모달 너비 */
+  --size-icon-state: 20px; /* 디자인 변수 없음 — 오류 아이콘 크기 */
+  --size-icon-empty: 32px; /* 디자인 변수 없음 — 빈 화면 아이콘 크기 */
+
+  /* ===== 선 두께 Strock Weight ===== */
+  --stroke-weight-light: 1px; /* Strock Weight/Light */
+  --stroke-weight-default: 1.4px; /* Strock Weight/Default (1.399999976…) */
+  --stroke-weight-bold: 2px; /* Strock Weight/Bold */
+
+  /* ===== 포커스 테두리 — 새 토큰 ===== */
+  --focus-outline-offset: 2px; /* 포커스 테두리와 요소 사이 간격 */
+
+  /* ===== 그림자 Effect styles ===== */
+  --shadow-floating: 0 4px 20px 0 var(--color-shadow-weak); /* Drop Shadow - floating */
+  --shadow-connection: 0 0 8px 0 var(--color-shadow-weak); /* Drop Shadow - Connection */
+  --shadow-03: 0 0 8px 0 var(--color-shadow-weak); /* Drop shadow 03 */
+  --shadow-02: 0 0 32px 8px var(--color-shadow-medium); /* Drop Shadow 02 */
+  --shadow-prompt: 0 0 16px 0 var(--color-shadow-weak); /* Drop Shadow - prompt (+ 배경 블러, --blur-background) */
+  --shadow-preview: 0 4px 20px 0 var(--color-shadow-weak); /* Effect - preview (+ 배경 블러, --blur-background) */
+  --blur-background: 20px; /* Background blur 40 → CSS backdrop-filter blur(20px) 환산 */
+}
