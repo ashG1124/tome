@@ -1,0 +1,10 @@
+/* 하네스 전용: 캐럿 깜빡임이 스크린샷에 섞이지 않게 한다. 컴포넌트 CSS 에는 넣지 않는다. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+input,
+textarea {
+  caret-color: transparent;
+}

@@ -23,3 +23,6 @@ apps/client/src/assets/brand/
 # 이 저장소는 pnpm만 씁니다
 package-lock.json
 yarn.lock
+
+# 시안 비교 결과물
+apps/client/design-check/results/

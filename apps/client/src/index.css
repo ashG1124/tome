@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+@import './shared/tokens/tokens.css';
+
+/*
+ * Pretendard — Copyright (c) 2021 Kil Hyung-jin
+ * SIL Open Font License 1.1. 라이선스 전문: assets/fonts/pretendard/LICENSE.txt
+ */
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('./assets/fonts/pretendard/PretendardVariable.woff2') format('woff2-variations');
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-background-default);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b1-r);
+  letter-spacing: var(--letter-spacing-default);
+}
+
+/* 포커스 표시: 키보드로 이동할 때만 보인다. */
+:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
