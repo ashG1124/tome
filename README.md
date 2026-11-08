@@ -35,6 +35,22 @@ pnpm --filter @tome/client dev
 
 (T1-d 병합 후 동작)
 
+## 서버 실행 (Docker)
+
+로컬 Postgres는 호스트 포트 55433, 서버는 3001을 씁니다(`docker-compose.yml`, 프로젝트 이름 `tome-dev`).
+
+```bash
+docker compose up -d db
+cp apps/server/.env.example apps/server/.env
+pnpm --filter @tome/shared build
+pnpm --filter @tome/server prisma:migrate:deploy
+pnpm --filter @tome/server db:seed
+pnpm --filter @tome/server start:dev
+```
+
+`.env`의 `PORT`가 3000이면 `http://localhost:3000/health`, 서버 컨테이너(`docker compose up -d server`)는 `http://localhost:3001/health`로 확인합니다.
+DB 테스트까지 돌리려면 `TEST_DATABASE_URL`에 위 DB 주소를 넣고 `pnpm --filter @tome/server test`를 실행합니다(없으면 DB 테스트는 건너뜁니다).
+
 ## 검사
 
 ```bash

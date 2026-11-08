@@ -1,0 +1,15 @@
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { HealthService } from './health.service';
+
+@Controller('health')
+export class HealthController {
+  constructor(private readonly health: HealthService) {}
+
+  @Get()
+  async get(@Res({ passthrough: true }) res: Response) {
+    const body = await this.health.check();
+    if (body.db === 'down') res.status(HttpStatus.SERVICE_UNAVAILABLE);
+    return body;
+  }
+}

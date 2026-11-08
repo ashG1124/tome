@@ -26,3 +26,6 @@ yarn.lock
 
 # 시안 비교 결과물
 apps/client/design-check/results/
+
+# Prisma 가 생성하는 클라이언트
+apps/server/src/generated/
