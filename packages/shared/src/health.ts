@@ -8,3 +8,6 @@ export const HealthResponseSchema = z.object({
 });
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+
+// 리뷰 시험용 임시 변경(병합하지 않음)
+export const reviewSmoke = (a: number, b: number) => a + b;
