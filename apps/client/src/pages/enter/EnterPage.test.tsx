@@ -72,6 +72,20 @@ describe('EnterPage', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('코드가 틀리면 입력칸을 오류 상태로 표시하고 오류 문장과 연결한다', async () => {
+    resetFake('?fakeError=ACCESS_CODE_INVALID');
+    renderEnter();
+    expect(codeInput().getAttribute('aria-invalid')).toBeNull();
+
+    submitCode('wrong');
+
+    const alert = await screen.findByRole('alert');
+    const input = codeInput();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(document.getElementById(describedBy)?.contains(alert)).toBe(true);
+  });
+
   it('연결이 끊기면 상단 띠로 알리고 입력칸 아래 오류는 띄우지 않는다', async () => {
     vi.spyOn(api, 'createSession').mockRejectedValue(new NetworkError());
     renderEnter();

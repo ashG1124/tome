@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { api, errorCopyKey, NetworkError, setSession } from '../../shared/api';
 import { COPY } from '../../shared/copy';
@@ -9,9 +9,16 @@ import { StatusBanner } from './StatusBanner';
 /** 첫 요청이 이 시간(ms)을 넘겨도 끝나지 않으면 상단 띠로 알린다. */
 const SLOW_FIRST_REQUEST_MS = 1000;
 
+/** 코드가 틀렸을 때 입력칸 테두리. 색만으로는 대비가 모자라 아이콘·문장과 항상 함께 보인다. */
+const REJECTED_INPUT_BORDER = [
+  'aria-[invalid=true]:border-[length:var(--stroke-weight-bold)]',
+  'aria-[invalid=true]:border-[color:var(--color-tome-peach-5)]',
+].join(' ');
+
 export function EnterPage() {
   const navigate = useNavigate();
   const [code, setCode] = useState('');
+  const errorId = useId();
   // 화면이 다시 그려지기 전에 연달아 제출해도 요청이 한 번만 가도록 ref 로 막는다.
   const sending = useRef(false);
   const [firstSettled, setFirstSettled] = useState(false);
@@ -45,6 +52,8 @@ export function EnterPage() {
 
   const connectionLost = createSession.error instanceof NetworkError;
   const wakingServer = firstSlow && createSession.isPending && !firstSettled;
+  // 연결 실패는 상단 띠로만 알리고, 그 밖의 실패(틀린 코드 등)는 입력칸에 표시한다.
+  const codeRejected = createSession.isError && !connectionLost;
 
   // 연결 끊김 띠가 떠 있는 동안 브라우저가 다시 연결되면 띠를 내린다.
   const { reset } = createSession;
@@ -65,13 +74,18 @@ export function EnterPage() {
         </h1>
         <TitleInput
           aria-label={COPY['C-04']}
+          aria-invalid={codeRejected || undefined}
+          aria-describedby={codeRejected ? errorId : undefined}
+          className={REJECTED_INPUT_BORDER}
           value={code}
           onChange={(event) => setCode(event.target.value)}
           disabled={createSession.isPending}
           autoComplete="off"
         />
-        {createSession.isError && !connectionLost ? (
-          <ErrorNotice message={COPY[errorCopyKey(createSession.error)]} />
+        {codeRejected ? (
+          <div id={errorId}>
+            <ErrorNotice message={COPY[errorCopyKey(createSession.error)]} />
+          </div>
         ) : null}
         <Button type="submit" busy={createSession.isPending} disabled={code.trim() === ''}>
           {COPY['C-05a']}
