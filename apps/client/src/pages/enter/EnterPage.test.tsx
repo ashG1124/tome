@@ -109,14 +109,13 @@ describe('EnterPage', () => {
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
   });
 
-  it('첫 요청이 1초를 넘기면 상단 띠로 서버를 깨우는 중이라고 알린다', async () => {
-    vi.spyOn(api, 'createSession').mockReturnValue(new Promise<never>(() => {}));
+  it('연결 끊김 띠에는 경고 아이콘이 있다', async () => {
+    vi.spyOn(api, 'createSession').mockRejectedValue(new NetworkError());
     renderEnter();
 
     submitCode('any-code');
 
-    expect(screen.queryByRole('status')).toBeNull();
-    const banner = await screen.findByRole('status', {}, { timeout: 2000 });
-    expect(banner.textContent).toContain(COPY['S-05']);
+    const banner = await screen.findByRole('status');
+    expect(banner.querySelector('[data-icon="warning"]')).not.toBeNull();
   });
 });

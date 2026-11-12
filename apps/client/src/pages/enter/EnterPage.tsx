@@ -3,11 +3,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { api, errorCopyKey, NetworkError, setSession } from '../../shared/api';
 import { COPY } from '../../shared/copy';
-import { Button, ErrorNotice, TitleInput } from '../../shared/ui';
-import { StatusBanner } from './StatusBanner';
-
-/** 첫 요청이 이 시간(ms)을 넘겨도 끝나지 않으면 상단 띠로 알린다. */
-const SLOW_FIRST_REQUEST_MS = 1000;
+import { Button, ErrorNotice, StatusBanner, TitleInput } from '../../shared/ui';
 
 /** 코드가 틀렸을 때 입력칸 테두리. 색만으로는 대비가 모자라 아이콘·문장과 항상 함께 보인다. */
 const REJECTED_INPUT_BORDER = [
@@ -21,8 +17,6 @@ export function EnterPage() {
   const errorId = useId();
   // 화면이 다시 그려지기 전에 연달아 제출해도 요청이 한 번만 가도록 ref 로 막는다.
   const sending = useRef(false);
-  const [firstSettled, setFirstSettled] = useState(false);
-  const [firstSlow, setFirstSlow] = useState(false);
 
   const createSession = useMutation({
     mutationFn: (value: string) => api.createSession(value),
@@ -32,15 +26,8 @@ export function EnterPage() {
     },
     onSettled: () => {
       sending.current = false;
-      setFirstSettled(true);
     },
   });
-
-  useEffect(() => {
-    if (!createSession.isPending || firstSettled) return;
-    const timer = setTimeout(() => setFirstSlow(true), SLOW_FIRST_REQUEST_MS);
-    return () => clearTimeout(timer);
-  }, [createSession.isPending, firstSettled]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -51,7 +38,6 @@ export function EnterPage() {
   };
 
   const connectionLost = createSession.error instanceof NetworkError;
-  const wakingServer = firstSlow && createSession.isPending && !firstSettled;
   // 연결 실패는 상단 띠로만 알리고, 그 밖의 실패(틀린 코드 등)는 입력칸에 표시한다.
   const codeRejected = createSession.isError && !connectionLost;
 
@@ -66,7 +52,6 @@ export function EnterPage() {
 
   return (
     <>
-      {wakingServer ? <StatusBanner message={COPY['S-05']} /> : null}
       {connectionLost ? <StatusBanner message={COPY['E-03']} /> : null}
       <form onSubmit={submit} className="flex max-w-md flex-col gap-[var(--space-gap-5)]">
         <h1 className="m-0 [font:var(--text-heading-h1)] text-[color:var(--color-font-strong)]">
