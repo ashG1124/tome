@@ -33,6 +33,7 @@ const EXPECTED_NAMES = [
   'CreateProjectRequestSchema',
   'CreateProjectResponseSchema',
   'UpdateProjectRequestSchema',
+  'UpdateProjectResponseSchema',
   'WorkspaceResponseSchema',
   'PromptSetSchema',
   'FinishCandidatesResponseSchema',

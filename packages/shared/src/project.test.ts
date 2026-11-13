@@ -11,6 +11,7 @@ import {
   ProjectListResponseSchema,
   ProjectSummarySchema,
   UpdateProjectRequestSchema,
+  UpdateProjectResponseSchema,
   WorkspaceResponseSchema,
 } from './project.js';
 import { ID_A, ID_B, NOW, answer, job, project } from './testing/fixtures.js';
@@ -47,6 +48,11 @@ describe('project schemas', () => {
       true,
     );
     expect(UpdateProjectRequestSchema.safeParse({ shelfPosition: -1 }).success).toBe(false);
+  });
+
+  it('parses an update response', () => {
+    expect(UpdateProjectResponseSchema.safeParse({ project }).success).toBe(true);
+    expect(UpdateProjectResponseSchema.safeParse({}).success).toBe(false);
   });
 
   it('parses a workspace response', () => {
