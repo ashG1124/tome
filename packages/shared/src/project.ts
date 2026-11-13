@@ -52,6 +52,11 @@ export const UpdateProjectRequestSchema = z.object({
 });
 export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
 
+export const UpdateProjectResponseSchema = z.object({
+  project: ProjectSummarySchema,
+});
+export type UpdateProjectResponse = z.infer<typeof UpdateProjectResponseSchema>;
+
 export const WorkspaceResponseSchema = z.object({
   project: ProjectSummarySchema,
   pages: z.array(PageWithCountSchema),
