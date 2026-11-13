@@ -1,13 +1,22 @@
 import { useMutation } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { api, errorCopyKey, setSession } from '../../shared/api';
+import { api, errorCopyKey, NetworkError, setSession } from '../../shared/api';
 import { COPY } from '../../shared/copy';
-import { Button, ErrorNotice, TitleInput } from '../../shared/ui';
+import { Button, ErrorNotice, StatusBanner, TitleInput } from '../../shared/ui';
+
+/** 코드가 틀렸을 때 입력칸 테두리. 색만으로는 대비가 모자라 아이콘·문장과 항상 함께 보인다. */
+const REJECTED_INPUT_BORDER = [
+  'aria-[invalid=true]:border-[length:var(--stroke-weight-bold)]',
+  'aria-[invalid=true]:border-[color:var(--color-tome-peach-5)]',
+].join(' ');
 
 export function EnterPage() {
   const navigate = useNavigate();
   const [code, setCode] = useState('');
+  const errorId = useId();
+  // 화면이 다시 그려지기 전에 연달아 제출해도 요청이 한 번만 가도록 ref 로 막는다.
+  const sending = useRef(false);
 
   const createSession = useMutation({
     mutationFn: (value: string) => api.createSession(value),
@@ -15,33 +24,58 @@ export function EnterPage() {
       setSession(session.token, session.noticeVersion);
       void navigate(session.consentRequired ? '/consent' : '/', { replace: true });
     },
+    onSettled: () => {
+      sending.current = false;
+    },
   });
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = code.trim();
-    if (trimmed === '' || createSession.isPending) return;
+    if (trimmed === '' || sending.current) return;
+    sending.current = true;
     createSession.mutate(trimmed);
   };
 
+  const connectionLost = createSession.error instanceof NetworkError;
+  // 연결 실패는 상단 띠로만 알리고, 그 밖의 실패(틀린 코드 등)는 입력칸에 표시한다.
+  const codeRejected = createSession.isError && !connectionLost;
+
+  // 연결 끊김 띠가 떠 있는 동안 브라우저가 다시 연결되면 띠를 내린다.
+  const { reset } = createSession;
+  useEffect(() => {
+    if (!connectionLost) return;
+    const clear = () => reset();
+    window.addEventListener('online', clear);
+    return () => window.removeEventListener('online', clear);
+  }, [connectionLost, reset]);
+
   return (
-    <form onSubmit={submit} className="flex max-w-md flex-col gap-[var(--space-gap-5)]">
-      <h1 className="m-0 [font:var(--text-heading-h1)] text-[color:var(--color-font-strong)]">
-        {COPY['C-04']}
-      </h1>
-      <TitleInput
-        aria-label={COPY['C-04']}
-        value={code}
-        onChange={(event) => setCode(event.target.value)}
-        disabled={createSession.isPending}
-        autoComplete="off"
-      />
-      {createSession.isError ? (
-        <ErrorNotice message={COPY[errorCopyKey(createSession.error)]} />
-      ) : null}
-      <Button type="submit" busy={createSession.isPending} disabled={code.trim() === ''}>
-        {COPY['C-05a']}
-      </Button>
-    </form>
+    <>
+      {connectionLost ? <StatusBanner message={COPY['E-03']} /> : null}
+      <form onSubmit={submit} className="flex max-w-md flex-col gap-[var(--space-gap-5)]">
+        <h1 className="m-0 [font:var(--text-heading-h1)] text-[color:var(--color-font-strong)]">
+          {COPY['C-04']}
+        </h1>
+        <TitleInput
+          aria-label={COPY['C-04']}
+          aria-invalid={codeRejected || undefined}
+          aria-describedby={codeRejected ? errorId : undefined}
+          className={REJECTED_INPUT_BORDER}
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
+          disabled={createSession.isPending}
+          autoComplete="off"
+        />
+        {codeRejected ? (
+          <div id={errorId}>
+            <ErrorNotice message={COPY[errorCopyKey(createSession.error)]} />
+          </div>
+        ) : null}
+        <Button type="submit" busy={createSession.isPending} disabled={code.trim() === ''}>
+          {COPY['C-05a']}
+        </Button>
+      </form>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { fakeTransport } from './fake/transport';
 import { liveTransport } from './live';
 import { clearSession, useSessionStore } from './session';
 import type { HttpMethod } from './transport';
+import { watchFirstRequest } from './waking';
 
 export function newIdempotencyKey(): IdempotencyKey {
   return crypto.randomUUID();
@@ -57,7 +58,8 @@ export async function request<T>(options: RequestOptions<T>): Promise<T> {
     idempotent,
   });
 
-  const response = await transport({ method, path, headers, body });
+  // 앱을 연 뒤 첫 요청이 느리면 "서버를 깨우는 중" 띠를 띄운다(S-05).
+  const response = await watchFirstRequest(transport({ method, path, headers, body }));
 
   if (response.status >= 400) {
     if (allowStatus.includes(response.status)) {
