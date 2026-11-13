@@ -12,12 +12,14 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { LoginRateLimiter } from '../src/modules/session/login-rate-limiter';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { SEED_CREATORS } from '../prisma/seed/creators';
 
 // 실제 Postgres(마이그레이션·시드 적용 완료)가 있을 때만 돈다. TEST_DATABASE_URL 이 없으면 건너뛴다.
 const url = process.env.TEST_DATABASE_URL;
 
 const ADMIN_TOKEN = 'e2e-admin-token-for-tests';
-const SEED_CREATOR_ID = '00000000-0000-7000-8000-000100000001';
+const SEED_CREATOR_ID = SEED_CREATORS.find((creator) => creator.kind === 'seed')!.id;
 
 // 동의가 필요한 보호 라우트의 대역. src 에는 두지 않고 이 테스트 모듈에만 등록한다.
 @Controller('__test')
@@ -82,6 +84,20 @@ describe.skipIf(!url)('session, consent and admin API (real Postgres)', () => {
     await app.init();
     await app.listen(0);
     base = await app.getUrl();
+    // CI 의 DB 는 마이그레이션만 있고 시드가 없다. 필요한 Creator 를 스스로 갖춘다(멱등, 정리하지 않음).
+    const appPrisma = app.get(PrismaService, { strict: false });
+    for (const creator of SEED_CREATORS) {
+      const fields = {
+        kind: creator.kind,
+        displayName: creator.displayName,
+        seedOrder: creator.seedOrder,
+      };
+      await appPrisma.creator.upsert({
+        where: { id: creator.id },
+        update: fields,
+        create: { id: creator.id, ...fields },
+      });
+    }
     limiter = app.get(LoginRateLimiter, { strict: false });
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
   });
