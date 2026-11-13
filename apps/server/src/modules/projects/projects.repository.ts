@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../../generated/prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { ShelfItem } from './projects.rules';
 
 export type Tx = Prisma.TransactionClient;
 type Db = Tx | PrismaService;
@@ -16,15 +17,14 @@ const SUMMARY_SELECT = {
   lastEditedAt: true,
   shelfPosition: true,
   deletedAt: true,
+  hiddenAt: true,
   remixPartner: { select: { id: true, kind: true, displayName: true, bio: true } },
 } satisfies Prisma.ProjectSelect;
 
 export type ProjectRow = Prisma.ProjectGetPayload<{ select: typeof SUMMARY_SELECT }>;
 
-export interface ShelfItem {
-  id: string;
-  shelfPosition: number;
-}
+/** 같은 세션·같은 멱등 키로 만든 작업이 이미 있을 때(기록은 만료로 지워진 뒤). */
+export class JobKeyTakenError extends Error {}
 
 export interface NewJobData {
   projectId: string;
@@ -48,8 +48,8 @@ export class ProjectsRepository {
 
   listVisible(ownerId: string, limit: number): Promise<ProjectRow[]> {
     return this.prisma.project.findMany({
-      where: { ownerId, deletedAt: null },
-      orderBy: [{ shelfPosition: 'asc' }, { createdAt: 'desc' }],
+      where: { ownerId, deletedAt: null, hiddenAt: null },
+      orderBy: [{ shelfPosition: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
       select: SUMMARY_SELECT,
     });
@@ -59,11 +59,11 @@ export class ProjectsRepository {
     return db.project.findUnique({ where: { id }, select: SUMMARY_SELECT });
   }
 
-  /** 지워지지 않은 내 프로젝트 전부(서가 순서대로). 잠금을 잡은 뒤 부른다. */
+  /** 지워지거나 숨겨지지 않은 내 프로젝트 전부(서가 순서대로). 잠금을 잡은 뒤 부른다. */
   listShelf(tx: Tx, ownerId: string): Promise<ShelfItem[]> {
     return tx.project.findMany({
-      where: { ownerId, deletedAt: null },
-      orderBy: [{ shelfPosition: 'asc' }, { createdAt: 'desc' }],
+      where: { ownerId, deletedAt: null, hiddenAt: null },
+      orderBy: [{ shelfPosition: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
       select: { id: true, shelfPosition: true },
     });
   }
@@ -74,7 +74,7 @@ export class ProjectsRepository {
 
   async shiftShelfDown(tx: Tx, ownerId: string): Promise<void> {
     await tx.project.updateMany({
-      where: { ownerId, deletedAt: null },
+      where: { ownerId, deletedAt: null, hiddenAt: null },
       data: { shelfPosition: { increment: 1 } },
     });
   }
@@ -94,7 +94,7 @@ export class ProjectsRepository {
   /** 프로젝트와 첫 페이지(index 0)를 만든다. */
   createWithFirstPage(
     tx: Tx,
-    data: { ownerId: string; title: string; remixPartnerId: string | null },
+    data: { ownerId: string; title: string; remixPartnerId: string | null; lastEditedAt: Date },
   ): Promise<ProjectRow> {
     return tx.project.create({
       data: {
@@ -102,6 +102,7 @@ export class ProjectsRepository {
         kind: 'original',
         title: data.title,
         remixPartnerId: data.remixPartnerId,
+        lastEditedAt: data.lastEditedAt,
         shelfPosition: 0,
         pages: { create: { index: 0 } },
       },
@@ -127,7 +128,18 @@ export class ProjectsRepository {
     });
   }
 
-  createCreateJob(tx: Tx, data: NewJobData): Promise<{ id: string }> {
+  async createCreateJob(tx: Tx, data: NewJobData): Promise<{ id: string }> {
+    try {
+      return await this.insertCreateJob(tx, data);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new JobKeyTakenError();
+      }
+      throw error;
+    }
+  }
+
+  private insertCreateJob(tx: Tx, data: NewJobData): Promise<{ id: string }> {
     return tx.generationJob.create({
       data: {
         projectId: data.projectId,

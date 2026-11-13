@@ -198,6 +198,12 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       );
       expect(new Set(bodies.map((b) => b.project.id)).size).toBe(1);
       expect(await prisma.project.count({ where: { ownerId: owner.creatorId } })).toBe(1);
+      expect(
+        await prisma.generationJob.count({ where: { createdBySessionId: owner.sessionId } }),
+      ).toBe(1);
+      expect(await prisma.idempotencyRecord.count({ where: { sessionId: owner.sessionId } })).toBe(
+        1,
+      );
     });
 
     it('same key with a different body → 409 IDEMPOTENCY_KEY_REUSED', async () => {
@@ -229,6 +235,38 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
         0,
       );
       expect((await create(owner, { attachmentId: randomUUID() }, key)).status).toBe(400);
+    });
+
+    it('two concurrent requests with the same failing key → both 400, no record', async () => {
+      const owner = await newOwner();
+      const key = randomUUID();
+      const results = await Promise.all([
+        create(owner, { attachmentId: randomUUID() }, key),
+        create(owner, { attachmentId: randomUUID() }, key),
+      ]);
+      for (const res of results) expect(res.status).toBe(400);
+      expect(await prisma.idempotencyRecord.count({ where: { sessionId: owner.sessionId } })).toBe(
+        0,
+      );
+      expect(await prisma.project.count({ where: { ownerId: owner.creatorId } })).toBe(0);
+    });
+
+    it('reusing a key after its record expired, with a prompt → 409, nothing created', async () => {
+      const owner = await newOwner();
+      const key = randomUUID();
+      const body = { prompt: 'Expired key reuse' };
+      expect((await create(owner, body, key)).status).toBe(201);
+      await prisma.idempotencyRecord.updateMany({
+        where: { sessionId: owner.sessionId, key },
+        data: { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+      });
+      const res = await create(owner, body, key);
+      expect(res.status).toBe(409);
+      expect(await errorCode(res)).toBe('IDEMPOTENCY_KEY_REUSED');
+      expect(await prisma.project.count({ where: { ownerId: owner.creatorId } })).toBe(1);
+      expect(
+        await prisma.generationJob.count({ where: { createdBySessionId: owner.sessionId } }),
+      ).toBe(1);
     });
 
     it('treats a record older than 24 hours as absent', async () => {
@@ -354,13 +392,19 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       expect(projects.map((p) => p.shelfPosition)).toEqual([0, 1, 2]);
 
       // 범위를 넘는 목표 → 맨 끝
-      await call('PATCH', `/projects/${a.project.id}`, owner.token, { shelfPosition: 99 });
+      const toEnd = await call('PATCH', `/projects/${a.project.id}`, owner.token, {
+        shelfPosition: 99,
+      });
+      expect(toEnd.status).toBe(200);
       projects = await list(owner);
       expect(projects.map((p) => p.id)).toEqual([c.project.id, b.project.id, a.project.id]);
       expect(projects.map((p) => p.shelfPosition)).toEqual([0, 1, 2]);
 
       // 가운데로
-      await call('PATCH', `/projects/${c.project.id}`, owner.token, { shelfPosition: 1 });
+      const toMiddle = await call('PATCH', `/projects/${c.project.id}`, owner.token, {
+        shelfPosition: 1,
+      });
+      expect(toMiddle.status).toBe(200);
       projects = await list(owner);
       expect(projects.map((p) => p.id)).toEqual([b.project.id, c.project.id, a.project.id]);
 
@@ -382,13 +426,20 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       const seeded = await Promise.all(
         Array.from({ length: 4 }, (_, i) => createOk(owner, { prompt: `seed ${i}` })),
       );
-      await Promise.all([
-        ...Array.from({ length: 5 }, (_, i) => create(owner, { prompt: `new ${i}` })),
-        ...seeded.map((s, i) =>
-          call('PATCH', `/projects/${s.project.id}`, owner.token, { shelfPosition: i }),
+      const [createResults, moveResults, removed] = await Promise.all([
+        Promise.all(Array.from({ length: 5 }, (_, i) => create(owner, { prompt: `new ${i}` }))),
+        Promise.all(
+          seeded.map((s, i) =>
+            call('PATCH', `/projects/${s.project.id}`, owner.token, { shelfPosition: i }),
+          ),
         ),
         call('DELETE', `/projects/${seeded[0]!.project.id}`, owner.token),
       ]);
+      for (const res of createResults) expect(res.status).toBe(201);
+      expect(removed.status).toBe(204);
+      // 지워지는 프로젝트(seeded[0])를 옮기는 요청은 지우기보다 먼저면 200, 나중이면 404.
+      expect([200, 404]).toContain(moveResults[0]!.status);
+      for (const res of moveResults.slice(1)) expect(res.status).toBe(200);
       const projects = await list(owner);
       expect(projects).toHaveLength(8);
       expect(projects.map((p) => p.shelfPosition)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -405,6 +456,7 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       const moved = await call('PATCH', `/projects/${a.project.id}`, owner.token, {
         shelfPosition: 0,
       });
+      expect(moved.status).toBe(200);
       const movedBody = UpdateProjectResponseSchema.parse(await moved.json());
       expect(movedBody.project.lastEditedAt).toBe(a.project.lastEditedAt);
       const untouched = (await list(owner)).find((p) => p.id === b.project.id)!;
@@ -416,9 +468,10 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       expect(renamed.status).toBe(200);
       const renamedBody = UpdateProjectResponseSchema.parse(await renamed.json());
       expect(renamedBody.project.title).toBe('New title');
-      expect(Date.parse(renamedBody.project.lastEditedAt)).toBeGreaterThan(
-        Date.parse(a.project.lastEditedAt),
-      );
+      expect(renamedBody.project.lastEditedAt).not.toBe(a.project.lastEditedAt);
+      const reread = (await list(owner)).find((p) => p.id === a.project.id)!;
+      expect(reread.title).toBe('New title');
+      expect(reread.lastEditedAt).toBe(renamedBody.project.lastEditedAt);
     });
 
     it('an empty body returns the project unchanged', async () => {
@@ -502,6 +555,37 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       expect(res.status).toBe(404);
     });
 
+    it('a hidden project looks deleted: not listed, numbers 0..n-1, PATCH/DELETE 404', async () => {
+      const owner = await newOwner();
+      const other = await newOwner();
+      const a = await createOk(owner, { prompt: 'A' });
+      const b = await createOk(owner, { prompt: 'B' });
+      const c = await createOk(owner, { prompt: 'C' });
+      await prisma.project.update({ where: { id: b.project.id }, data: { hiddenAt: new Date() } });
+
+      const projects = await list(owner);
+      expect(projects.map((p) => p.id)).toEqual([c.project.id, a.project.id]);
+      expect(projects.map((p) => p.shelfPosition)).toEqual([0, 1]);
+      for (const method of ['PATCH', 'DELETE']) {
+        const res = await call(
+          method,
+          `/projects/${b.project.id}`,
+          owner.token,
+          method === 'PATCH' ? { title: 'x' } : undefined,
+        );
+        expect(res.status).toBe(404);
+        expect(await errorCode(res)).toBe('NOT_FOUND');
+      }
+
+      // 남의 숨김 프로젝트도 403 이 아니라 404
+      const res = await call('DELETE', `/projects/${b.project.id}`, other.token);
+      expect(res.status).toBe(404);
+
+      // 새로 만들면 보이는 것만 다시 번호가 매겨진다.
+      await createOk(owner, { prompt: 'D' });
+      expect((await list(owner)).map((p) => p.shelfPosition)).toEqual([0, 1, 2]);
+    });
+
     it('DELETE with an unknown uuid is 404 and with a non-uuid is 400', async () => {
       const owner = await newOwner();
       expect((await call('DELETE', `/projects/${randomUUID()}`, owner.token)).status).toBe(404);
@@ -522,7 +606,7 @@ describe.skipIf(!url)('projects API (real Postgres)', () => {
       });
       const projects = await list(owner);
       expect(projects).toHaveLength(50);
-      expect(projects[0]!.shelfPosition).toBe(0);
+      expect(projects.map((p) => p.shelfPosition)).toEqual(Array.from({ length: 50 }, (_, i) => i));
     });
   });
 });

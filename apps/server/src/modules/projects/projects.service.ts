@@ -12,7 +12,12 @@ import type {
 import { AppError } from '../../common';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import type { AuthContext } from '../session/auth.decorators';
-import { type ProjectRow, ProjectsRepository, type Tx } from './projects.repository';
+import {
+  JobKeyTakenError,
+  type ProjectRow,
+  ProjectsRepository,
+  type Tx,
+} from './projects.repository';
 import { makeTitle, planShelfOrder, resolvePrompt, shelfChanges } from './projects.rules';
 
 /** 서가에 보여 주는 프로젝트 수 상한. */
@@ -42,7 +47,8 @@ export class ProjectsService {
 
   async list(auth: AuthContext): Promise<ProjectListResponse> {
     const rows = await this.repo.listVisible(auth.creatorId, SHELF_LIMIT);
-    return { projects: rows.map(toSummary) };
+    // 관리자가 숨긴 프로젝트 자리가 비어도 보이는 것만 0..n-1 로 보여 준다.
+    return { projects: rows.map((row, index) => toSummary({ ...row, shelfPosition: index })) };
   }
 
   create(auth: AuthContext, key: string | undefined, body: CreateProjectRequest) {
@@ -70,6 +76,7 @@ export class ProjectsService {
           ownerId: auth.creatorId,
           title: prompt === undefined ? 'Untitled' : makeTitle(prompt),
           remixPartnerId: partnerId,
+          lastEditedAt: new Date(),
         });
         const response: CreateProjectResponse = { project: toSummary(project) };
         if (prompt !== undefined) {
@@ -97,12 +104,19 @@ export class ProjectsService {
       prompt,
       presetKey: body.presetKey ?? null,
     });
-    const job = await this.repo.createCreateJob(tx, {
-      projectId,
-      setId: set.id,
-      sessionId: auth.sessionId,
-      idempotencyKey: key,
-    });
+    let job: { id: string };
+    try {
+      job = await this.repo.createCreateJob(tx, {
+        projectId,
+        setId: set.id,
+        sessionId: auth.sessionId,
+        idempotencyKey: key,
+      });
+    } catch (error) {
+      // 멱등 기록은 24시간 뒤 지워지지만 작업 행은 남는다. 그 키를 다시 쓰면 충돌한다(전체 롤백).
+      if (error instanceof JobKeyTakenError) throw new AppError('IDEMPOTENCY_KEY_REUSED');
+      throw error;
+    }
     return {
       set: { id: set.id, position: 1, prompt: set.prompt, latestAnswer: null, answers: [] },
       // 아직 아무 단계도 돌지 않았으므로 다음에 돌릴 단계는 시작 단계와 같다.
@@ -164,10 +178,10 @@ export class ProjectsService {
     });
   }
 
-  /** 없거나 지워졌으면 404, 남의 것이면 403 (이 순서). */
+  /** 없거나 지워졌거나 숨겨졌으면 404, 남의 것이면 403 (이 순서). */
   private async requireOwned(tx: Tx, auth: AuthContext, id: string): Promise<ProjectRow> {
     const row = await this.repo.findById(tx, id);
-    if (!row || row.deletedAt !== null) throw new AppError('NOT_FOUND');
+    if (!row || row.deletedAt !== null || row.hiddenAt !== null) throw new AppError('NOT_FOUND');
     if (row.ownerId !== auth.creatorId) throw new AppError('FORBIDDEN');
     return row;
   }
