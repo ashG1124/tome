@@ -10,6 +10,12 @@ describe('parseEnv', () => {
     expect(env.AI_PROVIDER).toBe('mock');
     expect(env.DIRECT_DATABASE_URL).toBeUndefined();
     expect(env.CORS_ORIGIN).toBe('http://localhost:5173');
+    expect(env.ADMIN_TOKEN).toBeUndefined();
+  });
+
+  it('reads ADMIN_TOKEN and treats an empty one as unset', () => {
+    expect(parseEnv({ ...base, ADMIN_TOKEN: 't' }).ADMIN_TOKEN).toBe('t');
+    expect(parseEnv({ ...base, ADMIN_TOKEN: '' }).ADMIN_TOKEN).toBeUndefined();
   });
 
   it('coerces PORT to a number', () => {

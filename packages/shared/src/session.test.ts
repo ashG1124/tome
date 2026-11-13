@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LIMITS } from './common.js';
 import {
+  AdminAccessCodeRequestSchema,
+  AdminAccessCodeResponseSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
   CreateSessionRequestSchema,
@@ -47,5 +49,31 @@ describe('session schemas', () => {
     expect(MeResponseSchema.safeParse({ creator, consented: false, limits: {} }).success).toBe(
       true,
     );
+  });
+
+  it('requires creatorId exactly when the admin access code target is creator', () => {
+    const id = creator.id;
+    const ok = (v: object) => AdminAccessCodeRequestSchema.safeParse(v).success;
+    expect(ok({ code: 'c', target: 'creator', creatorId: id, active: true })).toBe(true);
+    expect(ok({ code: 'c', target: 'visitor_pool', active: true })).toBe(true);
+    expect(ok({ code: 'c', target: 'creator', active: true })).toBe(false);
+    expect(ok({ code: 'c', target: 'visitor_pool', creatorId: id, active: true })).toBe(false);
+    expect(ok({ code: '', target: 'visitor_pool', active: true })).toBe(false);
+    expect(ok({ code: 'c', target: 'visitor_pool' })).toBe(false);
+  });
+
+  it('parses an admin access code response', () => {
+    expect(
+      AdminAccessCodeResponseSchema.safeParse({
+        accessCode: {
+          id: creator.id,
+          label: 'l',
+          target: 'visitor_pool',
+          creatorId: null,
+          active: true,
+          createdAt: '2026-11-08T09:30:00Z',
+        },
+      }).success,
+    ).toBe(true);
   });
 });

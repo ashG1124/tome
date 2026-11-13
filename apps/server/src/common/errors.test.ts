@@ -1,9 +1,10 @@
 import { ApiErrorSchema, ErrorCodeSchema } from '@tome/shared';
-import { describe, expect, it } from 'vitest';
+import type { ArgumentsHost } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AppError } from './app-error';
 import { ERROR_TABLE } from './error-table';
-import { toErrorResult } from './all-exceptions.filter';
+import { AllExceptionsFilter, toErrorResult } from './all-exceptions.filter';
 import { ZodValidationPipe } from './zod-validation.pipe';
 
 describe('ERROR_TABLE', () => {
@@ -99,5 +100,25 @@ describe('ZodValidationPipe', () => {
         fields: [{ path: 'prompt', message: expect.any(String) }],
       });
     }
+  });
+});
+
+describe('AllExceptionsFilter Retry-After', () => {
+  const run = (error: unknown) => {
+    const res = { setHeader: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() };
+    const host = { switchToHttp: () => ({ getResponse: () => res }) } as unknown as ArgumentsHost;
+    new AllExceptionsFilter().catch(error, host);
+    return res;
+  };
+
+  it('sets Retry-After from details.retryAfterSec on RATE_LIMITED', () => {
+    const res = run(new AppError('RATE_LIMITED', undefined, { retryAfterSec: 42 }));
+    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '42');
+    expect(res.status).toHaveBeenCalledWith(429);
+  });
+
+  it('sets no header for other errors', () => {
+    expect(run(new AppError('ACCESS_CODE_INVALID')).setHeader).not.toHaveBeenCalled();
+    expect(run(new AppError('RATE_LIMITED')).setHeader).not.toHaveBeenCalled();
   });
 });

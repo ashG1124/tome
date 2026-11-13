@@ -48,6 +48,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const name = exception instanceof Error ? exception.name : typeof exception;
       this.logger.error(`Unhandled exception: ${name}`);
     }
-    host.switchToHttp().getResponse<Response>().status(status).json(body);
+    const res = host.switchToHttp().getResponse<Response>();
+    const retryAfterSec = body.error.details?.retryAfterSec;
+    if (body.error.code === 'RATE_LIMITED' && typeof retryAfterSec === 'number') {
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil(retryAfterSec))));
+    }
+    res.status(status).json(body);
   }
 }

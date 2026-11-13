@@ -42,3 +42,34 @@ export const MeResponseSchema = z.object({
   limits: z.record(z.string(), z.unknown()),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
+
+export const AccessTargetSchema = z.enum(['visitor_pool', 'creator']);
+export type AccessTarget = z.infer<typeof AccessTargetSchema>;
+
+export const AdminAccessCodeRequestSchema = z
+  .object({
+    code: z.string().min(1),
+    target: AccessTargetSchema,
+    creatorId: IdSchema.optional(),
+    active: z.boolean(),
+  })
+  .refine((value) => (value.target === 'creator') === (value.creatorId !== undefined), {
+    message: 'creatorId is required for target creator and not allowed for visitor_pool',
+    path: ['creatorId'],
+  });
+export type AdminAccessCodeRequest = z.infer<typeof AdminAccessCodeRequestSchema>;
+
+export const AdminAccessCodeSchema = z.object({
+  id: IdSchema,
+  label: z.string().min(1),
+  target: AccessTargetSchema,
+  creatorId: IdSchema.nullable(),
+  active: z.boolean(),
+  createdAt: IsoDateTimeSchema,
+});
+export type AdminAccessCode = z.infer<typeof AdminAccessCodeSchema>;
+
+export const AdminAccessCodeResponseSchema = z.object({
+  accessCode: AdminAccessCodeSchema,
+});
+export type AdminAccessCodeResponse = z.infer<typeof AdminAccessCodeResponseSchema>;
