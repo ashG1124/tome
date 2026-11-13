@@ -11,6 +11,8 @@ export const EnvSchema = z.object({
   AI_PROVIDER: z.enum(AI_PROVIDERS).default('mock'),
   CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
   APP_VERSION: z.string().min(1).optional(),
+  // 관리 API 보호용 토큰(선택). 없으면 관리 API 는 항상 401.
+  ADMIN_TOKEN: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
