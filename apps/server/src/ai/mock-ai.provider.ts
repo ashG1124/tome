@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Node } from '@tome/shared';
-import type { AiImage, AiProvider, AnalyzeResult } from './ai-provider';
+import type { AiImage, AiProvider, AiResult, AnalyzeResult } from './ai-provider';
 
 // 1x1 PNG 고정 이미지
 const MOCK_PNG_BASE64 =
@@ -95,32 +95,35 @@ const DRAFT_NODES: Node[] = [
   },
 ];
 
+const meta = { provider: 'mock', model: 'mock', fallbackUsed: false } as const;
+const done = <T>(value: T): Promise<AiResult<T>> => Promise.resolve({ value, ...meta });
+
 /** 고정 노드·고정 이미지를 돌려준다. 네트워크 호출과 비용이 없다. */
 @Injectable()
 export class MockAiProvider implements AiProvider {
   readonly name = 'mock';
 
-  analyze(): Promise<AnalyzeResult> {
-    return Promise.resolve({
+  analyze(): Promise<AiResult<AnalyzeResult>> {
+    return done({
       subjectTemplate: ANALYZE_SUBJECT_TEMPLATE,
       nodes: structuredClone(ANALYZE_NODES),
     });
   }
 
-  research(): Promise<Node[]> {
-    return Promise.resolve(structuredClone(RESEARCH_NODES));
+  research(): Promise<AiResult<Node[]>> {
+    return done(structuredClone(RESEARCH_NODES));
   }
 
-  evidence(): Promise<Node[]> {
-    return Promise.resolve(structuredClone(EVIDENCE_NODES));
+  evidence(): Promise<AiResult<Node[]>> {
+    return done(structuredClone(EVIDENCE_NODES));
   }
 
-  draft(): Promise<Node[]> {
-    return Promise.resolve(structuredClone(DRAFT_NODES));
+  draft(): Promise<AiResult<Node[]>> {
+    return done(structuredClone(DRAFT_NODES));
   }
 
-  image(): Promise<AiImage> {
-    return Promise.resolve({
+  image(): Promise<AiResult<AiImage>> {
+    return done({
       mimeType: 'image/png',
       bytes: new Uint8Array(Buffer.from(MOCK_PNG_BASE64, 'base64')),
     });

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
@@ -19,8 +19,9 @@ import {
   LIMITS,
   WorkspaceResponseSchema,
 } from '@tome/shared';
+import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AI_PROVIDER, type AiProvider, MockAiProvider } from '../src/ai';
+import { AI_PROVIDER, type AiProvider, MockAiProvider, MODELS, WorkersAiProvider } from '../src/ai';
 import { AppError } from '../src/common';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { LoginRateLimiter } from '../src/modules/session/login-rate-limiter';
@@ -45,12 +46,18 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** mock 을 감싸 호출 횟수를 세고, 지연·예외를 주입하는 시험용 공급자. */
 class TestAiProvider implements AiProvider {
   readonly name = 'mock';
-  private readonly inner = new MockAiProvider();
+  private inner: AiProvider = new MockAiProvider();
   calls: Record<string, number> = {};
   delays: Record<string, number> = {};
   failures: Record<string, Array<Error>> = {};
 
+  /** 시험 동안 실제 공급자 코드(가짜 fetch 주입)로 바꿔 끼운다. reset() 이 mock 으로 되돌린다. */
+  useInner(inner: AiProvider): void {
+    this.inner = inner;
+  }
+
   reset(): void {
+    this.inner = new MockAiProvider();
     this.calls = {};
     this.delays = {};
     this.failures = {};
@@ -65,11 +72,13 @@ class TestAiProvider implements AiProvider {
     return fn();
   }
 
-  analyze = () => this.run('analyze', () => this.inner.analyze());
-  research = () => this.run('research', () => this.inner.research());
-  evidence = () => this.run('evidence', () => this.inner.evidence());
-  draft = () => this.run('draft', () => this.inner.draft());
-  image = () => this.run('image', () => this.inner.image());
+  analyze: AiProvider['analyze'] = (input) => this.run('analyze', () => this.inner.analyze(input));
+  research: AiProvider['research'] = (input) =>
+    this.run('research', () => this.inner.research(input));
+  evidence: AiProvider['evidence'] = (input) =>
+    this.run('evidence', () => this.inner.evidence(input));
+  draft: AiProvider['draft'] = (input) => this.run('draft', () => this.inner.draft(input));
+  image: AiProvider['image'] = (input) => this.run('image', () => this.inner.image(input));
 }
 
 interface Owner {
@@ -295,7 +304,9 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
       expect(row.finishedAt).not.toBeNull();
       expect(row.steps.every((s) => s.status === 'succeeded' && s.leaseUntil === null)).toBe(true);
       const assemble = (await stepRow(job.id, 'assemble')).output as { assembledPrompt: string };
-      expect(assemble.assembledPrompt).toBe('lighthouse over stormy sea, dusk light, rough waves');
+      expect(assemble.assembledPrompt).toBe(
+        'lighthouse over stormy sea. strongly emphasized lighthouse, dusk light, stormy sea (slightly Textured, slightly Surrounding), rough waves.',
+      );
       const answers = await prisma.answer.findMany({ where: { jobId: job.id } });
       expect(answers).toHaveLength(1);
       const stored = answers[0]!;
@@ -306,7 +317,7 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
         origin: 'generated',
         imageMode: 'generate',
         imageKey: `answers/${stored.id}/full.png`,
-        thumbKey: `answers/${stored.id}/thumb.png`,
+        thumbKey: `answers/${stored.id}/thumb.jpg`,
         isSample: false,
         createdById: owner.creatorId,
         provider: 'mock',
@@ -373,6 +384,7 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
         headers: { authorization: `Bearer ${owner.token}` },
       });
       expect(thumb.status).toBe(200); // 서명 URL 은 상대 경로라 fetch 가 같은 서버로 따라간다.
+      expect(thumb.headers.get('content-type')).toBe('image/jpeg');
 
       const download = await fetch(`${base}${answer.imageUrl}?download=1`, {
         redirect: 'manual',
@@ -384,7 +396,7 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
       expect(file.headers.get('content-disposition')).toBe(
         'attachment; filename="tome-answer-1.png"',
       );
-    });
+    }, 20_000); // 첫 썸네일에서 sharp 를 불러오는 시간 포함
 
     it('rejects asset requests without a token, with a bad id or variant, and bad signed paths', async () => {
       const owner = await newOwner();
@@ -402,6 +414,270 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
         404,
       );
       expect((await fetch(`${base}/assets/local/forged.token`)).status).toBe(404);
+    });
+  });
+
+  describe('real provider code with an injected fetch', () => {
+    const PNG_1PX =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const pad = () => ({
+      x: 2,
+      y: -1,
+      xAxis: ['calm', 'energetic'],
+      yAxis: ['dry', 'wet'],
+    });
+    const STAGE_OUTPUTS: Record<string, unknown> = {
+      '1': {
+        subject_template: '{k1} over {k2}, {k3}',
+        keywords: [
+          { id: 'k1', text: 'lighthouse', weight: 8, pad: pad() },
+          { id: 'k2', text: 'stormy sea', weight: 5, pad: pad() },
+          { id: 'k3', text: 'cliff', weight: 3, pad: pad() },
+        ],
+      },
+      '2': {
+        data_types: ['coastal photography'],
+        priorities: [
+          { id: 's1', text: 'light over form', parent_ids: ['k1'] },
+          { id: 's2', text: 'sea texture', parent_ids: ['k2'] },
+        ],
+      },
+      '3': {
+        evidence: [
+          {
+            id: 'e1',
+            text: 'Lighthouses are shot at dusk.',
+            parent_ids: ['k1'],
+            source_type: 'model_knowledge',
+          },
+          {
+            id: 'e2',
+            text: 'Storm waves are white-capped.',
+            parent_ids: ['k2', 's2'],
+            source_type: 'model_knowledge',
+          },
+        ],
+      },
+      '4': {
+        attributes: [
+          { id: 'a1', category: 'lighting', text: 'dusk light', weight: 6, parent_ids: ['e1'] },
+          { id: 'a2', category: 'water', text: 'white waves', weight: 4, parent_ids: ['e2'] },
+          { id: 'a3', category: 'mood', text: 'moody', weight: 3, parent_ids: ['e2'] },
+        ],
+      },
+    };
+    const textBody = (content: unknown) =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: {
+            choices: [{ message: { content: JSON.stringify(content) }, finish_reason: 'stop' }],
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json', 'cf-ai-neurons': '2' } },
+      );
+    const failure = (status = 500) =>
+      new Response(JSON.stringify({ success: false, errors: [{ message: 'boom' }] }), { status });
+
+    interface Script {
+      /** 텍스트 호출: 단계 번호·모델 → 응답(undefined 면 정상 출력) */
+      text?: (stage: string, model: string) => Response | undefined;
+      /** 이미지 호출: 모델 → 응답(undefined 면 정상 이미지) */
+      image?: (model: string) => Response | undefined;
+      textCalls: Array<{ stage: string; model: string }>;
+      imageCalls: string[];
+    }
+
+    let jpeg1024: Buffer;
+    let script: Script;
+
+    const useFakeWorkersAi = () => {
+      script = { textCalls: [], imageCalls: [] };
+      const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        const model = String(input).split('/ai/run/')[1]!;
+        if (init?.body instanceof FormData || model === MODELS.imageFallback) {
+          script.imageCalls.push(model);
+          const bytes = model === MODELS.imageFallback ? jpeg1024 : Buffer.from(PNG_1PX, 'base64');
+          return (
+            script.image?.(model) ??
+            new Response(
+              JSON.stringify({ success: true, result: { image: bytes.toString('base64') } }),
+              { status: 200, headers: { 'cf-ai-neurons': '100.5' } },
+            )
+          );
+        }
+        const body = JSON.parse(init!.body as string) as { messages: Array<{ content: string }> };
+        const stage = /You are stage (\d)/.exec(body.messages[0]!.content)![1]!;
+        script.textCalls.push({ stage, model });
+        return script.text?.(stage, model) ?? textBody(STAGE_OUTPUTS[stage]);
+      }) as typeof fetch;
+      ai.useInner(
+        new WorkersAiProvider({
+          accountId: 'acct',
+          apiToken: 'tok',
+          fetch: fakeFetch,
+          log: () => undefined,
+        }),
+      );
+    };
+
+    const start = async (owner: Owner) => {
+      const res = await call(
+        'POST',
+        '/projects',
+        owner.token,
+        { prompt: 'a lighthouse' },
+        randomUUID(),
+      );
+      expect(res.status).toBe(201);
+      return CreateProjectResponseSchema.parse(await res.json());
+    };
+
+    beforeAll(async () => {
+      jpeg1024 = await sharp({
+        create: { width: 1024, height: 1024, channels: 3, background: 'teal' },
+      })
+        .jpeg()
+        .toBuffer();
+    });
+
+    it('records the fallback model when the primary text model fails', async () => {
+      ai.reset();
+      useFakeWorkersAi();
+      script.text = (stage, model) =>
+        stage === '1' && model === MODELS.textPrimary ? failure() : undefined;
+      const owner = await newOwner();
+      const created = await start(owner);
+      const jobId = created.job!.id;
+
+      const first = await advanceOk(owner, jobId, 'analyze');
+      expect(first.step).toMatchObject({
+        stage: 'analyze',
+        provider: 'workers-ai',
+        fallbackUsed: true,
+      });
+      expect(script.textCalls.map((c) => c.model)).toEqual([
+        MODELS.textPrimary,
+        MODELS.textPrimary,
+        MODELS.textFallback,
+      ]);
+      const row = await stepRow(jobId, 'analyze');
+      expect(row).toMatchObject({
+        provider: 'workers-ai',
+        model: MODELS.textFallback,
+        fallbackUsed: true,
+        attempt: 1,
+      });
+      expect(Number(row.neuronsEst)).toBe(2);
+      expect(first.step.nodes?.map((n) => n.id)).toEqual(['k1', 'k2', 'k3']);
+    });
+
+    it('fails only the draft stage on invalid output and keeps the earlier stages', async () => {
+      ai.reset();
+      useFakeWorkersAi();
+      script.text = (stage) => (stage === '4' ? textBody({ attributes: [] }) : undefined);
+      const owner = await newOwner();
+      const created = await start(owner);
+      const jobId = created.job!.id;
+      await runStages(owner, jobId, ['analyze', 'research', 'evidence']);
+
+      const bad = await advance(owner, jobId, 'draft');
+      expect(bad.status).toBe(502);
+      expect(await errorCode(bad)).toBe('AI_OUTPUT_INVALID');
+      for (const stage of ['analyze', 'research', 'evidence']) {
+        expect((await stepRow(jobId, stage)).status).toBe('succeeded');
+      }
+      expect(await stepRow(jobId, 'draft')).toMatchObject({
+        status: 'failed',
+        errorCode: 'AI_OUTPUT_INVALID',
+      });
+
+      script.text = undefined;
+      const ok = await advanceOk(owner, jobId, 'draft');
+      expect(ok.step).toMatchObject({ stage: 'draft', status: 'succeeded', fallbackUsed: false });
+      expect(ok.step.nodes?.map((n) => n.id)).toEqual(['a1', 'a2', 'a3']);
+      expect(await stepRow(jobId, 'draft')).toMatchObject({ attempt: 2, status: 'succeeded' });
+    });
+
+    it('stores a schnell fallback image in its real format with a 512px JPEG thumbnail', async () => {
+      ai.reset();
+      useFakeWorkersAi();
+      script.image = (model) => (model === MODELS.imagePrimary ? failure(503) : undefined);
+      const owner = await newOwner();
+      const created = await start(owner);
+      const jobId = created.job!.id;
+      const last = await runStages(owner, jobId, STAGES);
+      expect(last.job.status).toBe('succeeded');
+      expect(script.imageCalls).toEqual([
+        MODELS.imagePrimary,
+        MODELS.imagePrimary,
+        MODELS.imageFallback,
+      ]);
+
+      const image = await stepRow(jobId, 'image');
+      expect(image).toMatchObject({
+        provider: 'workers-ai',
+        model: MODELS.imageFallback,
+        fallbackUsed: true,
+      });
+      expect(Number(image.neuronsEst)).toBe(100.5);
+      for (const stage of ['assemble', 'verify']) {
+        expect(await stepRow(jobId, stage)).toMatchObject({
+          provider: null,
+          model: null,
+          fallbackUsed: false,
+          neuronsEst: null,
+        });
+      }
+
+      const answer = await prisma.answer.findFirstOrThrow({ where: { jobId } });
+      expect(answer).toMatchObject({
+        provider: 'workers-ai',
+        model: MODELS.imageFallback,
+        imageKey: `answers/${answer.id}/full.jpg`,
+        thumbKey: `answers/${answer.id}/thumb.jpg`,
+      });
+
+      const full = await readFile(join(storageDir, answer.imageKey));
+      expect(Buffer.compare(full, jpeg1024)).toBe(0); // 받은 바이트 그대로
+      const thumbMeta = await sharp(await readFile(join(storageDir, answer.thumbKey!))).metadata();
+      expect(thumbMeta).toMatchObject({ format: 'jpeg', width: 512, height: 512 });
+
+      // 내려받기 파일 이름은 실제 형식을 따른다.
+      const download = await fetch(`${base}/assets/answers/${answer.id}/full?download=1`, {
+        redirect: 'manual',
+        headers: { authorization: `Bearer ${owner.token}` },
+      });
+      const file = await fetch(`${base}${download.headers.get('location')!}`);
+      expect(file.headers.get('content-type')).toBe('image/jpeg');
+      expect(file.headers.get('content-disposition')).toBe(
+        'attachment; filename="tome-answer-1.jpg"',
+      );
+    });
+
+    it('maps a stage timeout to 504 and marks only that step failed', async () => {
+      ai.reset();
+      const owner = await newOwner();
+      const created = await start(owner);
+      const jobId = created.job!.id;
+      ai.useInner(
+        new WorkersAiProvider({
+          accountId: 'acct',
+          apiToken: 'tok',
+          stageBudgetMs: 50,
+          log: () => undefined,
+          fetch: ((_url: string, init?: RequestInit) =>
+            new Promise<Response>((_resolve, reject) =>
+              init?.signal?.addEventListener('abort', () =>
+                reject(new DOMException('aborted', 'AbortError')),
+              ),
+            )) as unknown as typeof fetch,
+        }),
+      );
+      const res = await advance(owner, jobId, 'analyze');
+      expect(res.status).toBe(504);
+      expect(await errorCode(res)).toBe('AI_TIMEOUT');
+      expect((await stepRow(jobId, 'analyze')).status).toBe('failed');
     });
   });
 
@@ -564,7 +840,8 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
       const { job } = await createSetOk(owner, projectId, pageId);
       await advanceOk(owner, job.id, 'analyze');
       const original = ai.research;
-      ai.research = () => Promise.resolve([]);
+      ai.research = () =>
+        Promise.resolve({ value: [], provider: 'mock', model: 'mock', fallbackUsed: false });
       try {
         expect(await errorCode(await advance(owner, job.id, 'research'))).toBe('AI_OUTPUT_INVALID');
       } finally {

@@ -102,4 +102,47 @@ describe('parseEnv storage settings', () => {
     );
     expect(parseEnv({ ...base, ASSET_URL_TTL_SECONDS: '60' }).ASSET_URL_TTL_SECONDS).toBe(60);
   });
+
+  describe('workers-ai provider', () => {
+    it('accepts workers-ai only with both credentials', () => {
+      const ok = parseEnv({
+        ...base,
+        AI_PROVIDER: 'workers-ai',
+        WORKERS_AI_ACCOUNT_ID: 'a',
+        WORKERS_AI_API_TOKEN: 't',
+      });
+      expect(ok.AI_PROVIDER).toBe('workers-ai');
+      expect(() => parseEnv({ ...base, AI_PROVIDER: 'workers-ai' })).toThrow(
+        'WORKERS_AI_ACCOUNT_ID, WORKERS_AI_API_TOKEN',
+      );
+      expect(() =>
+        parseEnv({ ...base, AI_PROVIDER: 'workers-ai', WORKERS_AI_ACCOUNT_ID: 'a' }),
+      ).toThrow('WORKERS_AI_API_TOKEN');
+    });
+
+    it('treats empty credentials as unset and does not need them for mock', () => {
+      expect(() =>
+        parseEnv({
+          ...base,
+          AI_PROVIDER: 'workers-ai',
+          WORKERS_AI_ACCOUNT_ID: '',
+          WORKERS_AI_API_TOKEN: 'secret-value',
+        }),
+      ).toThrow('WORKERS_AI_ACCOUNT_ID');
+      expect(() => parseEnv({ ...base, AI_PROVIDER: 'mock' })).not.toThrow();
+    });
+
+    it('never puts credential values in the error message', () => {
+      try {
+        parseEnv({ ...base, AI_PROVIDER: 'workers-ai', WORKERS_AI_API_TOKEN: 'secret-value' });
+        throw new Error('should have thrown');
+      } catch (error) {
+        expect((error as Error).message).not.toContain('secret-value');
+      }
+    });
+
+    it('rejects an unknown provider', () => {
+      expect(() => parseEnv({ ...base, AI_PROVIDER: 'openai' })).toThrow('AI_PROVIDER');
+    });
+  });
 });

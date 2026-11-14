@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
-// 지금은 mock 만 허용한다. 실제 공급자는 후속 작업에서 추가한다.
-export const AI_PROVIDERS = ['mock'] as const;
+// mock: 고정 응답(비용 0). workers-ai: Cloudflare Workers AI.
+export const AI_PROVIDERS = ['mock', 'workers-ai'] as const;
+
+const WORKERS_AI_REQUIRED = ['WORKERS_AI_ACCOUNT_ID', 'WORKERS_AI_API_TOKEN'] as const;
 
 export const STORAGE_DRIVERS = ['local', 'r2'] as const;
 
@@ -18,6 +20,9 @@ const BaseEnvSchema = z.object({
   DIRECT_DATABASE_URL: z.string().min(1).optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   AI_PROVIDER: z.enum(AI_PROVIDERS).default('mock'),
+  // AI_PROVIDER=workers-ai 일 때 둘 다 필요하다. 값은 로그·오류에 쓰지 않는다.
+  WORKERS_AI_ACCOUNT_ID: z.string().min(1).optional(),
+  WORKERS_AI_API_TOKEN: z.string().min(1).optional(),
   CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
   APP_VERSION: z.string().min(1).optional(),
   // 관리 API 보호용 토큰(선택). 없으면 관리 API 는 항상 401.
@@ -36,10 +41,22 @@ const BaseEnvSchema = z.object({
 });
 
 export const EnvSchema = BaseEnvSchema.superRefine((env, ctx) => {
-  if (env.STORAGE_DRIVER !== 'r2') return;
-  for (const name of R2_REQUIRED) {
-    if (env[name] === undefined) {
-      ctx.addIssue({ code: 'custom', path: [name], message: 'Required when STORAGE_DRIVER=r2' });
+  if (env.STORAGE_DRIVER === 'r2') {
+    for (const name of R2_REQUIRED) {
+      if (env[name] === undefined) {
+        ctx.addIssue({ code: 'custom', path: [name], message: 'Required when STORAGE_DRIVER=r2' });
+      }
+    }
+  }
+  if (env.AI_PROVIDER === 'workers-ai') {
+    for (const name of WORKERS_AI_REQUIRED) {
+      if (env[name] === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: 'Required when AI_PROVIDER=workers-ai',
+        });
+      }
     }
   }
 });
