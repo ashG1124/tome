@@ -3,7 +3,16 @@ import { z } from 'zod';
 // 지금은 mock 만 허용한다. 실제 공급자는 후속 작업에서 추가한다.
 export const AI_PROVIDERS = ['mock'] as const;
 
-export const EnvSchema = z.object({
+export const STORAGE_DRIVERS = ['local', 'r2'] as const;
+
+const R2_REQUIRED = [
+  'R2_ENDPOINT',
+  'R2_BUCKET',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+] as const;
+
+const BaseEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
   // 마이그레이션 전용 직접 연결 주소(선택). 런타임에서는 쓰지 않는다.
   DIRECT_DATABASE_URL: z.string().min(1).optional(),
@@ -13,6 +22,26 @@ export const EnvSchema = z.object({
   APP_VERSION: z.string().min(1).optional(),
   // 관리 API 보호용 토큰(선택). 없으면 관리 API 는 항상 401.
   ADMIN_TOKEN: z.string().min(1).optional(),
+  // 이미지 저장소: local(파일) 또는 r2(Cloudflare R2). r2 면 R2_* 넷이 모두 필요하다.
+  STORAGE_DRIVER: z.enum(STORAGE_DRIVERS).default('local'),
+  STORAGE_LOCAL_DIR: z.string().min(1).optional(),
+  // local 서명 키(선택). 없으면 프로세스를 시작할 때 무작위로 만든다.
+  STORAGE_LOCAL_SECRET: z.string().min(1).optional(),
+  R2_ENDPOINT: z.url().optional(),
+  R2_BUCKET: z.string().min(1).optional(),
+  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  // 이미지 서명 URL 수명(초)
+  ASSET_URL_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
+});
+
+export const EnvSchema = BaseEnvSchema.superRefine((env, ctx) => {
+  if (env.STORAGE_DRIVER !== 'r2') return;
+  for (const name of R2_REQUIRED) {
+    if (env[name] === undefined) {
+      ctx.addIssue({ code: 'custom', path: [name], message: 'Required when STORAGE_DRIVER=r2' });
+    }
+  }
 });
 
 export type Env = z.infer<typeof EnvSchema>;

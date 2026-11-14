@@ -34,6 +34,11 @@ export const AnswerSchema = AnswerSummarySchema.extend({
 });
 export type Answer = z.infer<typeof AnswerSchema>;
 
+export const GetAnswerResponseSchema = z.object({
+  answer: AnswerSchema,
+});
+export type GetAnswerResponse = z.infer<typeof GetAnswerResponseSchema>;
+
 export const PromptSetSchema = z.object({
   id: IdSchema,
   position: z.number().int().min(1).max(LIMITS.SETS_PER_PAGE),

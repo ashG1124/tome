@@ -61,6 +61,17 @@ export const AdvanceJobResponseSchema = z.object({
 });
 export type AdvanceJobResponse = z.infer<typeof AdvanceJobResponseSchema>;
 
+export const GetJobResponseSchema = z.object({
+  job: JobSchema,
+  steps: z.array(JobStepSchema),
+});
+export type GetJobResponse = z.infer<typeof GetJobResponseSchema>;
+
+export const CancelJobResponseSchema = z.object({
+  job: JobSchema,
+});
+export type CancelJobResponse = z.infer<typeof CancelJobResponseSchema>;
+
 export const CreateRevisionRequestSchema = z.object({
   baseAnswerId: IdSchema,
   nodes: NodeSnapshotSchema,
