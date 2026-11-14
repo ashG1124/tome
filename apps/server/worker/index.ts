@@ -31,12 +31,14 @@ export class TomeServer extends Container {
 
 export default {
   async fetch(request: Request, workerEnv: WorkerEnv): Promise<Response> {
-    // 서버가 실제 접속 IP를 보도록 Cloudflare 가 알려 준 값으로 덮어쓴다.
-    // 사용자가 직접 보낸 X-Forwarded-For 는 버린다(속여서 제한을 피하지 못하게).
+    // 서버가 실제 접속 IP를 보도록 Cloudflare 가 알려 준 값을 X-Tome-Client-Ip 로 넘긴다.
+    // X-Forwarded-For 는 Cloudflare 가 관리하는 헤더라 쓰지 않는다.
+    // 사용자가 직접 보낸 X-Tome-Client-Ip 는 덮어쓰거나 지운다(속여서 제한을 피하지 못하게).
+    // 헤더 이름은 서버의 src/common/client-ip.middleware.ts 와 같아야 한다.
     const headers = new Headers(request.headers);
     const clientIp = request.headers.get('CF-Connecting-IP');
-    if (clientIp) headers.set('X-Forwarded-For', clientIp);
-    else headers.delete('X-Forwarded-For');
+    if (clientIp) headers.set('X-Tome-Client-Ip', clientIp);
+    else headers.delete('X-Tome-Client-Ip');
     return getContainer(workerEnv.TOME_SERVER, 'main').fetch(new Request(request, { headers }));
   },
 };
