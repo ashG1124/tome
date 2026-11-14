@@ -1,4 +1,5 @@
 import { ErrorCodeSchema, type ErrorCode } from '@tome/shared';
+import { resetFakeStore } from './store';
 
 const CONSENT_KEY = 'tome.fake.consented';
 
@@ -62,8 +63,9 @@ export function setFakeConsented(): void {
   writeConsent(true);
 }
 
-/** 가짜 서버를 처음 상태로 되돌린다(동의 기록 삭제). search 로 URL 옵션을 줄 수 있다. */
+/** 가짜 서버를 처음 상태로 되돌린다(동의 기록·만든 프로젝트 삭제). search 로 URL 옵션을 줄 수 있다. */
 export function resetFake(search = ''): void {
   writeConsent(false);
   Object.assign(fakeState, fromSearch(search, false));
+  resetFakeStore();
 }

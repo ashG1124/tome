@@ -1,29 +1,64 @@
 import {
+  AdvanceJobRequestSchema,
+  AdvanceJobResponseSchema,
+  CancelJobResponseSchema,
+  CompareResponseSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
+  CreatePageResponseSchema,
+  CreateProjectRequestSchema,
+  CreateProjectResponseSchema,
   CreateSessionRequestSchema,
-  CompareResponseSchema,
   CreateSessionResponseSchema,
+  CreateSetRequestSchema,
+  CreateSetResponseSchema,
   CreatorProfileResponseSchema,
+  FinishCandidatesResponseSchema,
+  FinishProjectRequestSchema,
+  GetJobResponseSchema,
   HealthResponseSchema,
   IdentityResponseSchema,
   MeResponseSchema,
+  PostProjectRequestSchema,
+  PostProjectResponseSchema,
   ProjectListResponseSchema,
+  UpdateProjectRequestSchema,
+  UpdateProjectResponseSchema,
   WorkspaceResponseSchema,
 } from '@tome/shared';
 import type { HttpMethod } from '../transport';
-import {
-  FAKE_AGREED_AT,
-  FAKE_CREATOR,
-  FAKE_NOTICE_VERSION,
-  FAKE_PROJECTS,
-  FAKE_TOKEN,
-  fakeHealth,
-  fakeWorkspace,
-} from './data';
+import { FAKE_AGREED_AT, FAKE_CREATOR, FAKE_NOTICE_VERSION, FAKE_TOKEN, fakeHealth } from './data';
 import { FakeFailure } from './errors';
 import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
 import { fakeState, setFakeConsented } from './state';
+import {
+  advanceJob,
+  cancelJob,
+  createPage,
+  createProject,
+  createSet,
+  fakeStore,
+  finishCandidatesOf,
+  finishProject,
+  getJob,
+  listProjects,
+  postProject,
+  updateProject,
+  workspaceOf,
+} from './store';
+
+/** 지금 가짜 서버의 데이터(?fakeProjects=empty 면 빈 서가로 시작). */
+const store = () => fakeStore(fakeState.emptyProjects);
+
+/** 본문을 스키마로 검사한다. 어긋나면 서버처럼 400 VALIDATION_FAILED 다. */
+function parseBody<T>(
+  schema: { safeParse(data: unknown): { success: boolean; data?: T } },
+  body: unknown,
+): T {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success || parsed.data === undefined) throw new FakeFailure('VALIDATION_FAILED');
+  return parsed.data;
+}
 
 interface Parser {
   parse(data: unknown): unknown;
@@ -31,6 +66,8 @@ interface Parser {
 
 interface RouteContext {
   params: Record<string, string>;
+  /** 주소의 ?뒤 값(예: pageId) */
+  query: URLSearchParams;
   body: unknown;
 }
 
@@ -120,17 +157,84 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     method: 'GET',
     pattern: '/projects',
     response: ProjectListResponseSchema,
-    handle: () => ({ projects: fakeState.emptyProjects ? [] : [...FAKE_PROJECTS] }),
+    handle: () => ({ projects: listProjects(store()) }),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/projects',
+    response: CreateProjectResponseSchema,
+    idempotent: true,
+    handle: ({ body }) => createProject(store(), parseBody(CreateProjectRequestSchema, body)),
+  }),
+  route({
+    method: 'PATCH',
+    pattern: '/projects/:id',
+    response: UpdateProjectResponseSchema,
+    handle: ({ params, body }) =>
+      updateProject(store(), params.id ?? '', parseBody(UpdateProjectRequestSchema, body)),
   }),
   route({
     method: 'GET',
     pattern: '/projects/:id/workspace',
     response: WorkspaceResponseSchema,
-    handle: ({ params }) => {
-      const workspace = fakeWorkspace(params.id ?? '');
-      if (!workspace) throw new FakeFailure('NOT_FOUND');
-      return workspace;
-    },
+    handle: ({ params, query }) =>
+      workspaceOf(store(), params.id ?? '', query.get('pageId') ?? undefined),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/projects/:id/pages',
+    response: CreatePageResponseSchema,
+    idempotent: true,
+    handle: ({ params }) => createPage(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/projects/:id/sets',
+    response: CreateSetResponseSchema,
+    idempotent: true,
+    handle: ({ params, body }) =>
+      createSet(store(), params.id ?? '', parseBody(CreateSetRequestSchema, body)),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/projects/:id/finish-candidates',
+    response: FinishCandidatesResponseSchema,
+    handle: ({ params }) => finishCandidatesOf(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/projects/:id/finish',
+    // 완료 응답 모양은 서버(#33)에서 정해진다. 그 전까지 { project } 로 둔다.
+    response: UpdateProjectResponseSchema,
+    idempotent: true,
+    handle: ({ params, body }) =>
+      finishProject(store(), params.id ?? '', parseBody(FinishProjectRequestSchema, body)),
+  }),
+  route({
+    method: 'PUT',
+    pattern: '/projects/:id/post',
+    response: PostProjectResponseSchema,
+    handle: ({ params, body }) =>
+      postProject(store(), params.id ?? '', parseBody(PostProjectRequestSchema, body)),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/jobs/:jobId/advance',
+    response: AdvanceJobResponseSchema,
+    handle: ({ params, body }) =>
+      advanceJob(store(), params.jobId ?? '', parseBody(AdvanceJobRequestSchema, body).stage),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/jobs/:jobId',
+    response: GetJobResponseSchema,
+    handle: ({ params }) => getJob(store(), params.jobId ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/jobs/:jobId/cancel',
+    response: CancelJobResponseSchema,
+    handle: ({ params }) => cancelJob(store(), params.jobId ?? ''),
   }),
   route({
     method: 'GET',

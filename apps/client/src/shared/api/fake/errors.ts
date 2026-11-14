@@ -49,10 +49,19 @@ export class FakeFailure extends Error {
   }
 }
 
+/** 서버처럼 STEP_IN_PROGRESS 에는 다시 보낼 때까지 기다릴 시간을 같이 준다(캔버스의 재시도 확인용). */
+export const FAKE_RETRY_AFTER_MS = 1000;
+
 export function errorResponse(code: ErrorCode): { status: number; body: ApiError } {
   const { status, retryable } = ERROR_HTTP[code];
+  const details = code === 'STEP_IN_PROGRESS' ? { retryAfterMs: FAKE_RETRY_AFTER_MS } : undefined;
   const body = ApiErrorSchema.parse({
-    error: { code, message: `Simulated error: ${code}`, retryable },
+    error: {
+      code,
+      message: `Simulated error: ${code}`,
+      retryable,
+      ...(details ? { details } : {}),
+    },
   });
   return { status, body };
 }

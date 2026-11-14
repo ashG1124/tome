@@ -28,7 +28,7 @@ function handle(
   const simulated = takeSimulatedError();
   if (simulated !== null) throw new FakeFailure(simulated);
 
-  const pathname = path.split('?')[0] ?? path;
+  const [pathname = path, search = ''] = path.split('?');
   const matched = matchRoute(method, pathname);
   if (!matched) throw new FakeFailure('NOT_FOUND');
   const { route, params } = matched;
@@ -41,7 +41,9 @@ function handle(
     throw new FakeFailure('IDEMPOTENCY_KEY_MISSING');
   }
 
-  const data = route.response.parse(route.handle({ params, body }));
+  const data = route.response.parse(
+    route.handle({ params, query: new URLSearchParams(search), body }),
+  );
   return { status: 200, body: data };
 }
 
