@@ -33,4 +33,6 @@ COPY --from=build --chown=node:node /app /app
 USER node
 WORKDIR /app/apps/server
 EXPOSE 3000
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main.js"]
+# exec 로 node 를 1번 프로세스로 만든다. sh 가 1번이면 종료 신호(SIGTERM)를 무시해서
+# 컨테이너가 잠들지 못하고(sleepAfter) 강제 종료될 때까지 계속 켜져 있다.
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main.js"]
