@@ -49,3 +49,57 @@ describe('parseEnv', () => {
     }
   });
 });
+
+describe('parseEnv storage settings', () => {
+  const r2 = {
+    STORAGE_DRIVER: 'r2',
+    R2_ENDPOINT: 'https://example-account.r2.cloudflarestorage.com',
+    R2_BUCKET: 'bucket',
+    R2_ACCESS_KEY_ID: 'key-id',
+    R2_SECRET_ACCESS_KEY: 'super-secret',
+  };
+
+  it('defaults to the local driver and a 300 second URL lifetime', () => {
+    const env = parseEnv(base);
+    expect(env.STORAGE_DRIVER).toBe('local');
+    expect(env.ASSET_URL_TTL_SECONDS).toBe(300);
+    expect(env.STORAGE_LOCAL_DIR).toBeUndefined();
+    expect(env.STORAGE_LOCAL_SECRET).toBeUndefined();
+  });
+
+  it('accepts r2 when all four R2 values are present', () => {
+    expect(parseEnv({ ...base, ...r2 }).STORAGE_DRIVER).toBe('r2');
+  });
+
+  it.each(['R2_ENDPOINT', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'])(
+    'rejects r2 without %s, naming only the field',
+    (name) => {
+      const rest: Record<string, string> = { ...base, ...r2 };
+      delete rest[name];
+      let message = '';
+      try {
+        parseEnv(rest);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).toContain(name);
+      expect(message).not.toContain('super-secret');
+      expect(message).not.toContain('key-id');
+    },
+  );
+
+  it('does not require R2 values for the local driver', () => {
+    expect(() => parseEnv({ ...base, STORAGE_DRIVER: 'local' })).not.toThrow();
+  });
+
+  it('rejects an unknown driver and an out-of-range URL lifetime', () => {
+    expect(() => parseEnv({ ...base, STORAGE_DRIVER: 's3' })).toThrow('STORAGE_DRIVER');
+    expect(() => parseEnv({ ...base, ASSET_URL_TTL_SECONDS: '29' })).toThrow(
+      'ASSET_URL_TTL_SECONDS',
+    );
+    expect(() => parseEnv({ ...base, ASSET_URL_TTL_SECONDS: '3601' })).toThrow(
+      'ASSET_URL_TTL_SECONDS',
+    );
+    expect(parseEnv({ ...base, ASSET_URL_TTL_SECONDS: '60' }).ASSET_URL_TTL_SECONDS).toBe(60);
+  });
+});

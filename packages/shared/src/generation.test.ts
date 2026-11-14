@@ -7,7 +7,9 @@ import {
   CreateRevisionRequestSchema,
   CreateRevisionResponseSchema,
   CreateSetRequestSchema,
+  CancelJobResponseSchema,
   CreateSetResponseSchema,
+  GetJobResponseSchema,
   JobSchema,
   JobStatusSchema,
   JobStepSchema,
@@ -82,5 +84,20 @@ describe('advance and revision', () => {
       AcceptAnswerResponseSchema.safeParse({ answer: { id: ID_B, number: 2, status } }).success;
     expect(res('accepted')).toBe(true);
     expect(res('draft')).toBe(false);
+  });
+});
+
+describe('job read and cancel responses', () => {
+  it('parses GET /jobs/:id with full steps', () => {
+    const step = { stage: 'analyze', status: 'succeeded', provider: 'mock', fallbackUsed: false };
+    expect(GetJobResponseSchema.safeParse({ job, steps: [step] }).success).toBe(true);
+    expect(GetJobResponseSchema.safeParse({ job }).success).toBe(false);
+  });
+
+  it('parses a cancel response', () => {
+    expect(
+      CancelJobResponseSchema.safeParse({ job: { ...job, status: 'cancelled' } }).success,
+    ).toBe(true);
+    expect(CancelJobResponseSchema.safeParse({}).success).toBe(false);
   });
 });

@@ -178,6 +178,11 @@ export class ProjectsService {
     });
   }
 
+  /** 다른 모듈(워크스페이스)용: 내 프로젝트의 요약. 없음·삭제·숨김 404, 남의 것 403. */
+  getOwnedSummary(auth: AuthContext, id: string): Promise<ProjectSummary> {
+    return this.repo.transaction(async (tx) => toSummary(await this.requireOwned(tx, auth, id)));
+  }
+
   /** 없거나 지워졌거나 숨겨졌으면 404, 남의 것이면 403 (이 순서). */
   private async requireOwned(tx: Tx, auth: AuthContext, id: string): Promise<ProjectRow> {
     const row = await this.repo.findById(tx, id);

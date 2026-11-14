@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Node } from '@tome/shared';
-import type { AiImage, AiProvider } from './ai-provider';
+import type { AiImage, AiProvider, AnalyzeResult } from './ai-provider';
 
 // 1x1 PNG 고정 이미지
 const MOCK_PNG_BASE64 =
@@ -32,6 +32,8 @@ const ANALYZE_NODES: Node[] = [
     aiInitial: { weight: 5, pad: { x: -2, y: 1 }, enabled: true },
   },
 ];
+
+const ANALYZE_SUBJECT_TEMPLATE = '{k1} over {k2}';
 
 const RESEARCH_NODES: Node[] = [
   {
@@ -98,8 +100,11 @@ const DRAFT_NODES: Node[] = [
 export class MockAiProvider implements AiProvider {
   readonly name = 'mock';
 
-  analyze(): Promise<Node[]> {
-    return Promise.resolve(structuredClone(ANALYZE_NODES));
+  analyze(): Promise<AnalyzeResult> {
+    return Promise.resolve({
+      subjectTemplate: ANALYZE_SUBJECT_TEMPLATE,
+      nodes: structuredClone(ANALYZE_NODES),
+    });
   }
 
   research(): Promise<Node[]> {
