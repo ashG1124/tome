@@ -1,7 +1,8 @@
 import type { ComponentPropsWithoutRef } from 'react';
+import { BusyMark } from './BusyMark';
 
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {
-  /** 요청이 끝날 때까지 true. 버튼을 잠그고 aria-busy 를 켠다. */
+  /** 요청이 끝날 때까지 true. 바로 잠그고 aria-busy 를 켜며, 300ms 가 지나면 글자 옆에 원형 표시를 띄운다. */
   busy?: boolean;
 };
 
@@ -20,7 +21,8 @@ export function Button({
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={[
-        'box-border rounded-[var(--radius-2)] border border-solid',
+        'box-border inline-flex items-center justify-center gap-[var(--space-padding-3)]',
+        'rounded-[var(--radius-2)] border border-solid',
         'border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)]',
         'px-[var(--space-padding-8)] py-[var(--space-padding-3)]',
         '[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-default)]',
@@ -35,6 +37,7 @@ export function Button({
       {...rest}
     >
       {children}
+      <BusyMark busy={busy} />
     </button>
   );
 }

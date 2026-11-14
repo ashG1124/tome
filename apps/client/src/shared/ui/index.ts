@@ -1,4 +1,5 @@
 export { Button } from './Button';
+export { BusyMark } from './BusyMark';
 export { Dialog } from './Dialog';
 export { ErrorNotice } from './ErrorNotice';
 export { Flash, type FlashKind } from './Flash';
