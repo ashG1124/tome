@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { LocalObjectStorage } from './local-object-storage';
+import sharp from 'sharp';
+import { answerImageKey } from './object-storage';
 import { R2ObjectStorage } from './r2-object-storage';
+import { makeThumbnail } from './thumbnail';
 
 describe('LocalObjectStorage', () => {
   let dir: string;
@@ -114,5 +117,33 @@ describe('R2ObjectStorage', () => {
     expect(new URL(url).searchParams.get('response-content-disposition')).toBe(
       'attachment; filename="tome-answer-1.png"',
     );
+  });
+});
+
+describe('answerImageKey', () => {
+  it('uses the real image format for the original and jpg for the thumbnail', () => {
+    expect(answerImageKey('x', 'full', 'image/png')).toBe('answers/x/full.png');
+    expect(answerImageKey('x', 'full', 'image/jpeg')).toBe('answers/x/full.jpg');
+    expect(answerImageKey('x', 'thumb')).toBe('answers/x/thumb.jpg');
+  });
+});
+
+describe('makeThumbnail', () => {
+  const make = (width: number, height: number, format: 'png' | 'jpeg') =>
+    sharp({ create: { width, height, channels: 3, background: 'blue' } })
+      [format]()
+      .toBuffer();
+
+  it('shrinks the long side to 512 as a JPEG', async () => {
+    const meta = await sharp(await makeThumbnail(await make(1024, 768, 'jpeg'))).metadata();
+    expect(meta).toMatchObject({ format: 'jpeg', width: 512, height: 384 });
+    const png = await sharp(await makeThumbnail(await make(600, 1200, 'png'))).metadata();
+    expect(png).toMatchObject({ format: 'jpeg', width: 256, height: 512 });
+  });
+
+  it('does not enlarge a small image and rejects non-images', async () => {
+    const meta = await sharp(await makeThumbnail(await make(10, 10, 'png'))).metadata();
+    expect(meta).toMatchObject({ format: 'jpeg', width: 10, height: 10 });
+    await expect(makeThumbnail(new Uint8Array([1, 2, 3]))).rejects.toThrow();
   });
 });
