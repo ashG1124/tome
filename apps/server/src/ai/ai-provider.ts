@@ -17,10 +17,16 @@ export interface ImageInput {
   baseImage?: Uint8Array;
 }
 
+/** 1단계 결과: 키워드 노드와, 켜진 키워드를 문장으로 잇는 subject 틀(`{k1}` 같은 자리표시). */
+export interface AnalyzeResult {
+  subjectTemplate: string;
+  nodes: Node[];
+}
+
 /** AI 공급자 경계. 공급자를 바꿀 때 이 인터페이스의 구현만 바꾼다. */
 export interface AiProvider {
   readonly name: string;
-  analyze(input: StageInput): Promise<Node[]>;
+  analyze(input: StageInput): Promise<AnalyzeResult>;
   research(input: StageInput): Promise<Node[]>;
   evidence(input: StageInput): Promise<Node[]>;
   draft(input: StageInput): Promise<Node[]>;

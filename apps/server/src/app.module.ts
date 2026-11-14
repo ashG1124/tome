@@ -10,12 +10,14 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { SessionGuard } from './modules/session/session.guard';
 import { SessionModule } from './modules/session/session.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './storage';
 
 @Module({
   imports: [
     ConfigModule,
     PrismaModule,
     AiModule,
+    StorageModule,
     HealthModule,
     SessionModule,
     AdminModule,

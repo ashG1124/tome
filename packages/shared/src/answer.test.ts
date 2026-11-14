@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AnswerSchema,
   CreateNodeCommentRequestSchema,
+  GetAnswerResponseSchema,
   NodeCommentSchema,
   PinAnswerRequestSchema,
   PromptSetSchema,
@@ -74,5 +75,12 @@ describe('node comments', () => {
     expect(req('a'.repeat(LIMITS.COMMENT_MAX)).success).toBe(true);
     expect(req('a'.repeat(LIMITS.COMMENT_MAX + 1)).success).toBe(false);
     expect(req('   ').success).toBe(false);
+  });
+});
+
+describe('GetAnswerResponseSchema', () => {
+  it('wraps an answer', () => {
+    expect(GetAnswerResponseSchema.safeParse({ answer }).success).toBe(true);
+    expect(GetAnswerResponseSchema.safeParse({ answer: { id: 'x' } }).success).toBe(false);
   });
 });
