@@ -9,6 +9,9 @@ name = "tome-api"
 main = "worker/index.ts"
 # 설치된 wrangler(4.156.2)의 실행기가 지원하는 마지막 날짜보다 늦으면 로컬 실행이 실패한다.
 compatibility_date = "2026-11-02"
+# workers.dev 주소 하나만 쓴다. 버전별 미리보기 주소는 쓰지 않는다.
+workers_dev = true
+preview_urls = false
 
 [[containers]]
 class_name = "TomeServer"
