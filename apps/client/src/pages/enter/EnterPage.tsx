@@ -5,12 +5,6 @@ import { api, errorCopyKey, NetworkError, setSession } from '../../shared/api';
 import { COPY } from '../../shared/copy';
 import { Button, ErrorNotice, StatusBanner, TitleInput } from '../../shared/ui';
 
-/** 코드가 틀렸을 때 입력칸 테두리. 색만으로는 대비가 모자라 아이콘·문장과 항상 함께 보인다. */
-const REJECTED_INPUT_BORDER = [
-  'aria-[invalid=true]:border-[length:var(--stroke-weight-bold)]',
-  'aria-[invalid=true]:border-[color:var(--color-tome-peach-5)]',
-].join(' ');
-
 export function EnterPage() {
   const navigate = useNavigate();
   const [code, setCode] = useState('');
@@ -61,7 +55,6 @@ export function EnterPage() {
           aria-label={COPY['C-04']}
           aria-invalid={codeRejected || undefined}
           aria-describedby={codeRejected ? errorId : undefined}
-          className={REJECTED_INPUT_BORDER}
           value={code}
           onChange={(event) => setCode(event.target.value)}
           disabled={createSession.isPending}

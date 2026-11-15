@@ -53,4 +53,19 @@ describe('TitleInput', () => {
     expect(input.disabled).toBe(true);
     expect(input.className).toContain('disabled:cursor-not-allowed');
   });
+
+  it('aria-invalid 를 주면 오류 테두리(굵은 Peach)가 되고 오류 문장과 이어진다', () => {
+    render(
+      <>
+        <TitleInput aria-label="Title" aria-invalid aria-describedby="err" />
+        <p id="err">Give your project a title.</p>
+      </>,
+    );
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.className).toContain(
+      'aria-[invalid=true]:border-[color:var(--color-tome-peach-5)]',
+    );
+    expect(input.getAttribute('aria-describedby')).toBe('err');
+  });
 });
