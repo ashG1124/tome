@@ -8,10 +8,10 @@ import {
   NodeSnapshotSchema,
   VerificationSchema,
 } from '@tome/shared';
-import { AI_PROVIDER, type AiProvider } from '../../ai';
+import { AI_PROVIDER, type AiProvider, type AiResult } from '../../ai';
 import { AppError } from '../../common';
 import type { Prisma } from '../../generated/prisma/client';
-import { OBJECT_STORAGE, type ObjectStorage, answerImageKey } from '../../storage';
+import { OBJECT_STORAGE, type ObjectStorage, answerImageKey, makeThumbnail } from '../../storage';
 import type { AuthContext } from '../session/auth.decorators';
 import { assemblePrompt } from './assemble';
 import { toAnswer, toJob, toStepResponse, type TextStepOutput } from './generation.mappers';
@@ -23,6 +23,8 @@ interface StageResult {
   output: Prisma.InputJsonValue;
   provider: string | null;
   model: string | null;
+  fallbackUsed: boolean;
+  neuronsEst: number | null;
   /** image 단계에서 같이 저장할 답변 */
   answer?: { id: string; data: Prisma.AnswerUncheckedCreateInput };
   /** verify 단계에서 검증을 붙일 답변 */
@@ -30,6 +32,16 @@ interface StageResult {
 }
 
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
+
+/** assemble·verify 처럼 AI 를 부르지 않은 단계의 메타. */
+const NO_AI = { provider: null, model: null, fallbackUsed: false, neuronsEst: null } as const;
+
+const metaOf = (result: AiResult<unknown>) => ({
+  provider: result.provider,
+  model: result.model,
+  fallbackUsed: result.fallbackUsed,
+  neuronsEst: result.neurons ?? null,
+});
 
 @Injectable()
 export class AdvanceService {
@@ -147,15 +159,20 @@ export class AdvanceService {
     const input = { prompt: job.set.prompt, nodes: prior };
 
     const output: TextStepOutput = { nodes: [] };
+    let meta: AiResult<unknown>;
     if (stage === 'analyze') {
       const result = await this.ai.analyze(input);
-      if (typeof result.subjectTemplate !== 'string' || result.subjectTemplate.trim() === '') {
+      const { subjectTemplate, nodes } = result.value;
+      if (typeof subjectTemplate !== 'string' || subjectTemplate.trim() === '') {
         throw new AppError('AI_OUTPUT_INVALID');
       }
-      output.nodes = result.nodes;
-      output.subjectTemplate = result.subjectTemplate;
+      output.nodes = nodes;
+      output.subjectTemplate = subjectTemplate;
+      meta = result;
     } else {
-      output.nodes = await this.ai[stage](input);
+      const result = await this.ai[stage](input);
+      output.nodes = result.value;
+      meta = result;
     }
 
     const parsed = NodeSchema.array().safeParse(output.nodes);
@@ -169,7 +186,7 @@ export class AdvanceService {
       throw new AppError('AI_OUTPUT_INVALID');
     }
     output.nodes = parsed.data;
-    return { output: asJson(output), provider: this.ai.name, model: this.ai.name };
+    return { output: asJson(output), ...metaOf(meta) };
   }
 
   private runAssemble(job: JobRow): StageResult {
@@ -177,8 +194,7 @@ export class AdvanceService {
     const { subjectTemplate } = this.outputOf(job, 'analyze');
     return {
       output: asJson(assemblePrompt(subjectTemplate ?? '', nodes)),
-      provider: null,
-      model: null,
+      ...NO_AI,
     };
   }
 
@@ -200,18 +216,25 @@ export class AdvanceService {
     });
     if (!snapshot.success) throw new AppError('AI_OUTPUT_INVALID');
 
-    const image = await this.ai.image({ assembledPrompt });
+    const generated = await this.ai.image({ assembledPrompt, mode: 'generate' });
+    const image = generated.value;
+    // 원본은 받은 바이트 그대로, 썸네일은 긴 변 512px JPEG. 디코드할 수 없는 이미지는 출력 위반이다.
+    let thumb: Uint8Array;
+    try {
+      thumb = await makeThumbnail(image.bytes);
+    } catch {
+      throw new AppError('AI_OUTPUT_INVALID');
+    }
     const id = randomUUID();
-    const imageKey = answerImageKey(id, 'full');
+    const imageKey = answerImageKey(id, 'full', image.mimeType);
     const thumbKey = answerImageKey(id, 'thumb');
-    // 업로드 → DB 순서. DB 가 실패하면 객체만 남지만(고아) 허용한다. 썸네일 축소는 후속 단계.
+    // 업로드 → DB 순서. DB 가 실패하면 객체만 남지만(고아) 허용한다.
     await this.storage.put(imageKey, image.bytes, image.mimeType);
-    await this.storage.put(thumbKey, image.bytes, image.mimeType);
+    await this.storage.put(thumbKey, thumb, 'image/jpeg');
 
     return {
       output: { answerId: id },
-      provider: this.ai.name,
-      model: this.ai.name,
+      ...metaOf(generated),
       answer: {
         id,
         data: {
@@ -228,8 +251,8 @@ export class AdvanceService {
           excluded: asJson(excluded ?? []),
           nodes: asJson(snapshot.data),
           verification: undefined,
-          provider: this.ai.name,
-          model: this.ai.name,
+          provider: generated.provider,
+          model: generated.model,
           isSample: false,
           createdById: auth.creatorId,
           jobId: job.id,
@@ -244,8 +267,7 @@ export class AdvanceService {
     if (!job.resultAnswerId) throw new AppError('INTERNAL');
     return {
       output: asJson({ verification }),
-      provider: null,
-      model: null,
+      ...NO_AI,
       verifyAnswerId: job.resultAnswerId,
     };
   }
@@ -266,6 +288,8 @@ export class AdvanceService {
         output: result.output,
         provider: result.provider,
         model: result.model,
+        fallbackUsed: result.fallbackUsed,
+        neuronsEst: result.neuronsEst,
         latencyMs: now.getTime() - startedAt.getTime(),
         now,
         nextStage: nextStageOf(stage),

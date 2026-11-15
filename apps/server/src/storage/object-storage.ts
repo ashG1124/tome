@@ -15,9 +15,23 @@ export interface ObjectStorage {
 
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE');
 
-/** 답변 이미지의 객체 키 규칙. */
-export function answerImageKey(answerId: string, variant: 'full' | 'thumb'): string {
-  return `answers/${answerId}/${variant}.png`;
+/** 원본 이미지 형식별 확장자·content-type. */
+export const IMAGE_FORMATS = {
+  'image/png': { ext: 'png' },
+  'image/jpeg': { ext: 'jpg' },
+} as const;
+export type ImageMimeType = keyof typeof IMAGE_FORMATS;
+
+/** 답변 이미지의 객체 키 규칙. 원본은 받은 형식대로, 썸네일은 항상 JPEG. */
+export function answerImageKey(answerId: string, variant: 'full', mimeType: ImageMimeType): string;
+export function answerImageKey(answerId: string, variant: 'thumb'): string;
+export function answerImageKey(
+  answerId: string,
+  variant: 'full' | 'thumb',
+  mimeType?: ImageMimeType,
+): string {
+  const ext = variant === 'thumb' || !mimeType ? 'jpg' : IMAGE_FORMATS[mimeType].ext;
+  return `answers/${answerId}/${variant}.${ext}`;
 }
 
 /** content-disposition 에 넣어도 안전한 파일 이름(따옴표·경로 구분자·제어 문자를 뺀다). */
