@@ -68,8 +68,8 @@
 
   /* ===== 글자 Typography ===== */
   --font-family-contents:
-    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
-    'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; /* Typography/Fontfamily/Contents = Pretendard */
+    'Open Sans Variable', 'Open Sans', -apple-system, BlinkMacSystemFont, system-ui,
+    'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; /* Typography/Fontfamily/Contents = Open Sans (3182:176717, 예전 Pretendard) */
   --font-weight-regular: 400; /* Typography/Font Weight/Regular */
   --font-weight-medium: 500; /* Typography/Font Weight/Medium */
   --font-weight-semibold: 600; /* Typography/Font Weight/Semibold */
@@ -81,10 +81,14 @@
   --font-size-c1: 16px; /* Font Size/C1 */
   --font-size-c2: 14px; /* Font Size/C2 */
   --line-height-default: 1.5; /* 모든 텍스트 스타일 */
-  --letter-spacing-default: -0.03em; /* -3% */
+  --letter-spacing-default: -0.03em; /* -3% — 스타일별 값을 아직 확인하지 못한 스타일이 쓰는 예전 공통값 */
+  --letter-spacing-heading-h1: -0.02em; /* Heading/H1 -2% (3182:176717, 예전 -3%) */
+  --letter-spacing-body-b1: -0.02em; /* Body/B1(R)·B1(M) -2% (3182:176717, 예전 -3%) */
+  --letter-spacing-subtitle-st2: -0.03em; /* Sub Title/ST2(M) -3% 그대로 (3182:176717) */
 
   /*
-   * 텍스트 스타일(font 단축 속성) — 디자인 스타일 이름 기준. letter-spacing은 따로 --letter-spacing-default.
+   * 텍스트 스타일(font 단축 속성) — 디자인 스타일 이름 기준. letter-spacing은 font 에 넣을 수 없어 따로 둔다:
+   * 스타일별 토큰(--letter-spacing-heading-h1·body-b1·subtitle-st2)이 있으면 그것을, 없으면 --letter-spacing-default.
    * 스타일 이름(Heading/H1 = 24px)과 크기 변수 이름(Font Size/H2 = 24)이 어긋나지만 원본 그대로 둠.
    */
   --text-heading-t1: var(--font-weight-semibold) var(--font-size-h1) / var(--line-height-default)
@@ -99,10 +103,10 @@
     var(--font-family-contents); /* Sub Title/ST1(M) */
   --text-subtitle-st2-sb: var(--font-weight-semibold) var(--font-size-b2) /
     var(--line-height-default) var(--font-family-contents); /* Sub Title/ST2(SB) */
-  --text-subtitle-st2-m: var(--font-weight-medium) var(--font-size-b2) / var(--line-height-default)
-    var(--font-family-contents); /* Sub Title/ST2(M) */
-  --text-body-b1-m: var(--font-weight-medium) var(--font-size-c1) / var(--line-height-default)
-    var(--font-family-contents); /* Body/B1(M) */
+  --text-subtitle-st2-m: var(--font-weight-regular) var(--font-size-b2) / var(--line-height-default)
+    var(--font-family-contents); /* Sub Title/ST2(M) — Open Sans 전환 때 굵기 500 → 400 (3182:176717) */
+  --text-body-b1-m: var(--font-weight-regular) var(--font-size-c1) / var(--line-height-default)
+    var(--font-family-contents); /* Body/B1(M) — Open Sans 전환 때 굵기 500 → 400 (3182:176717) */
   --text-body-b1-r: var(--font-weight-regular) var(--font-size-c1) / var(--line-height-default)
     var(--font-family-contents); /* Body/B1(R) */
   --text-body-b2-m: var(--font-weight-medium) var(--font-size-c2) / var(--line-height-default)

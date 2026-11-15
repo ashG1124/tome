@@ -39,7 +39,7 @@ export function Tabs<T extends string>({
             value={item.value}
             className={[
               'box-border h-[var(--size-segment-height)] cursor-pointer rounded-[var(--radius-max)] px-[var(--space-padding-6)]',
-              'border border-solid border-[length:var(--stroke-weight-light)] tracking-[var(--letter-spacing-default)]',
+              'border border-solid border-[length:var(--stroke-weight-light)] tracking-[var(--letter-spacing-body-b1)]',
               'border-[color:var(--color-border-input)] bg-[color:var(--color-background-default)] [font:var(--text-body-b1-r)] text-[color:var(--color-font-helper-text)]',
               'data-[state=active]:border-transparent data-[state=active]:bg-[color:var(--color-fill-brand)] data-[state=active]:[font:var(--text-body-b1-m)] data-[state=active]:text-[color:var(--color-font-strong)]',
             ].join(' ')}

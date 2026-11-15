@@ -27,7 +27,7 @@ export function TitleInput({ className, maxLength = LIMITS.TITLE_MAX, ...rest }:
         'aria-[invalid=true]:border-[length:var(--stroke-weight-bold)]',
         'aria-[invalid=true]:border-[color:var(--color-tome-peach-5)]',
         'bg-[color:var(--color-background-default)]',
-        '[font:var(--text-body-b1-r)] tracking-[var(--letter-spacing-default)]',
+        '[font:var(--text-body-b1-r)] tracking-[var(--letter-spacing-body-b1)]',
         'text-[color:var(--color-font-main-text)]',
         'placeholder:text-[color:var(--color-font-helper-text)] placeholder:opacity-100',
         'disabled:cursor-not-allowed disabled:bg-[color:var(--color-gray-20)]',

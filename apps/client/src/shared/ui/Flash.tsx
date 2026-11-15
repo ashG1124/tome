@@ -33,7 +33,7 @@ export function Flash({ kind }: FlashProps) {
           ].join(' ')}
         >
           <Icon name={flash.icon} />
-          <span className="[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-default)] whitespace-nowrap">
+          <span className="[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-body-b1)] whitespace-nowrap">
             {flash.text}
           </span>
         </div>

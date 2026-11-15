@@ -25,7 +25,7 @@ export function Button({
         'rounded-[var(--radius-2)] border border-solid',
         'border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)]',
         'px-[var(--space-padding-8)] py-[var(--space-padding-3)]',
-        '[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-default)]',
+        '[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-body-b1)]',
         'bg-[color:var(--color-fill-brand)] text-[color:var(--color-font-main-text)]',
         'cursor-pointer enabled:hover:bg-[color:var(--color-fill-brand-med)]',
         'disabled:cursor-not-allowed disabled:bg-[color:var(--color-gray-20)]',
