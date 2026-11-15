@@ -53,6 +53,8 @@ interface SetRecord {
 
 interface ProjectRecord {
   summary: ProjectSummary;
+  /** 지운 프로젝트(소프트 삭제). 목록·조회에서 빠진다. */
+  deleted?: boolean;
   pages: PageRecord[];
   sets: SetRecord[];
 }
@@ -67,26 +69,67 @@ interface JobRecord {
   steps: JobStep[];
 }
 
+/** 성공한 멱등 요청의 기록. 같은 키 + 같은 요청이면 처음 응답을 그대로 돌려준다. */
+export interface IdempotencyRecord {
+  /** 메서드·경로·본문을 이은 값. 같은 키로 다른 요청이 오면 IDEMPOTENCY_KEY_REUSED */
+  request: string;
+  status: number;
+  body: unknown;
+}
+
 export interface FakeStore {
   projects: ProjectRecord[];
   jobs: JobRecord[];
+  idempotency: Record<string, IdempotencyRecord>;
 }
 
 let store: FakeStore | null = null;
 
-/** 처음 쓸 때 고정 데이터로 채운다. emptyProjects 면 빈 서가로 시작한다. */
+/** 새로고침해도 가짜 데이터가 남도록 브라우저 저장소에 둔다. 저장소를 못 쓰면 이번 탭 메모리에서만 유지한다. */
+const STORE_KEY = 'tome.fake.store.v1';
+
+function load(): FakeStore | null {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw === null ? null : (JSON.parse(raw) as FakeStore);
+  } catch {
+    return null;
+  }
+}
+
+/** 바뀐 가짜 데이터를 저장한다(가짜 전송 계층이 GET 이 아닌 요청 뒤에 부른다). */
+export function saveFakeStore(): void {
+  if (store === null) return;
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  } catch {
+    // 저장소를 쓸 수 없으면 메모리에서만 유지한다.
+  }
+}
+
+/** 처음 쓸 때 저장해 둔 데이터를, 없으면 고정 데이터를 쓴다. emptyProjects 면 빈 서가로 시작한다. */
 export function fakeStore(emptyProjects: boolean): FakeStore {
-  store ??= seed(emptyProjects);
+  store ??= load() ?? seed(emptyProjects);
   return store;
 }
 
-/** 다음에 쓸 때 처음 상태로 다시 채운다(resetFake 가 부른다). */
-export function resetFakeStore(): void {
+/** 새로고침 흉내(테스트용): 메모리만 비운다. 다음에 쓸 때 저장해 둔 데이터를 다시 읽는다. */
+export function dropFakeStoreMemory(): void {
   store = null;
 }
 
+/** 다음에 쓸 때 처음 상태로 다시 채운다(resetFake 가 부른다). 저장해 둔 데이터도 지운다. */
+export function resetFakeStore(): void {
+  store = null;
+  try {
+    localStorage.removeItem(STORE_KEY);
+  } catch {
+    // 저장소를 쓸 수 없으면 지울 것도 없다.
+  }
+}
+
 function seed(emptyProjects: boolean): FakeStore {
-  if (emptyProjects) return { projects: [], jobs: [] };
+  if (emptyProjects) return { projects: [], jobs: [], idempotency: {} };
   return {
     projects: FAKE_PROJECTS.map((summary) => ({
       summary: { ...summary },
@@ -94,6 +137,7 @@ function seed(emptyProjects: boolean): FakeStore {
       sets: [],
     })),
     jobs: [],
+    idempotency: {},
   };
 }
 
@@ -104,11 +148,13 @@ const now = (): string => new Date().toISOString();
 const ACTIVE_STATUSES: readonly Job['status'][] = ['pending', 'running'];
 
 function shelf(s: FakeStore): ProjectRecord[] {
-  return [...s.projects].sort((a, b) => a.summary.shelfPosition - b.summary.shelfPosition);
+  return s.projects
+    .filter((p) => p.deleted !== true)
+    .sort((a, b) => a.summary.shelfPosition - b.summary.shelfPosition);
 }
 
 function projectOf(s: FakeStore, id: string): ProjectRecord {
-  const record = s.projects.find((p) => p.summary.id === id);
+  const record = s.projects.find((p) => p.summary.id === id && p.deleted !== true);
   if (!record) throw new FakeFailure('NOT_FOUND');
   return record;
 }
@@ -214,6 +260,18 @@ export function updateProject(
     record.summary.lastEditedAt = now();
   }
   return { project: { ...record.summary } };
+}
+
+/** 지우기(소프트 삭제). 남은 프로젝트는 서가 순서를 0부터 다시 매긴다. 진행 중 job 은 취소한다. */
+export function deleteProject(s: FakeStore, id: string): void {
+  const record = projectOf(s, id);
+  record.deleted = true;
+  for (const job of s.jobs) {
+    if (job.projectId === id && ACTIVE_STATUSES.includes(job.status)) job.status = 'cancelled';
+  }
+  shelf(s).forEach((project, index) => {
+    project.summary.shelfPosition = index;
+  });
 }
 
 // ---- 완료·게시(서버 #33 전 가짜) ----

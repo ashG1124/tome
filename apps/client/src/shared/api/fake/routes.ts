@@ -37,6 +37,7 @@ import {
   createPage,
   createProject,
   createSet,
+  deleteProject,
   fakeStore,
   finishCandidatesOf,
   finishProject,
@@ -83,6 +84,8 @@ export interface FakeRoute {
   requiresConsent: boolean;
   /** true 이면 Idempotency-Key 헤더가 필요하다. */
   idempotent: boolean;
+  /** 성공 상태 코드(기본 200). 본문 없는 응답은 204 */
+  status: number;
   handle: (context: RouteContext) => unknown;
 }
 
@@ -93,6 +96,7 @@ interface RouteDefinition {
   auth?: boolean;
   requiresConsent?: boolean;
   idempotent?: boolean;
+  status?: number;
   handle: (context: RouteContext) => unknown;
 }
 
@@ -101,6 +105,7 @@ function route(definition: RouteDefinition): FakeRoute {
     auth: true,
     requiresConsent: true,
     idempotent: false,
+    status: 200,
     ...definition,
   };
 }
@@ -172,6 +177,14 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     response: UpdateProjectResponseSchema,
     handle: ({ params, body }) =>
       updateProject(store(), params.id ?? '', parseBody(UpdateProjectRequestSchema, body)),
+  }),
+  route({
+    method: 'DELETE',
+    pattern: '/projects/:id',
+    // 204: 본문이 없다
+    response: { parse: () => undefined },
+    status: 204,
+    handle: ({ params }) => deleteProject(store(), params.id ?? ''),
   }),
   route({
     method: 'GET',

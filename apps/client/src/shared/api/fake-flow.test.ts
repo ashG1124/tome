@@ -2,8 +2,11 @@ import { JobStageSchema, LIMITS, PROMPT_PRESETS, type AdvanceJobResponse } from 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from './endpoints';
 import { ApiRequestError } from './errors';
+import { FAKE_TOKEN } from './fake/data';
 import { FAKE_RETRY_AFTER_MS } from './fake/errors';
 import { fakeState, resetFake } from './fake/state';
+import { dropFakeStoreMemory } from './fake/store';
+import { fakeTransport } from './fake/transport';
 import { clearSession, setSession } from './session';
 
 // 가짜 응답 모드에서 서가 → 워크스페이스 → 세트 → 단계 진행이 서버 규칙대로 이어지는지 본다.
@@ -321,5 +324,85 @@ describe('변경 요청의 Idempotency-Key', () => {
     await api.updateProject(projectId, { title: 'Renamed' });
     expect(uuid).toHaveBeenCalledTimes(1);
     uuid.mockRestore();
+  });
+});
+
+describe('가짜 응답: 지우기', () => {
+  it('지우면 서가에서 빠지고 남은 카드는 0부터 다시 번호를 매긴다. 지운 프로젝트는 404', async () => {
+    const before = (await api.listProjects()).projects;
+    const target = before[0];
+    if (target === undefined) throw new Error('프로젝트가 없다');
+
+    await api.deleteProject(target.id);
+
+    const after = (await api.listProjects()).projects;
+    expect(after.map((p) => p.id)).toEqual(before.slice(1).map((p) => p.id));
+    expect(after.map((p) => p.shelfPosition)).toEqual(after.map((_, index) => index));
+    expect((await rejection(api.getWorkspace(target.id))).code).toBe('NOT_FOUND');
+    expect((await rejection(api.deleteProject(target.id))).code).toBe('NOT_FOUND');
+  });
+
+  it('지우면 그 프로젝트의 진행 중 job 도 취소된다', async () => {
+    const { projectId, pageId } = await newProject();
+    const { job } = await api.createSet(projectId, { pageId, prompt: 'A lighthouse' });
+    await api.deleteProject(projectId);
+    expect((await api.getJob(job.id)).job.status).toBe('cancelled');
+  });
+});
+
+describe('가짜 응답: 같은 Idempotency-Key', () => {
+  const send = (key: string, body: unknown) =>
+    fakeTransport({
+      method: 'POST',
+      path: '/projects',
+      headers: { Authorization: `Bearer ${FAKE_TOKEN}`, 'Idempotency-Key': key },
+      body,
+    });
+
+  it('같은 키로 같은 요청을 다시 보내면 처음 응답을 그대로 주고, 새로 만들지 않는다', async () => {
+    const before = (await api.listProjects()).projects.length;
+    const first = await send('6f1c2d3e-4b5a-4c6d-8e7f-001122334455', {});
+    const again = await send('6f1c2d3e-4b5a-4c6d-8e7f-001122334455', {});
+
+    expect(again).toEqual(first);
+    expect((await api.listProjects()).projects.length).toBe(before + 1);
+  });
+
+  it('같은 키로 다른 요청을 보내면 409 IDEMPOTENCY_KEY_REUSED', async () => {
+    await send('7a8b9c0d-1e2f-4a3b-8c4d-556677889900', {});
+    const other = await send('7a8b9c0d-1e2f-4a3b-8c4d-556677889900', { prompt: 'Other' });
+    expect(other.status).toBe(409);
+    expect(other.body).toMatchObject({ error: { code: 'IDEMPOTENCY_KEY_REUSED' } });
+  });
+
+  it('실패한 요청은 기록하지 않아 같은 키로 다시 시도할 수 있다', async () => {
+    const key = '8b9c0d1e-2f3a-4b4c-9d5e-66778899aabb';
+    const bad = await send(key, { prompt: '' });
+    expect(bad.status).toBe(400);
+    const retry = await send(key, { prompt: '' });
+    expect(retry.status).toBe(400);
+    expect(retry.body).not.toMatchObject({ error: { code: 'IDEMPOTENCY_KEY_REUSED' } });
+  });
+});
+
+describe('가짜 응답: 새로고침', () => {
+  it('만든 프로젝트·바꾼 순서·세트가 새로고침 뒤에도 남는다', async () => {
+    const { projectId, pageId } = await newProject();
+    const { set } = await api.createSet(projectId, { pageId, prompt: 'A lighthouse' });
+    await api.updateProject(projectId, { shelfPosition: 1 });
+    const before = (await api.listProjects()).projects.map((p) => p.id);
+
+    dropFakeStoreMemory();
+
+    expect((await api.listProjects()).projects.map((p) => p.id)).toEqual(before);
+    expect((await api.getWorkspace(projectId)).sets.map((s) => s.id)).toEqual([set.id]);
+  });
+
+  it('resetFake 는 저장해 둔 데이터도 지운다', async () => {
+    const { projectId } = await newProject();
+    resetFake();
+    await signIn();
+    dropFakeStoreMemory();
+    expect((await api.listProjects()).projects.some((p) => p.id === projectId)).toBe(false);
   });
 });

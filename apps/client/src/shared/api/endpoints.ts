@@ -92,6 +92,16 @@ export const api = {
       idempotent: true,
     }),
 
+  /** 지우기(소프트 삭제, 204). 남은 프로젝트의 서가 순서는 서버가 0부터 다시 매긴다. */
+  deleteProject: (projectId: Id) =>
+    request({
+      method: 'DELETE',
+      path: `/projects/${segment(projectId)}`,
+      // 204 라 본문이 없다
+      schema: { parse: () => undefined },
+      idempotent: true,
+    }),
+
   // ---- 워크스페이스·페이지·세트
 
   /** pageId 를 주지 않으면 서버가 마지막 페이지를 연다. */
