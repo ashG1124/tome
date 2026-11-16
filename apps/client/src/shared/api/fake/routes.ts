@@ -2,8 +2,11 @@ import {
   ConsentRequestSchema,
   ConsentResponseSchema,
   CreateSessionRequestSchema,
+  CompareResponseSchema,
   CreateSessionResponseSchema,
+  CreatorProfileResponseSchema,
   HealthResponseSchema,
+  IdentityResponseSchema,
   MeResponseSchema,
   ProjectListResponseSchema,
   WorkspaceResponseSchema,
@@ -19,6 +22,7 @@ import {
   fakeWorkspace,
 } from './data';
 import { FakeFailure } from './errors';
+import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
 import { fakeState, setFakeConsented } from './state';
 
 interface Parser {
@@ -127,6 +131,24 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
       if (!workspace) throw new FakeFailure('NOT_FOUND');
       return workspace;
     },
+  }),
+  route({
+    method: 'GET',
+    pattern: '/creators/:id',
+    response: CreatorProfileResponseSchema,
+    handle: ({ params }) => fakeCreatorProfile(params.id ?? '', fakeState.identityCase),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/creators/:id/identity',
+    response: IdentityResponseSchema,
+    handle: ({ params }) => fakeIdentity(params.id ?? '', fakeState.identityCase),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/identity/compare',
+    response: CompareResponseSchema,
+    handle: () => fakeCompare(fakeState.identityCase),
   }),
 ];
 
