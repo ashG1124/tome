@@ -2,15 +2,16 @@
 @import './shared/tokens/tokens.css';
 
 /*
- * Pretendard — Copyright (c) 2021 Kil Hyung-jin
- * SIL Open Font License 1.1. 라이선스 전문: assets/fonts/pretendard/LICENSE.txt
+ * Open Sans — Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans)
+ * SIL Open Font License 1.1. 라이선스 전문: assets/fonts/open-sans/LICENSE.txt
+ * 파일: @fontsource-variable/open-sans 5.3.0 의 라틴 글자·굵기 축(300~800) 가변 글꼴. 앱 문구가 영어라 라틴만 넣었다.
  */
 @font-face {
-  font-family: 'Pretendard Variable';
-  font-weight: 45 920;
+  font-family: 'Open Sans Variable';
+  font-weight: 300 800;
   font-style: normal;
   font-display: swap;
-  src: url('./assets/fonts/pretendard/PretendardVariable.woff2') format('woff2-variations');
+  src: url('./assets/fonts/open-sans/OpenSans-latin-wght.woff2') format('woff2-variations');
 }
 
 html,
@@ -19,7 +20,7 @@ body {
   background: var(--color-background-default);
   color: var(--color-font-main-text);
   font: var(--text-body-b1-r);
-  letter-spacing: var(--letter-spacing-default);
+  letter-spacing: var(--letter-spacing-body-b1);
 }
 
 /* 포커스 표시: 키보드로 이동할 때만 보인다. */
