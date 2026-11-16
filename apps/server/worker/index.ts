@@ -10,6 +10,11 @@ type WorkerEnv = {
   CORS_ORIGIN: string;
   // 관리 API(X-Admin-Token) 보호용. 없으면 관리 API 는 항상 401 이다.
   ADMIN_TOKEN?: string;
+  // 이미지 저장소(R2). 넷 다 있어야 서버가 켜진다(STORAGE_DRIVER=r2 의 필수값).
+  R2_ENDPOINT: string;
+  R2_BUCKET: string;
+  R2_ACCESS_KEY_ID: string;
+  R2_SECRET_ACCESS_KEY: string;
   // 배포할 때 `--var APP_VERSION:<커밋 해시>`로 넣는다. /health 의 version 으로 보인다.
   APP_VERSION?: string;
 };
@@ -29,6 +34,12 @@ export class TomeServer extends Container {
     // 비밀값을 등록하지 않았으면 넘기지 않는다(그때 관리 API 는 항상 401).
     ...(secrets.ADMIN_TOKEN ? { ADMIN_TOKEN: secrets.ADMIN_TOKEN } : {}),
     ...(secrets.APP_VERSION ? { APP_VERSION: secrets.APP_VERSION } : {}),
+    // 컨테이너 안 디스크는 잠들면 지워지므로 이미지는 R2 에 둔다(#61).
+    STORAGE_DRIVER: 'r2',
+    R2_ENDPOINT: secrets.R2_ENDPOINT,
+    R2_BUCKET: secrets.R2_BUCKET,
+    R2_ACCESS_KEY_ID: secrets.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: secrets.R2_SECRET_ACCESS_KEY,
     AI_PROVIDER: 'mock',
     PORT: '3000',
   };
