@@ -273,6 +273,8 @@ export class GenerationRepository {
       output: Prisma.InputJsonValue;
       provider: string | null;
       model: string | null;
+      fallbackUsed: boolean;
+      neuronsEst: number | null;
       latencyMs: number;
       now: Date;
       nextStage: string | null;
@@ -286,7 +288,8 @@ export class GenerationRepository {
         output: data.output,
         provider: data.provider,
         model: data.model,
-        fallbackUsed: false,
+        fallbackUsed: data.fallbackUsed,
+        neuronsEst: data.neuronsEst,
         latencyMs: data.latencyMs,
         finishedAt: data.now,
         leaseUntil: null,

@@ -155,4 +155,68 @@
   --shadow-prompt: 0 0 16px 0 var(--color-shadow-weak); /* Drop Shadow - prompt (+ 배경 블러, --blur-background) */
   --shadow-preview: 0 4px 20px 0 var(--color-shadow-weak); /* Effect - preview (+ 배경 블러, --blur-background) */
   --blur-background: 20px; /* Background blur 40 → CSS backdrop-filter blur(20px) 환산 */
+
+  /* ===== 홈 서가(#23) — Home 1720:100703, Home Thumbnail 1226:78464, New Project 1185:57987, 태그 1185:58199 ===== */
+  --size-shelf-card-width: 108px; /* 디자인 변수 없음, 원값 108px — 서가 카드 폭 (1226:78464) */
+  --size-shelf-card-width-open: 364px; /* 디자인 변수 없음, 원값 364px — 마우스를 올렸을 때 카드 폭 (1226:78464 hover on) */
+  --size-shelf-card-height: 192px; /* 디자인 변수 없음, 원값 192px — 서가 카드 높이 (1226:78464) */
+  --radius-shelf-card: 2px; /* 디자인 변수 없음, 원값 2px — 서가 카드 모서리 (1226:78464) */
+  --color-shelf-cover-shade: rgb(
+    42 42 42 / 0.5
+  ); /* Color/GrayScale/6 + 불투명도 50% — 사진 카드 왼쪽 위 그늘 (1226:78464 BG Img on) */
+  --space-tag-y: 3px; /* 디자인 변수 없음, 원값 3px — 태그 위아래 여백 (1185:58199) */
+  --font-size-tag: 11px; /* 디자인 변수 없음, 원값 11px — 태그 글자 (1185:58199) */
+  --text-tag: var(--font-weight-regular) var(--font-size-tag) / var(--line-height-default)
+    var(--font-family-contents); /* 태그 글자 스타일 (1185:58199) */
+  --blur-tag: 2px; /* 디자인 변수 없음, 원값 2px — 태그 배경 흐림 (1185:58199) */
+  --space-gap-1: 4px; /* 디자인 변수 없음, 원값 4px — 아이콘과 글자 사이 (1226:78464) */
+  --space-gap-2: 6px; /* 디자인 변수 없음, 원값 6px — + Project 아이콘과 글자 사이 (1185:57987) */
+  --size-shelf-grid-mark: 20px; /* 디자인 변수 없음, 원값 20px(실측) — 홈 바탕 + 무늬 크기, 색은 --color-grayscale-3 (1226:74427) */
+  --size-shelf-grid-line: 2px; /* 디자인 변수 없음, 원값 2px(실측) — 홈 바탕 + 무늬 선 굵기 (1226:74427) */
+
+  /* ===== 워크스페이스 틀(#25) — Icon Menu 1185:59842, prompt 1187:61872, 화면 1679:10955 ===== */
+  --size-icon-menu-button: 48px; /* 디자인 변수 없음, 원값 48px — 오른쪽 아이콘 메뉴 동그라미 (1185:59842) */
+  --shadow-icon-menu: 0 4px 10px 0 var(--color-shadow-weak); /* 원값 drop-shadow 0 4 10 — 아이콘 메뉴 동그라미 */
+  --size-logo-width: 83px; /* 디자인 변수 없음, 원값 83px — TÓME 로고 폭(로고 파일이 없을 때 빈 자리) */
+  --size-logo-height: 48px; /* 디자인 변수 없음, 원값 48px — TÓME 로고 높이 */
+  --size-prompt-width: 500px; /* 디자인 변수 없음, 원값 500px — 하단 프롬프트 바 폭 (1187:61872) */
+  --size-page-list-width: 160px; /* 디자인 변수 없음(시안 없음) — 페이지 목록 카드 폭 */
+
+  /* ===== 완료 모달(#34) — Done Modal 3182:176717, Completion Modal 3182:176864 ===== */
+  --size-dialog-width-wide: 650px; /* 디자인 변수 없음, 원값 650px — 완료 모달 내용 폭 (3182:176717) */
+  --radius-dialog: 40px; /* 디자인 변수 없음, 원값 40px — 완료 모달·확인 창 모서리 */
+  --space-gap-field: 32px; /* 디자인 변수 없음, 원값 32px — 완료 모달 입력 항목 사이 */
+  --size-dialog-button: 160px; /* 디자인 변수 없음, 원값 160px — Skip·Next·Cancel·Done 버튼 폭 */
+  --size-version-thumb: 90px; /* 디자인 변수 없음, 원값 90px — 버전 썸네일 한 변 */
+  --radius-version-thumb: 12px; /* 디자인 변수 없음, 원값 12px — 버전 썸네일 모서리 */
+  --size-scroll-bar: 4px; /* 디자인 변수 없음, 원값 4px — 썸네일 가로 스크롤 진행 막대 두께 */
+  --size-switch-width: 51px; /* 디자인 변수 없음, 원값 50.909px — 게시 토글 폭 (3182:176864) */
+  --size-switch-height: 28px; /* 디자인 변수 없음, 원값 28px — 게시 토글 높이 (3182:176864) */
+  --color-dim-from: rgb(
+    84 88 99 / 0.02
+  ); /* Yellow Dim 아래쪽 — Color/Shadow/Weak 를 2%로 (3182:176129) */
+  --color-dim-to: rgb(
+    255 248 195 / 0.2
+  ); /* Yellow Dim 위쪽 — Color/Tome Yellow/4 를 20%로 (3182:176129) */
+  --blur-dim: 6px; /* 디자인 변수 없음, 원값 6px — 모달 뒤 화면 흐림 (3182:176129) */
+  --color-result-backdrop: color-mix(
+    in srgb,
+    var(--color-gray-700) 58%,
+    var(--color-background-default)
+  ); /* 결과 크게 보기 뒤 불투명 회색 — Done-03 3313:32167 화면 색(#A0A3AA 근처)에 맞춘 값(변수 없음) */
+  --size-result-button: 48px; /* 디자인 변수 없음, 원값 48px — 결과 크게 보기 오른쪽 위 동그라미 버튼 (3313:32167) */
+
+  /* ===== 프로필(#37) — Identity 화면 3475:29083, Segment 1897:65652, Profile 3188:178007 ===== */
+  --size-profile-column: 296px; /* 디자인 변수 없음, 원값 296px — 왼쪽 프로필 카드·지표 열 폭 */
+  --size-profile-photo-height: 296px; /* 디자인 변수 없음, 원값 296px — 프로필 사진 카드 높이 */
+  --radius-profile-card: 16px; /* 디자인 변수 없음, 원값 16px — 프로필 사진·지표 카드 모서리 */
+  --size-segment-height: 46px; /* 디자인 변수 없음, 원값 46px — Work·Identity·Compare 탭 높이 (1897:65652) */
+  --radius-chart-panel: 24px; /* 디자인 변수 없음, 원값 24px — 좌표 판 모서리 */
+  --size-chart: 440px; /* 디자인 변수 없음(레이아웃) — 좌표 판 한 변 최대값 */
+  --size-avatar-me: 64px; /* 디자인 변수 없음, 원값 64px — 좌표 위 내 아바타 */
+  --size-avatar-other: 40px; /* Profile 40*40 (3188:177856) — 좌표 위 다른 창작자 아바타 */
+
+  /* ===== 플래시 메시지(공통) — flash message 1187:62709 ===== */
+  --space-gap-3: 8px; /* 디자인 변수 없음, 원값 8px — 플래시 아이콘과 글자 사이 (1187:62709) */
+  --space-padding-7: 20px; /* 디자인 변수 없음, 원값 20px — 플래시 좌우 여백 (1187:62709) */
 }

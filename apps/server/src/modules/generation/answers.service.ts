@@ -7,6 +7,9 @@ import type { AuthContext } from '../session/auth.decorators';
 import { toAnswer } from './generation.mappers';
 import { type AnswerRow, GenerationRepository } from './generation.repository';
 
+/** 저장 키의 확장자(실제 이미지 형식). */
+const extensionOf = (key: string): string => key.split('.').pop() ?? 'png';
+
 export type AssetVariant = 'full' | 'thumb';
 
 @Injectable()
@@ -51,7 +54,11 @@ export class AnswersService {
     const key = variant === 'thumb' ? (answer.thumbKey ?? answer.imageKey) : answer.imageKey;
     return this.storage.signedGetUrl(key, {
       ttlSeconds: this.env.ASSET_URL_TTL_SECONDS,
-      ...(download ? { downloadName: `tome-answer-${answer.number ?? answer.id}.png` } : {}),
+      ...(download
+        ? {
+            downloadName: `tome-answer-${answer.number ?? answer.id}.${extensionOf(answer.imageKey)}`,
+          }
+        : {}),
     });
   }
 }
