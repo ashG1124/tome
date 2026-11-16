@@ -7,8 +7,9 @@ import { env } from 'cloudflare:workers';
 type WorkerEnv = {
   TOME_SERVER: Parameters<typeof getContainer>[0];
   DATABASE_URL: string;
-  DIRECT_DATABASE_URL?: string;
   CORS_ORIGIN: string;
+  // 배포할 때 `--var APP_VERSION:<커밋 해시>`로 넣는다. /health 의 version 으로 보인다.
+  APP_VERSION?: string;
 };
 
 const secrets = env as unknown as WorkerEnv;
@@ -18,12 +19,12 @@ export class TomeServer extends Container {
   // 요청이 없으면 10분 뒤 잠들고, 다음 요청에서 다시 깨어난다.
   sleepAfter = '10m';
   // Worker 비밀값을 컨테이너 환경변수로 넘긴다. 값은 코드·로그에 남기지 않는다.
-  // DIRECT_DATABASE_URL 은 없으면 넣지 않는다. 빈 문자열을 넣으면 prisma.config.ts 가
-  // DATABASE_URL 로 넘어가지 않고 빈 주소로 마이그레이션을 시도한다.
+  // 새 환경변수가 생기면 wrangler secret put 과 함께 여기에도 추가해야 컨테이너에 전달된다.
+  // 마이그레이션은 컨테이너 밖에서 돌리므로 DIRECT_DATABASE_URL 은 넘기지 않는다.
   envVars: Record<string, string> = {
     DATABASE_URL: secrets.DATABASE_URL,
-    ...(secrets.DIRECT_DATABASE_URL ? { DIRECT_DATABASE_URL: secrets.DIRECT_DATABASE_URL } : {}),
     CORS_ORIGIN: secrets.CORS_ORIGIN,
+    ...(secrets.APP_VERSION ? { APP_VERSION: secrets.APP_VERSION } : {}),
     AI_PROVIDER: 'mock',
     PORT: '3000',
   };

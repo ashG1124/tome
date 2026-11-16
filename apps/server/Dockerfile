@@ -28,11 +28,12 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-c
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 WORKDIR /app
-# 컨테이너에서 prisma migrate deploy 를 실행하려고 node_modules 를 그대로 가져온다.
 COPY --from=build --chown=node:node /app /app
 USER node
 WORKDIR /app/apps/server
 EXPOSE 3000
-# exec 로 node 를 1번 프로세스로 만든다. sh 가 1번이면 종료 신호(SIGTERM)를 무시해서
-# 컨테이너가 잠들지 못하고(sleepAfter) 강제 종료될 때까지 계속 켜져 있다.
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main.js"]
+# 마이그레이션은 컨테이너에서 돌리지 않는다. 배포 전에 direct 주소로 따로 실행한다
+# (순서: prisma migrate deploy → wrangler deploy).
+# exec 형식이라 node 가 1번 프로세스가 되어 종료 신호(SIGTERM)를 받으면 바로 꺼진다
+# (sh 가 1번이면 신호를 무시해서 컨테이너가 잠들지 못한다).
+CMD ["node", "dist/main.js"]
