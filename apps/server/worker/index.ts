@@ -8,6 +8,8 @@ type WorkerEnv = {
   TOME_SERVER: Parameters<typeof getContainer>[0];
   DATABASE_URL: string;
   CORS_ORIGIN: string;
+  // 관리 API(X-Admin-Token) 보호용. 없으면 관리 API 는 항상 401 이다.
+  ADMIN_TOKEN?: string;
   // 배포할 때 `--var APP_VERSION:<커밋 해시>`로 넣는다. /health 의 version 으로 보인다.
   APP_VERSION?: string;
 };
@@ -24,6 +26,8 @@ export class TomeServer extends Container {
   envVars: Record<string, string> = {
     DATABASE_URL: secrets.DATABASE_URL,
     CORS_ORIGIN: secrets.CORS_ORIGIN,
+    // 비밀값을 등록하지 않았으면 넘기지 않는다(그때 관리 API 는 항상 401).
+    ...(secrets.ADMIN_TOKEN ? { ADMIN_TOKEN: secrets.ADMIN_TOKEN } : {}),
     ...(secrets.APP_VERSION ? { APP_VERSION: secrets.APP_VERSION } : {}),
     AI_PROVIDER: 'mock',
     PORT: '3000',
