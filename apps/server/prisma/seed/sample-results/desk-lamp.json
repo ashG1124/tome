@@ -1,0 +1,141 @@
+{
+  "placeholder": true,
+  "scenarioKey": "desk-lamp",
+  "title": "Studio desk lamp",
+  "promptVariants": [
+    "A minimalist studio desk lamp glowing warmly on a wooden desk, soft product photo"
+  ],
+  "nodes": {
+    "schemaVersion": 1,
+    "subjectTemplate": "A {k1} glowing warmly on a {k2}, soft product photo",
+    "nodes": [
+      {
+        "id": "k1",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "minimalist desk lamp",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k2",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "wooden desk",
+        "enabled": true,
+        "weight": 5,
+        "pad": {
+          "x": -2,
+          "y": 1,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 5,
+          "pad": {
+            "x": -2,
+            "y": 1
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "d1",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "Studio product photography",
+        "enabled": true,
+        "parentIds": ["k1"]
+      },
+      {
+        "id": "s1",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Soft light over contrast",
+        "enabled": true,
+        "order": 0,
+        "parentIds": ["d1"],
+        "aiInitial": {
+          "order": 0
+        }
+      },
+      {
+        "id": "e1",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Product photos usually use a diffused warm light to keep shadows gentle.",
+        "enabled": true,
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "macro",
+        "parentIds": ["s1"]
+      },
+      {
+        "id": "a1",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "warm glow",
+        "enabled": true,
+        "weight": 6,
+        "category": "lighting",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 6,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a2",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "wood grain",
+        "enabled": true,
+        "weight": 5,
+        "category": "material",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 5,
+          "enabled": true
+        }
+      }
+    ]
+  },
+  "verification": {
+    "status": "skipped",
+    "criteria": [
+      {
+        "id": "v1",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows warm glow.",
+        "enabled": true,
+        "parentIds": ["a1"]
+      },
+      {
+        "id": "v2",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows wood grain.",
+        "enabled": true,
+        "parentIds": ["a2"]
+      }
+    ],
+    "mismatches": []
+  }
+}

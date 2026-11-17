@@ -35,7 +35,7 @@ const JOB_ARGS = {
   include: {
     steps: true,
     project: { select: PROJECT_ACCESS_SELECT },
-    set: { select: { prompt: true, pageId: true } },
+    set: { select: { prompt: true, pageId: true, presetKey: true } },
   },
 } as const;
 export type JobRow = Prisma.GenerationJobGetPayload<typeof JOB_ARGS>;

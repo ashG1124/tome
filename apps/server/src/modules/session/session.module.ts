@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UsageModule } from '../usage/usage.module';
 import { LoginRateLimiter } from './login-rate-limiter';
 import { SessionController } from './session.controller';
 import { SessionGuard } from './session.guard';
@@ -7,6 +8,7 @@ import { SessionService } from './session.service';
 
 // 인스턴스 1개 전제: 연속 실패 카운터는 이 프로세스 메모리에만 있다.
 @Module({
+  imports: [UsageModule],
   controllers: [SessionController],
   providers: [
     SessionRepository,

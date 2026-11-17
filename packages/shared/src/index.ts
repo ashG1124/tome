@@ -12,3 +12,4 @@ export * from './identity.js';
 export * from './remix.js';
 export * from './agora.js';
 export * from './event.js';
+export * from './admin.js';

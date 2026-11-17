@@ -1,0 +1,141 @@
+{
+  "placeholder": true,
+  "scenarioKey": "music-video",
+  "title": "Music video scene",
+  "promptVariants": [
+    "A neon-lit music video scene of a singer walking through rainy Seoul streets at night, cinematic wide shot"
+  ],
+  "nodes": {
+    "schemaVersion": 1,
+    "subjectTemplate": "{k1} walking through a {k2} at night, cinematic wide shot",
+    "nodes": [
+      {
+        "id": "k1",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "neon-lit singer",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k2",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "rainy Seoul street",
+        "enabled": true,
+        "weight": 5,
+        "pad": {
+          "x": -2,
+          "y": 1,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 5,
+          "pad": {
+            "x": -2,
+            "y": 1
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "d1",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "Cinematic music video stills",
+        "enabled": true,
+        "parentIds": ["k1"]
+      },
+      {
+        "id": "s1",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Mood over detail",
+        "enabled": true,
+        "order": 0,
+        "parentIds": ["d1"],
+        "aiInitial": {
+          "order": 0
+        }
+      },
+      {
+        "id": "e1",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Wet asphalt reflects neon light, which adds depth to night street scenes.",
+        "enabled": true,
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "macro",
+        "parentIds": ["s1"]
+      },
+      {
+        "id": "a1",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "neon reflections",
+        "enabled": true,
+        "weight": 6,
+        "category": "lighting",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 6,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a2",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "rain-slick pavement",
+        "enabled": true,
+        "weight": 5,
+        "category": "environment",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 5,
+          "enabled": true
+        }
+      }
+    ]
+  },
+  "verification": {
+    "status": "skipped",
+    "criteria": [
+      {
+        "id": "v1",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows neon reflections.",
+        "enabled": true,
+        "parentIds": ["a1"]
+      },
+      {
+        "id": "v2",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows rain-slick pavement.",
+        "enabled": true,
+        "parentIds": ["a2"]
+      }
+    ],
+    "mismatches": []
+  }
+}

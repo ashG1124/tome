@@ -9,6 +9,7 @@ import type {
 import { AppError } from '../../common';
 import type { AuthContext } from './auth.decorators';
 import { verifyCode } from './code-hash';
+import { UsageService } from '../usage/usage.service';
 import { LoginRateLimiter } from './login-rate-limiter';
 import { type CreatorRow, SessionRepository } from './session.repository';
 
@@ -36,6 +37,7 @@ export class SessionService {
   constructor(
     private readonly repository: SessionRepository,
     private readonly limiter: LoginRateLimiter,
+    private readonly usage: UsageService,
   ) {}
 
   async getNoticeVersion(): Promise<string> {
@@ -105,10 +107,11 @@ export class SessionService {
   async me(auth: AuthContext): Promise<MeResponse> {
     const creator = await this.repository.findCreator(auth.creatorId);
     if (!creator) throw new AppError('INTERNAL');
+    const { dailyLimitReached, budgetReached } = await this.usage.checkLimits();
     return {
       creator: toCreatorSummary(creator),
       consented: await this.hasCurrentConsent(auth.sessionId),
-      limits: {},
+      limits: { dailyLimitReached, budgetReached },
     };
   }
 

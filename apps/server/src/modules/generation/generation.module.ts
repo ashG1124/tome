@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AiModule } from '../../ai';
 import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { UsageModule } from '../usage/usage.module';
 import { AdvanceService } from './advance.service';
 import { AnswersController } from './answers.controller';
 import { AnswersService } from './answers.service';
@@ -11,7 +12,7 @@ import { GenerationService } from './generation.service';
 import { JobsController } from './jobs.controller';
 
 @Module({
-  imports: [AiModule, IdempotencyModule, ProjectsModule],
+  imports: [AiModule, IdempotencyModule, ProjectsModule, UsageModule],
   controllers: [WorkspaceController, JobsController, AnswersController],
   providers: [GenerationRepository, GenerationService, AdvanceService, AnswersService],
   exports: [GenerationService, AnswersService],
