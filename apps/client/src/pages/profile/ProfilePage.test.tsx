@@ -59,6 +59,8 @@ describe('프로필 화면 /creators/:id', () => {
     fireEvent.mouseDown(tab);
     fireEvent.click(tab);
     expect((await screen.findAllByText(COPY['P-17'])).length).toBeGreaterThan(0);
+    // Depth 는 값이 없어(reasonedRatio null) "—" 로 보인다
+    expect(screen.getByText(COPY['P-05']).nextElementSibling?.textContent).toBe('—');
   });
 
   it('비공개 아이덴티티는 오류 없이 "기록 없음"으로 그린다', async () => {

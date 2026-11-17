@@ -196,8 +196,8 @@ describe('ProfileView', () => {
 
   it('이유를 남긴 편집 비율이 없으면(null) Depth 값을 "—" 로 보여 준다', () => {
     const data = identity();
-    // 공유 스키마는 아직 number 지만 null 허용으로 바뀔 예정이라(#36) null 을 미리 넣어 본다.
-    data.snapshot.metrics.reasonedRatio = null as unknown as number;
+    // 이유를 남길 수 있는 편집이 5개 미만이면 서버가 null 을 준다(#36).
+    data.snapshot.metrics.reasonedRatio = null;
     setup({ tab: 'identity', data });
     const label = screen.getByText(COPY['P-05']);
     expect(label.nextElementSibling?.textContent).toBe('—');

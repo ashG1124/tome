@@ -109,6 +109,8 @@ describe('프로필 API 가짜 응답 — 고를 수 있는 경우', () => {
     const identity = await api.getIdentity(ME);
     expect(IdentityResponseSchema.safeParse(identity).success).toBe(true);
     expect(identity.snapshot.eventCount).toBe(0);
+    // 기록이 모자라면 Depth 값도 없다(화면은 "—")
+    expect(identity.snapshot.metrics.reasonedRatio).toBeNull();
     expect(identity.table.every((row) => row.score === null)).toBe(true);
     const compare = await api.getCompare();
     expect(Object.values(compare.me.axes).every((score) => score === null)).toBe(true);
