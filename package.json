@@ -18,6 +18,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "docs:pull": "node scripts/docs-pull.mjs",
     "design:check": "pnpm --filter @tome/client --if-present design:check",
     "test:e2e": "pnpm --filter @tome/client --if-present test:e2e"
   },

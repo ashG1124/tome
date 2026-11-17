@@ -5,7 +5,7 @@
 ## 1. 먼저 할 일
 
 1. 맡은 GitHub Issue를 읽는다. Issue의 "할 일"과 "완료 기준"이 이번 작업의 범위다.
-2. 기획 문서는 저장소 맨 위의 `.tome-docs/` 폴더에 있다(팀원 PC에만 있고 git에서 제외됨). 작업 전에 `.tome-docs/README.md`와 Issue에 해당하는 기능 문서를 직접 연다. 검색 결과에 안 나와도 경로로 열 수 있다.
+2. 기획 문서는 저장소 맨 위의 `.tome-docs/` 폴더에 있다(팀원 PC에만 있고 git에서 제외됨). 작업 전에 `.tome-docs/README.md`와 Issue에 해당하는 기능 문서를 직접 연다. 검색 결과에 안 나와도 경로로 열 수 있다. 작업 전에 `pnpm docs:pull`로 최신 문서를 받는다.
 3. `.tome-docs/`가 없으면 작업을 멈추고 사람에게 알린다. 기획 문서에 없는 내용은 지어내지 말고 질문으로 남긴다.
 4. 작업 전에 바꿀 파일 목록을 먼저 말하고 확인을 받는다.
 
@@ -74,4 +74,5 @@ pnpm --filter @tome/shared build
 pnpm --filter @tome/client dev
 pnpm test
 pnpm design:check
+pnpm docs:pull
 ```
