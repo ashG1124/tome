@@ -15,6 +15,7 @@ import {
   CreatorProfileResponseSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
+  FinishProjectResponseSchema,
   GetJobResponseSchema,
   HealthResponseSchema,
   IdentityResponseSchema,
@@ -217,8 +218,7 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
   route({
     method: 'POST',
     pattern: '/projects/:id/finish',
-    // 완료 응답 모양은 서버(#33)에서 정해진다. 그 전까지 { project } 로 둔다.
-    response: UpdateProjectResponseSchema,
+    response: FinishProjectResponseSchema,
     idempotent: true,
     handle: ({ params, body }) =>
       finishProject(store(), params.id ?? '', parseBody(FinishProjectRequestSchema, body)),

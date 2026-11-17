@@ -15,6 +15,7 @@ import {
   CreatorProfileResponseSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
+  FinishProjectResponseSchema,
   GetJobResponseSchema,
   HealthResponseSchema,
   IdentityResponseSchema,
@@ -161,13 +162,13 @@ export const api = {
       schema: FinishCandidatesResponseSchema,
     }),
 
-  /** 완료(제목·대표 버전·이유). 응답 모양은 서버 #33 에서 정해지면 맞춘다. 지금은 { project }. */
+  /** 완료(제목·대표 버전·이유). 응답은 { project } (FinishProjectResponseSchema, #68). */
   finishProject: (projectId: Id, body: FinishProjectRequest) =>
     request({
       method: 'POST',
       path: `/projects/${segment(projectId)}/finish`,
       body: FinishProjectRequestSchema.parse(body),
-      schema: UpdateProjectResponseSchema,
+      schema: FinishProjectResponseSchema,
       idempotent: true,
     }),
 

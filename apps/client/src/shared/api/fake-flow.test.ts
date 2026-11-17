@@ -144,8 +144,14 @@ describe('가짜 응답: 워크스페이스·페이지·세트', () => {
     const { projectId, pageId } = await newProject();
     const { set, job } = await api.createSet(projectId, { pageId, prompt: 'A lighthouse' });
 
+    // Job 은 어느 세트·페이지 것인지 같이 알려 준다(#68)
+    expect(job.setId).toBe(set.id);
+    expect(job.pageId).toBe(pageId);
+
     const workspace = await api.getWorkspace(projectId);
     expect(workspace.activeJob?.id).toBe(job.id);
+    expect(workspace.activeJob?.setId).toBe(set.id);
+    expect(workspace.activeJob?.pageId).toBe(pageId);
     expect(workspace.sets.map((s) => s.id)).toEqual([set.id]);
     expect(workspace.pages[0]?.setCount).toBe(1);
 

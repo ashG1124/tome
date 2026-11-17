@@ -12,6 +12,7 @@ import {
   type CreateSetResponse,
   type FinishCandidatesResponse,
   type FinishProjectRequest,
+  type FinishProjectResponse,
   type GetJobResponse,
   type Job,
   type JobStage,
@@ -63,6 +64,8 @@ interface JobRecord {
   id: string;
   projectId: string;
   setId: string;
+  /** 세트가 있는 페이지. Job 응답에 setId 와 같이 나간다(#68) */
+  pageId: string;
   status: Job['status'];
   startStage: JobStage;
   nextStage: JobStage | null;
@@ -86,7 +89,8 @@ export interface FakeStore {
 let store: FakeStore | null = null;
 
 /** 새로고침해도 가짜 데이터가 남도록 브라우저 저장소에 둔다. 저장소를 못 쓰면 이번 탭 메모리에서만 유지한다. */
-const STORE_KEY = 'tome.fake.store.v1';
+// v2: Job 에 pageId 를 담기 시작했다(#68). 예전(v1) 데이터는 버리고 처음 데이터로 시작한다.
+const STORE_KEY = 'tome.fake.store.v2';
 
 function load(): FakeStore | null {
   try {
@@ -175,6 +179,8 @@ function activeJobOf(s: FakeStore, projectId: string): JobRecord | undefined {
 function toJob(job: JobRecord): Job {
   return {
     id: job.id,
+    setId: job.setId,
+    pageId: job.pageId,
     status: job.status,
     startStage: job.startStage,
     nextStage: job.nextStage,
@@ -299,7 +305,7 @@ export function finishProject(
   s: FakeStore,
   id: string,
   body: FinishProjectRequest,
-): UpdateProjectResponse {
+): FinishProjectResponse {
   const record = projectOf(s, id);
   const answers = answersOf(record);
   if (answers.length === 0) throw new FakeFailure('NOT_FINISHABLE');
@@ -388,6 +394,7 @@ function addSet(
     id: newId(),
     projectId: record.summary.id,
     setId: set.id,
+    pageId,
     status: 'pending',
     startStage: 'analyze',
     nextStage: 'analyze',
