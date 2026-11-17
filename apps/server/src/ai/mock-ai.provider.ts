@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Node } from '@tome/shared';
-import type { AiImage, AiProvider, AiResult, AnalyzeResult } from './ai-provider';
+import type { AiImage, AiProvider, AiResult, AnalyzeResult, InputCheck } from './ai-provider';
 
 // 1x1 PNG 고정 이미지
 const MOCK_PNG_BASE64 =
@@ -120,6 +120,15 @@ export class MockAiProvider implements AiProvider {
 
   draft(): Promise<AiResult<Node[]>> {
     return done(structuredClone(DRAFT_NODES));
+  }
+
+  /** 항상 safe. 네트워크 호출과 비용이 없다. */
+  checkInput(): Promise<AiResult<InputCheck>> {
+    return Promise.resolve({
+      value: { safe: true, categories: [] },
+      ...meta,
+      neurons: 0,
+    });
   }
 
   image(): Promise<AiResult<AiImage>> {

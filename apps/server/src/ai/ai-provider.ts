@@ -26,6 +26,12 @@ export interface AnalyzeResult {
   nodes: Node[];
 }
 
+/** 입력 안전 검사 결과. categories 는 위험 분류 코드(S1~S14), safe 면 빈 배열. */
+export interface InputCheck {
+  safe: boolean;
+  categories: string[];
+}
+
 export type AiProviderName = 'mock' | 'workers-ai';
 
 /** 모든 공급자 호출 결과에 붙는 메타. model 은 실제로 성공한 모델 ID. */
@@ -46,6 +52,10 @@ export interface AiProvider {
   evidence(input: StageInput): Promise<AiResult<Node[]>>;
   draft(input: StageInput): Promise<AiResult<Node[]>>;
   image(input: ImageInput): Promise<AiResult<AiImage>>;
+  /**
+   * 생성 전 입력(프롬프트) 안전 검사. 검사 호출이 실패하면 던지지 않고 safe 로 통과시킨다.
+   */
+  checkInput(text: string): Promise<AiResult<InputCheck>>;
 }
 
 export const AI_PROVIDER = Symbol('AI_PROVIDER');

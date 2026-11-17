@@ -12,6 +12,7 @@ import {
 import { AppError } from '../../common';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import type { AuthContext } from '../session/auth.decorators';
+import { InputSafetyService, isValidKey } from '../projects/input-safety.service';
 import { ProjectsService } from '../projects/projects.service';
 import { UsageService } from '../usage/usage.service';
 import {
@@ -30,6 +31,7 @@ export class GenerationService {
     private readonly idempotency: IdempotencyService,
     private readonly projects: ProjectsService,
     private readonly usage: UsageService,
+    private readonly safety: InputSafetyService,
   ) {}
 
   /** 없거나 지워졌거나 숨겨졌으면 404, 남의 것이면 403 (이 순서). */
@@ -112,7 +114,38 @@ export class GenerationService {
     );
   }
 
-  createSet(auth: AuthContext, key: string | undefined, projectId: string, body: CreateSetRequest) {
+  /**
+   * 입력 안전 검사(트랜잭션 밖). 순서: 세트 수 확인(409) → 안전 검사. 한도 확인·생성은 이어지는 트랜잭션이 맡는다.
+   * 여기의 읽기는 잠금 없는 사전 확인이라 최종 판단은 트랜잭션 안의 같은 확인이 한다.
+   */
+  private async checkSetInput(
+    auth: AuthContext,
+    key: string | undefined,
+    projectId: string,
+    body: CreateSetRequest,
+  ): Promise<void> {
+    if (body.attachmentId !== undefined || !isValidKey(key)) return;
+    const db = this.repo.client;
+    // 같은 키로 이미 만든 작업이 있으면 재생(또는 409)이므로 사전 확인·검사를 모두 건너뛴다.
+    if (await this.repo.jobKeyExists(db, auth.sessionId, key)) return;
+    await this.requireOwnedProject(db, auth, projectId);
+    if (!(await this.repo.pageBelongsToProject(db, projectId, body.pageId))) {
+      throw new AppError('NOT_FOUND');
+    }
+    if (await this.repo.hasActiveJob(db, projectId)) throw new AppError('GENERATION_IN_PROGRESS');
+    if ((await this.repo.countSets(db, body.pageId)) >= LIMITS.SETS_PER_PAGE) {
+      throw new AppError('SET_LIMIT_REACHED');
+    }
+    await this.safety.assertSafe(body.prompt);
+  }
+
+  async createSet(
+    auth: AuthContext,
+    key: string | undefined,
+    projectId: string,
+    body: CreateSetRequest,
+  ) {
+    await this.checkSetInput(auth, key, projectId, body);
     return this.idempotency.run<CreateSetResponse>(
       {
         sessionId: auth.sessionId,

@@ -64,6 +64,7 @@ class CountingAiProvider implements AiProvider {
     if (this.imageDelayMs) await sleep(this.imageDelayMs);
     return this.inner.image();
   };
+  checkInput: AiProvider['checkInput'] = () => this.inner.checkInput();
 }
 
 const VerificationResponseSchema = z.object({ verification: VerificationSchema });

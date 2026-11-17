@@ -18,6 +18,7 @@ import { AppError } from '../../common';
 import { EventsService } from '../events/events.service';
 import { toAnswerSummary } from '../generation/generation.mappers';
 import { IdempotencyService } from '../idempotency/idempotency.service';
+import { InputSafetyService, isValidKey } from './input-safety.service';
 import { UsageService } from '../usage/usage.service';
 import type { AuthContext } from '../session/auth.decorators';
 import {
@@ -53,6 +54,7 @@ export class ProjectsService {
     private readonly idempotency: IdempotencyService,
     private readonly usage: UsageService,
     private readonly events: EventsService,
+    private readonly safety: InputSafetyService,
   ) {}
 
   async list(auth: AuthContext): Promise<ProjectListResponse> {
@@ -67,7 +69,17 @@ export class ProjectsService {
     return rows.map((row, index) => toSummary({ ...row, shelfPosition: index }));
   }
 
-  create(auth: AuthContext, key: string | undefined, body: CreateProjectRequest) {
+  async create(auth: AuthContext, key: string | undefined, body: CreateProjectRequest) {
+    // 입력 안전 검사는 DB 트랜잭션 밖에서 한다. 같은 키로 이미 만든 작업이 있으면(재생) 다시 검사하지 않는다.
+    const checked = resolvePrompt(body.prompt, body.presetKey);
+    if (
+      checked !== undefined &&
+      body.attachmentId === undefined &&
+      isValidKey(key) &&
+      !(await this.repo.jobKeyExists(auth.sessionId, key))
+    ) {
+      await this.safety.assertSafe(checked);
+    }
     return this.idempotency.run<CreateProjectResponse>(
       { sessionId: auth.sessionId, key, route: 'POST /projects', body },
       async (tx) => {

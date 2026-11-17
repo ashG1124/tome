@@ -192,6 +192,15 @@ export class ProjectsRepository {
     });
   }
 
+  /** 같은 세션·같은 멱등 키로 만든 작업이 이미 있는지(있으면 재생 대상이라 검사를 건너뛴다). */
+  async jobKeyExists(sessionId: string, key: string): Promise<boolean> {
+    return (
+      (await this.prisma.generationJob.count({
+        where: { createdBySessionId: sessionId, idempotencyKey: key },
+      })) > 0
+    );
+  }
+
   async createCreateJob(tx: Tx, data: NewJobData): Promise<{ id: string }> {
     try {
       return await this.insertCreateJob(tx, data);
