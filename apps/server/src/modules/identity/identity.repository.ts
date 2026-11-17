@@ -95,6 +95,20 @@ export class IdentityRepository {
     });
   }
 
+  findSnapshot(id: string) {
+    return this.prisma.identitySnapshot.findUnique({ where: { id } });
+  }
+
+  /** 창작자별 가장 최근 스냅샷 한 줄씩. */
+  latestSnapshotsOf(creatorIds: string[]) {
+    if (creatorIds.length === 0) return Promise.resolve([]);
+    return this.prisma.identitySnapshot.findMany({
+      where: { creatorId: { in: creatorIds } },
+      orderBy: [{ creatorId: 'asc' }, { computedAt: 'desc' }, { id: 'desc' }],
+      distinct: ['creatorId'],
+    });
+  }
+
   insertSnapshot(tx: Tx, data: Prisma.IdentitySnapshotUncheckedCreateInput) {
     return tx.identitySnapshot.create({ data });
   }

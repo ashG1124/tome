@@ -11,6 +11,7 @@ import { GenerationModule } from './modules/generation/generation.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { RemixModule } from './modules/remix/remix.module';
 import { SessionGuard } from './modules/session/session.guard';
 import { UsageModule } from './modules/usage/usage.module';
 import { SessionModule } from './modules/session/session.module';
@@ -33,6 +34,7 @@ import { StorageModule } from './storage';
     UsageModule,
     IdentityModule,
     AgoraModule,
+    RemixModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

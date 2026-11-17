@@ -20,7 +20,9 @@ import {
   type CalcEvent,
   type CalcResult,
   calculateIdentity,
+  axisSignals,
   type EventOrigin,
+  type SignalAxis,
 } from './identity-calc';
 import { IdentityRepository, type IdentityCreatorRow, type Tx } from './identity.repository';
 
@@ -58,9 +60,22 @@ function toSnapshot(row: StoredSnapshot): IdentitySnapshot {
   };
 }
 
+const toRecord = (row: StoredSnapshot & { id: string; creatorId: string }): SnapshotRecord => ({
+  id: row.id,
+  creatorId: row.creatorId,
+  snapshot: toSnapshot(row),
+});
+
 interface Gathered {
   result: CalcResult;
   lastEventAt: Date | null;
+}
+
+/** 스냅샷과 그 행 id(리믹스가 상대의 스냅샷을 고정할 때 쓴다). */
+export interface SnapshotRecord {
+  id: string;
+  creatorId: string;
+  snapshot: IdentitySnapshot;
 }
 
 @Injectable()
@@ -116,15 +131,20 @@ export class IdentityService {
    * 같은 창작자의 동시 계산은 잠금으로 한 줄로 세워, 뒤에 온 쪽은 먼저 쌓인 행을 그대로 쓴다.
    */
   async ensureSnapshot(creatorId: string): Promise<IdentitySnapshot> {
+    return (await this.ensureSnapshotRecord(creatorId)).snapshot;
+  }
+
+  /** ensureSnapshot 과 같고 스냅샷 행 id 도 함께 돌려준다. */
+  async ensureSnapshotRecord(creatorId: string): Promise<SnapshotRecord> {
     const gathered = await this.gather(creatorId);
     const latest = await this.repo.latestSnapshot(creatorId);
-    if (latest && this.isFresh(latest, gathered)) return toSnapshot(latest);
+    if (latest && this.isFresh(latest, gathered)) return toRecord(latest);
 
     return this.repo.transaction(async (tx) => {
       await this.repo.lockCreator(tx, creatorId);
       const fresh = await this.gather(creatorId, tx);
       const current = await this.repo.latestSnapshot(creatorId, tx);
-      if (current && this.isFresh(current, fresh)) return toSnapshot(current);
+      if (current && this.isFresh(current, fresh)) return toRecord(current);
       const { result } = fresh;
       const row = await this.repo.insertSnapshot(tx, {
         creatorId,
@@ -136,8 +156,34 @@ export class IdentityService {
         provisional: result.provisional,
         computedAt: new Date(),
       });
-      return toSnapshot(row);
+      return toRecord(row);
     });
+  }
+
+  /** id 로 저장된 스냅샷을 읽는다(새로 계산하지 않는다). */
+  async findSnapshotById(id: string): Promise<SnapshotRecord | null> {
+    const row = await this.repo.findSnapshot(id);
+    return row ? toRecord(row) : null;
+  }
+
+  /** 창작자별 가장 최근 스냅샷(새로 계산하지 않는다). 스냅샷이 없는 창작자는 빠진다. */
+  async latestSnapshots(creatorIds: string[]): Promise<Map<string, IdentitySnapshot>> {
+    const rows = await this.repo.latestSnapshotsOf(creatorIds);
+    return new Map(rows.map((row) => [row.creatorId, toSnapshot(row)]));
+  }
+
+  /**
+   * 그 창작자의 실제 조작 기록 중 asOf 이전(같은 시각 포함) 것만으로 축별 방향 부호를 센다.
+   * 스냅샷 시각을 asOf 로 주면 이후 기록이 늘어도 값이 변하지 않는다.
+   */
+  async axisSignalsAsOf(creatorId: string, asOf: Date): Promise<Record<SignalAxis, number[]>> {
+    const { events } = await this.loadEvents(creatorId);
+    const past = events.filter((event) => event.serverTs <= asOf);
+    return {
+      scaleIntensity: axisSignals(past, 'scaleIntensity'),
+      aiRelation: axisSignals(past, 'aiRelation'),
+      decisionBasis: axisSignals(past, 'decisionBasis'),
+    };
   }
 
   private isFresh(snapshot: StoredSnapshot, gathered: Gathered): boolean {
@@ -150,6 +196,18 @@ export class IdentityService {
   }
 
   private async gather(creatorId: string, tx?: Tx): Promise<Gathered> {
+    const { events, lastEventAt, owned } = await this.loadEvents(creatorId, tx);
+    const setStats = await this.repo.countSets(
+      owned.map((project) => project.id),
+      tx,
+    );
+    return {
+      result: calculateIdentity({ events, setStats, projectCount: owned.length }),
+      lastEventAt,
+    };
+  }
+
+  private async loadEvents(creatorId: string, tx?: Tx) {
     const owned = await this.repo.listOwnedProjects(creatorId, tx);
     const byId = new Map(owned.map((project) => [project.id, project]));
     const rows = await this.events.listForIdentity(creatorId);
@@ -175,14 +233,7 @@ export class IdentityService {
             : {},
       });
     }
-    const setStats = await this.repo.countSets(
-      owned.map((project) => project.id),
-      tx,
-    );
-    return {
-      result: calculateIdentity({ events, setStats, projectCount: owned.length }),
-      lastEventAt,
-    };
+    return { events, lastEventAt, owned };
   }
 
   private async requireCreator(id: string): Promise<IdentityCreatorRow> {

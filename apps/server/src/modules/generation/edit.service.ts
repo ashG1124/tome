@@ -13,6 +13,7 @@ import { AppError } from '../../common';
 import type { Prisma } from '../../generated/prisma/client';
 import { EventsService } from '../events/events.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
+import { RemixApplyService } from '../remix/remix-apply.service';
 import { UsageService } from '../usage/usage.service';
 import type { AuthContext } from '../session/auth.decorators';
 import {
@@ -41,6 +42,7 @@ export class EditService {
     private readonly idempotency: IdempotencyService,
     private readonly events: EventsService,
     private readonly usage: UsageService,
+    private readonly remix: RemixApplyService,
   ) {}
 
   private async ownedAnswer(db: Db, auth: AuthContext, id: string): Promise<AnswerRow> {
@@ -75,6 +77,12 @@ export class EditService {
             fields: [{ path: 'baseAnswerId', message: 'The base answer must be accepted.' }],
           });
         }
+
+        await this.remix.assertApplicable(tx, {
+          answerId: base.id,
+          partnerId: project.remixPartnerId,
+          ids: body.appliedConnectionIds,
+        });
 
         const plan = planRevision(NodeSnapshotSchema.parse(base.nodes), body.nodes);
         if (plan.kind === 'invalid') {
@@ -158,6 +166,12 @@ export class EditService {
         }
         if (changed === 0) throw new AppError('NOT_DRAFT');
         await this.repo.touchProject(tx, answer.set.projectId, new Date());
+        await this.remix.applyOnAccept(tx, auth, {
+          id: answerId,
+          jobId: answer.jobId,
+          setId: answer.setId,
+          projectId: answer.set.projectId,
+        });
         await this.events.recordServerEvent(tx, {
           type: 'version_save',
           creatorId: auth.creatorId,

@@ -26,6 +26,7 @@ const PROJECT_ACCESS_SELECT = {
   finishedAt: true,
   deletedAt: true,
   hiddenAt: true,
+  remixPartnerId: true,
 } satisfies Prisma.ProjectSelect;
 export type ProjectAccessRow = Prisma.ProjectGetPayload<{ select: typeof PROJECT_ACCESS_SELECT }>;
 
