@@ -51,6 +51,8 @@ import {
 
 /** 지금 가짜 서버의 데이터(?fakeProjects=empty 면 빈 서가로 시작). */
 const store = () => fakeStore(fakeState.emptyProjects);
+/** 주소 옵션 ?fakeLimit= · ?fakeSample= */
+const generation = () => ({ limit: fakeState.limit, sample: fakeState.sample });
 
 /** 본문을 스키마로 검사한다. 어긋나면 서버처럼 400 VALIDATION_FAILED 다. */
 function parseBody<T>(
@@ -157,7 +159,15 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     pattern: '/me',
     response: MeResponseSchema,
     requiresConsent: false,
-    handle: () => ({ creator: FAKE_CREATOR, consented: fakeState.consented, limits: {} }),
+    // 서버(#91)처럼 생성 상한 상태를 준다. ?fakeLimit=daily|budget 으로 켜 본다.
+    handle: () => ({
+      creator: FAKE_CREATOR,
+      consented: fakeState.consented,
+      limits: {
+        dailyLimitReached: fakeState.limit === 'daily',
+        budgetReached: fakeState.limit === 'budget',
+      },
+    }),
   }),
   route({
     method: 'GET',
@@ -170,7 +180,8 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     pattern: '/projects',
     response: CreateProjectResponseSchema,
     idempotent: true,
-    handle: ({ body }) => createProject(store(), parseBody(CreateProjectRequestSchema, body)),
+    handle: ({ body }) =>
+      createProject(store(), parseBody(CreateProjectRequestSchema, body), generation()),
   }),
   route({
     method: 'PATCH',
@@ -207,7 +218,7 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     response: CreateSetResponseSchema,
     idempotent: true,
     handle: ({ params, body }) =>
-      createSet(store(), params.id ?? '', parseBody(CreateSetRequestSchema, body)),
+      createSet(store(), params.id ?? '', parseBody(CreateSetRequestSchema, body), generation()),
   }),
   route({
     method: 'GET',
@@ -235,7 +246,12 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     pattern: '/jobs/:jobId/advance',
     response: AdvanceJobResponseSchema,
     handle: ({ params, body }) =>
-      advanceJob(store(), params.jobId ?? '', parseBody(AdvanceJobRequestSchema, body).stage),
+      advanceJob(
+        store(),
+        params.jobId ?? '',
+        parseBody(AdvanceJobRequestSchema, body).stage,
+        generation(),
+      ),
   }),
   route({
     method: 'GET',

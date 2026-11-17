@@ -19,6 +19,7 @@ interface ApiImage {
  * 서버 모드에서는 로그인 토큰으로 그림을 받아(TanStack Query 가 잠시 기억한다) 임시 주소(blob)로 바꿔 넣고,
  * 그림 요소가 사라지거나 그림이 바뀌면 그 임시 주소를 해제한다(URL.revokeObjectURL).
  * 가짜 응답 모드에서는 directSrc 를 src 에 그대로 넣으면 된다.
+ * 주의: 그림 요소(img)는 조건 없이 늘 렌더해야 한다. 그림을 다 받은 뒤에 img 가 새로 생기면 주소가 들어가지 않는다.
  */
 export function useApiImage(
   path: string | null,
@@ -26,10 +27,11 @@ export function useApiImage(
 ): ApiImage {
   const source = path === null ? null : apiImageSource(path, apiConfig);
   const fetchUrl = source !== null && !source.direct ? source.url : null;
+  // 다른 계정으로 다시 들어오면 이전 계정이 받은 그림을 다시 쓰지 않도록 토큰도 키에 넣는다.
+  const token = useSessionStore((state) => state.token);
   const image = useQuery({
-    queryKey: ['api-image', fetchUrl],
-    queryFn: ({ signal }) =>
-      fetchApiImageBlob(fetchUrl ?? '', useSessionStore.getState().token, signal),
+    queryKey: ['api-image', fetchUrl, token],
+    queryFn: ({ signal }) => fetchApiImageBlob(fetchUrl ?? '', token, signal),
     enabled: fetchUrl !== null,
     // 못 받으면 쓰는 화면이 빈 면으로 그린다. 목록을 다시 받으면 그때 새로 시도한다.
     retry: false,

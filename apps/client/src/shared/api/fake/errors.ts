@@ -41,20 +41,35 @@ export const ERROR_HTTP: Record<ErrorCode, { status: number; retryable: boolean 
 /** 라우트 핸들러가 던지면 가짜 서버가 이 코드의 오류 응답으로 바꾼다. */
 export class FakeFailure extends Error {
   readonly code: ErrorCode;
+  /** 서버처럼 오류에 같이 실어 보내는 값(예: STAGE_OUT_OF_ORDER 의 expected) */
+  readonly details: Record<string, unknown> | undefined;
 
-  constructor(code: ErrorCode) {
+  constructor(code: ErrorCode, details?: Record<string, unknown>) {
     super(code);
     this.name = 'FakeFailure';
     this.code = code;
+    this.details = details;
   }
 }
 
 /** 서버처럼 STEP_IN_PROGRESS 에는 다시 보낼 때까지 기다릴 시간을 같이 준다(캔버스의 재시도 확인용). */
 export const FAKE_RETRY_AFTER_MS = 1000;
 
-export function errorResponse(code: ErrorCode): { status: number; body: ApiError } {
+/** 입력 안전 검사(서버 #95)에 걸렸을 때 같이 오는 분류. 실제 값은 검사 모델이 정한다. */
+export const FAKE_SAFETY_CATEGORIES: readonly string[] = ['S1'];
+
+/** details 를 따로 주지 않았을 때 코드별로 서버와 같은 모양을 채운다. */
+function defaultDetails(code: ErrorCode): Record<string, unknown> | undefined {
+  if (code === 'STEP_IN_PROGRESS') return { retryAfterMs: FAKE_RETRY_AFTER_MS };
+  if (code === 'SAFETY_BLOCKED') return { stage: 'input', categories: [...FAKE_SAFETY_CATEGORIES] };
+  return undefined;
+}
+
+export function errorResponse(
+  code: ErrorCode,
+  details: Record<string, unknown> | undefined = defaultDetails(code),
+): { status: number; body: ApiError } {
   const { status, retryable } = ERROR_HTTP[code];
-  const details = code === 'STEP_IN_PROGRESS' ? { retryAfterMs: FAKE_RETRY_AFTER_MS } : undefined;
   const body = ApiErrorSchema.parse({
     error: {
       code,

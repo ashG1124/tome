@@ -49,6 +49,8 @@ interface SetRecord {
   pageId: string;
   position: number;
   prompt: string;
+  /** 프리셋으로 만든 세트면 그 키. 대체 결과(sample)는 프리셋 문장 그대로일 때만 준다 */
+  presetKey?: string;
   answers: Answer[];
 }
 
@@ -56,6 +58,8 @@ interface ProjectRecord {
   summary: ProjectSummary;
   /** 지운 프로젝트(소프트 삭제). 목록·조회에서 빠진다. */
   deleted?: boolean;
+  /** 게시한 시각. 게시하지 않았으면 null */
+  postedAt?: string | null;
   pages: PageRecord[];
   sets: SetRecord[];
 }
@@ -70,7 +74,17 @@ interface JobRecord {
   startStage: JobStage;
   nextStage: JobStage | null;
   steps: JobStep[];
+  /** 대체 결과로 채우는 job(상한·AI 실패 + 프리셋 그대로). 이후 단계도 AI 를 부르지 않는다 */
+  sample?: boolean;
 }
+
+/** 주소 옵션으로 고르는 생성 조건(?fakeLimit= · ?fakeSample=). 가짜 라우트가 넘긴다. */
+export interface FakeGenerationOptions {
+  limit: 'none' | 'daily' | 'budget';
+  sample: boolean;
+}
+
+const NO_OPTIONS: FakeGenerationOptions = { limit: 'none', sample: false };
 
 /** 성공한 멱등 요청의 기록. 같은 키 + 같은 요청이면 처음 응답을 그대로 돌려준다. */
 export interface IdempotencyRecord {
@@ -87,6 +101,8 @@ export interface FakeStore {
 }
 
 let store: FakeStore | null = null;
+/** ?fakeProjects=empty 로 시작한 빈 서가는 저장하지 않는다(옵션 없이 다시 열면 기본 데이터로 돌아온다). */
+let persist = true;
 
 /** 새로고침해도 가짜 데이터가 남도록 브라우저 저장소에 둔다. 저장소를 못 쓰면 이번 탭 메모리에서만 유지한다. */
 // v2: Job 에 pageId 를 담기 시작했다(#68). 예전(v1) 데이터는 버리고 처음 데이터로 시작한다.
@@ -103,7 +119,7 @@ function load(): FakeStore | null {
 
 /** 바뀐 가짜 데이터를 저장한다(가짜 전송 계층이 GET 이 아닌 요청 뒤에 부른다). */
 export function saveFakeStore(): void {
-  if (store === null) return;
+  if (store === null || !persist) return;
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(store));
   } catch {
@@ -113,10 +129,13 @@ export function saveFakeStore(): void {
 
 /**
  * 처음 쓸 때 저장해 둔 데이터를, 없으면 고정 데이터를 쓴다.
- * emptyProjects(주소의 ?fakeProjects=empty)면 저장해 둔 데이터가 있어도 빈 서가로 새로 시작한다.
+ * emptyProjects(주소의 ?fakeProjects=empty)면 저장해 둔 데이터가 있어도 빈 서가로 새로 시작하고, 그 빈 서가는 저장하지 않는다.
  */
 export function fakeStore(emptyProjects: boolean): FakeStore {
-  store ??= emptyProjects ? seed(true) : (load() ?? seed(false));
+  if (store === null) {
+    persist = !emptyProjects;
+    store = emptyProjects ? seed(true) : (load() ?? seed(false));
+  }
   return store;
 }
 
@@ -140,6 +159,7 @@ function seed(emptyProjects: boolean): FakeStore {
   return {
     projects: FAKE_PROJECTS.map((summary) => ({
       summary: { ...summary },
+      postedAt: summary.posted ? summary.lastEditedAt : null,
       pages: (FAKE_PAGE_IDS[summary.id] ?? []).map((id, index) => ({ id, index })),
       sets: [],
     })),
@@ -203,6 +223,32 @@ function toPromptSet(set: SetRecord): PromptSet {
   };
 }
 
+/** 서버 normalizePrompt·matchPreset 과 같다: 프리셋 문장 그대로(공백·대소문자 무시)일 때만 그 키. */
+function matchPreset(presetKey: string | undefined, prompt: string): string | null {
+  if (presetKey === undefined) return null;
+  const preset = PROMPT_PRESETS.find((p) => p.key === presetKey);
+  const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
+  return preset !== undefined && normalize(preset.prompt) === normalize(prompt) ? preset.key : null;
+}
+
+function limitCode(
+  options: FakeGenerationOptions,
+): 'DAILY_LIMIT_REACHED' | 'BUDGET_REACHED' | null {
+  if (options.limit === 'budget') return 'BUDGET_REACHED';
+  if (options.limit === 'daily') return 'DAILY_LIMIT_REACHED';
+  return null;
+}
+
+/** 서버 assertWithinLimitsOrSample 과 같다: 상한에 닿았어도 프리셋 문장 그대로면 통과(뒤에 대체 결과로 채움). */
+function assertWithinLimitsOrSample(
+  options: FakeGenerationOptions,
+  presetKey: string | undefined,
+  prompt: string,
+): void {
+  const code = limitCode(options);
+  if (code !== null && matchPreset(presetKey, prompt) === null) throw new FakeFailure(code);
+}
+
 /** 서버 makeTitle 과 같다: 앞뒤 공백을 정리하고 앞 60자. */
 function makeTitle(prompt: string): string {
   return prompt.trim().slice(0, LIMITS.TITLE_MAX).trim();
@@ -222,10 +268,15 @@ export function listProjects(s: FakeStore): ProjectSummary[] {
 }
 
 /** 새 프로젝트는 서가 맨 앞(0번). 프롬프트가 있으면 Page 0 에 세트 1개와 job 까지 만든다. */
-export function createProject(s: FakeStore, body: CreateProjectRequest): CreateProjectResponse {
+export function createProject(
+  s: FakeStore,
+  body: CreateProjectRequest,
+  options: FakeGenerationOptions = NO_OPTIONS,
+): CreateProjectResponse {
   // 첨부는 첨부 단계(T11) 전까지 서버도 400 이다. 리믹스 상대(remixPartnerId)는 리믹스 단계에서 다룬다.
   if (body.attachmentId !== undefined) throw new FakeFailure('VALIDATION_FAILED');
   const prompt = resolvePrompt(body);
+  if (prompt !== undefined) assertWithinLimitsOrSample(options, body.presetKey, prompt);
   for (const record of s.projects) record.summary.shelfPosition += 1;
   const record: ProjectRecord = {
     summary: {
@@ -244,7 +295,7 @@ export function createProject(s: FakeStore, body: CreateProjectRequest): CreateP
   s.projects.push(record);
   const firstPage = record.pages[0];
   if (prompt === undefined || firstPage === undefined) return { project: { ...record.summary } };
-  const { set, job } = addSet(s, record, firstPage.id, prompt);
+  const { set, job } = addSet(s, record, firstPage.id, prompt, body.presetKey);
   return { project: { ...record.summary }, set, job };
 }
 
@@ -325,9 +376,12 @@ export function postProject(
   body: PostProjectRequest,
 ): PostProjectResponse {
   const record = projectOf(s, id);
-  if (record.summary.status !== 'finished') throw new FakeFailure('NOT_FINISHED');
+  // 서버 setPosted 와 같다: 켜기만 완료된 프로젝트가 필요하고, 이미 같은 상태면 예전 시각을 그대로 돌려준다.
+  if (body.posted && record.summary.status !== 'finished') throw new FakeFailure('NOT_FINISHED');
+  if (body.posted === record.summary.posted) return { postedAt: record.postedAt ?? null };
+  record.postedAt = body.posted ? now() : null;
   record.summary.posted = body.posted;
-  return { postedAt: body.posted ? now() : null };
+  return { postedAt: record.postedAt };
 }
 
 // ---- 워크스페이스·페이지·세트 ----
@@ -366,14 +420,20 @@ export function createPage(s: FakeStore, id: string): CreatePageResponse {
   return { page: { ...page } };
 }
 
-export function createSet(s: FakeStore, id: string, body: CreateSetRequest): CreateSetResponse {
+export function createSet(
+  s: FakeStore,
+  id: string,
+  body: CreateSetRequest,
+  options: FakeGenerationOptions = NO_OPTIONS,
+): CreateSetResponse {
   const record = projectOf(s, id);
   if (!record.pages.some((page) => page.id === body.pageId)) throw new FakeFailure('NOT_FOUND');
   if (body.attachmentId !== undefined) throw new FakeFailure('VALIDATION_FAILED');
   if (activeJobOf(s, id)) throw new FakeFailure('GENERATION_IN_PROGRESS');
   const onPage = record.sets.filter((set) => set.pageId === body.pageId).length;
   if (onPage >= LIMITS.SETS_PER_PAGE) throw new FakeFailure('SET_LIMIT_REACHED');
-  return addSet(s, record, body.pageId, body.prompt);
+  assertWithinLimitsOrSample(options, body.presetKey, body.prompt);
+  return addSet(s, record, body.pageId, body.prompt, body.presetKey);
 }
 
 function addSet(
@@ -381,12 +441,14 @@ function addSet(
   record: ProjectRecord,
   pageId: string,
   prompt: string,
+  presetKey: string | undefined,
 ): CreateSetResponse {
   const set: SetRecord = {
     id: newId(),
     pageId,
     position: record.sets.filter((other) => other.pageId === pageId).length + 1,
     prompt,
+    ...(presetKey === undefined ? {} : { presetKey }),
     answers: [],
   };
   record.sets.push(set);
@@ -411,14 +473,29 @@ function addSet(
  * 서버 advance 와 같은 규칙으로 한 단계를 진행한다.
  * 이미 끝난 단계는 저장된 결과를 그대로 돌려주고, 끝난 job 은 JOB_CLOSED, 순서가 틀리면 STAGE_OUT_OF_ORDER 다.
  */
-export function advanceJob(s: FakeStore, jobId: string, stage: JobStage): AdvanceJobResponse {
+export function advanceJob(
+  s: FakeStore,
+  jobId: string,
+  stage: JobStage,
+  options: FakeGenerationOptions = NO_OPTIONS,
+): AdvanceJobResponse {
   const job = jobOf(s, jobId);
   const done = job.steps.find((step) => step.stage === stage && step.status === 'succeeded');
   if (done) return { job: toJob(job), step: done };
   if (!ACTIVE_STATUSES.includes(job.status)) throw new FakeFailure('JOB_CLOSED');
-  if (stage !== job.nextStage) throw new FakeFailure('STAGE_OUT_OF_ORDER');
+  if (stage !== job.nextStage) {
+    throw new FakeFailure('STAGE_OUT_OF_ORDER', { expected: job.nextStage });
+  }
   const set = projectOf(s, job.projectId).sets.find((candidate) => candidate.id === job.setId);
   if (!set) throw new FakeFailure('NOT_FOUND');
+  // AI 를 부르는 단계 전에 상한·AI 실패(?fakeSample=1)를 본다. 프리셋 문장 그대로면 대체 결과로 채운다(서버와 같다).
+  if (job.sample !== true && (isTextStage(stage) || stage === 'image')) {
+    const limit = limitCode(options);
+    if (limit !== null || options.sample) {
+      if (matchPreset(set.presetKey, set.prompt) !== null) job.sample = true;
+      else if (limit !== null) throw new FakeFailure(limit);
+    }
+  }
 
   const step = runStage(job, set, stage);
   job.steps.push(step);
@@ -434,20 +511,23 @@ function textNodes(job: JobRecord): Node[] {
 
 function runStage(job: JobRecord, set: SetRecord, stage: JobStage): JobStep {
   const base = { stage, status: 'succeeded' as const, fallbackUsed: false };
-  if (isTextStage(stage)) return { ...base, provider: 'mock', nodes: fakeNodes(stage) };
+  const provider = job.sample === true ? 'sample' : 'mock';
+  if (isTextStage(stage)) return { ...base, provider, nodes: fakeNodes(stage) };
   if (stage === 'assemble') return { ...base, provider: null };
   if (stage === 'image') {
     const id = newId();
+    const sample = job.sample === true;
     const answer: Answer = {
       id,
-      number: set.answers.length + 1,
+      // 대체 결과는 번호가 없고(서버와 같다) origin 이 sample 이다
+      number: sample ? null : set.answers.filter((a) => a.number !== null).length + 1,
       pinned: false,
-      isSample: false,
+      isSample: sample,
       thumbUrl: FAKE_IMAGE_URL,
       createdAt: now(),
       setId: set.id,
       status: 'accepted',
-      origin: 'generated',
+      origin: sample ? 'sample' : 'generated',
       imageMode: 'generate',
       baseAnswerId: null,
       imageUrl: FAKE_IMAGE_URL,
@@ -455,7 +535,7 @@ function runStage(job: JobRecord, set: SetRecord, stage: JobStage): JobStep {
       verification: null,
     };
     set.answers.push(answer);
-    return { ...base, provider: 'mock', answer };
+    return { ...base, provider, answer };
   }
   // verify: 검증 기준을 만들고, 방금 만든 답변에도 붙인다.
   const verification = fakeVerification(textNodes(job));
