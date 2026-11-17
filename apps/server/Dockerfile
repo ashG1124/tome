@@ -21,16 +21,23 @@ COPY packages/shared packages/shared
 COPY apps/server apps/server
 # @tome/shared 를 먼저 빌드한 뒤 prisma generate + nest build 순서로 실행된다.
 RUN pnpm --filter "@tome/server..." build
+# 실행에 필요한 의존성(dependencies)만 /prod 에 따로 설치한다(#76).
+# wrangler·nest cli·vitest·prisma CLI 같은 개발용 패키지는 빠진다.
+# 마이그레이션은 컨테이너 밖에서 돌리므로 prisma CLI 가 없어도 된다.
+# dist 는 .gitignore 대상이라 deploy 가 복사하지 않으므로 아래에서 따로 복사한다.
+RUN pnpm --filter @tome/server deploy --prod /prod
 
 # ---- runtime ----
 FROM node:22.23.4-bookworm-slim AS runtime
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
+# /app 폴더 자체도 node 소유여야 로컬 저장소(STORAGE_DRIVER=local)가 .storage 폴더를 만들 수 있다.
+RUN mkdir /app && chown node:node /app
 WORKDIR /app
-COPY --from=build --chown=node:node /app /app
+COPY --from=build --chown=node:node /prod /app
+COPY --from=build --chown=node:node /app/apps/server/dist /app/dist
 USER node
-WORKDIR /app/apps/server
 EXPOSE 3000
 # 마이그레이션은 컨테이너에서 돌리지 않는다. 배포 전에 direct 주소로 따로 실행한다
 # (순서: prisma migrate deploy → wrangler deploy).
