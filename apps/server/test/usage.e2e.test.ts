@@ -76,6 +76,7 @@ class TestAiProvider implements AiProvider {
     this.run('evidence', () => this.inner.evidence(input));
   draft: AiProvider['draft'] = (input) => this.run('draft', () => this.inner.draft(input));
   image: AiProvider['image'] = (input) => this.run('image', () => this.inner.image(input));
+  checkInput: AiProvider['checkInput'] = (text) => this.inner.checkInput(text);
 }
 
 /** 실제 공급자처럼 폴백 사용·neurons 를 알려 주는 척하는 공급자(텍스트만 neurons 를 알려 준다). */
@@ -98,6 +99,7 @@ class CostlyProvider implements AiProvider {
   draft: AiProvider['draft'] = async () =>
     this.tag(await this.inner.draft(), MODELS.textFallback, 100);
   image: AiProvider['image'] = async () => this.tag(await this.inner.image(), MODELS.imageFallback);
+  checkInput: AiProvider['checkInput'] = () => this.inner.checkInput();
 }
 
 interface Owner {

@@ -6,9 +6,15 @@ import type {
   AiResult,
   AnalyzeResult,
   ImageInput,
+  InputCheck,
   StageInput,
 } from '../ai-provider';
-import { MODELS, STAGE_BUDGET_MS } from '../models';
+import {
+  estimateInputGuardNeurons,
+  INPUT_GUARD_BUDGET_MS,
+  MODELS,
+  STAGE_BUDGET_MS,
+} from '../models';
 import { evaluateStage, OutputViolation, type TextStage } from './normalize';
 import { STAGE1_PROMPT, STAGE2_PROMPT, STAGE3_PROMPT, STAGE4_PROMPT } from './prompts';
 import { JSON_SCHEMAS } from './raw-schemas';
@@ -28,6 +34,8 @@ export interface WorkersAiOptions {
   fetch?: typeof fetch;
   /** 한 단계의 전체 시간 예산(ms). 기본 25초. */
   stageBudgetMs?: number;
+  /** 입력 안전 검사 1회의 시간 제한(ms). 기본 5초. */
+  guardBudgetMs?: number;
   /** 호출 기록(단계·모델·상태·지연·폴백 여부만). 기본은 Nest 로거. */
   log?: (entry: RunLog) => void;
 }
@@ -97,6 +105,7 @@ export class WorkersAiProvider implements AiProvider {
   readonly name = 'workers-ai';
   private readonly fetchImpl: typeof fetch;
   private readonly budgetMs: number;
+  private readonly guardBudgetMs: number;
   private readonly logEntry: (entry: RunLog) => void;
   private readonly accountId: string;
   private readonly apiToken: string;
@@ -106,6 +115,7 @@ export class WorkersAiProvider implements AiProvider {
     this.apiToken = options.apiToken;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.budgetMs = options.stageBudgetMs ?? STAGE_BUDGET_MS;
+    this.guardBudgetMs = options.guardBudgetMs ?? INPUT_GUARD_BUDGET_MS;
     const logger = new Logger('WorkersAi');
     this.logEntry =
       options.log ??
@@ -247,6 +257,68 @@ export class WorkersAiProvider implements AiProvider {
     );
   }
 
+  // ---- 입력 안전 검사 ----
+
+  /**
+   * Llama Guard 를 1회 부른다(재시도 없음). 네트워크 오류·비200·해석 불가·시간 초과면
+   * 던지지 않고 safe 로 통과시키며, 기록에는 모델·상태·지연·사유 코드만 남긴다(프롬프트 원문 금지).
+   */
+  async checkInput(text: string): Promise<AiResult<InputCheck>> {
+    const started = Date.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.guardBudgetMs);
+    let status: number | undefined;
+    let neurons: number | undefined;
+    let verdict: InputCheck | null = null;
+    let reason = 'ok';
+    try {
+      const res = await this.fetchImpl(
+        `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/ai/run/${MODELS.inputGuard}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${this.apiToken}`,
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: text }],
+            temperature: 0,
+            max_tokens: 32,
+          }),
+          signal: controller.signal,
+        },
+      );
+      status = res.status;
+      // 응답이 왔으면 비용이 든 것으로 본다(헤더가 없으면 추정).
+      neurons = neuronsOf(res) ?? estimateInputGuardNeurons(text.length);
+      if (res.status !== 200) {
+        reason = 'http';
+      } else {
+        verdict = parseGuardResponse(await res.text());
+        if (verdict === null) reason = 'unparseable';
+      }
+    } catch {
+      reason = controller.signal.aborted ? 'timeout' : 'unavailable';
+    } finally {
+      clearTimeout(timer);
+    }
+    this.logEntry({
+      stage: 'input-safety',
+      model: MODELS.inputGuard,
+      ...(status === undefined ? {} : { status }),
+      ms: Date.now() - started,
+      outcome: verdict ? 'ok' : `failed:${reason}`,
+      fallbackUsed: false,
+    });
+    return {
+      value: verdict ?? { safe: true, categories: [] },
+      provider: 'workers-ai',
+      model: MODELS.inputGuard,
+      fallbackUsed: false,
+      ...(neurons === undefined ? {} : { neurons }),
+    };
+  }
+
   // ---- 이미지 ----
 
   async image(input: ImageInput): Promise<AiResult<AiImage>> {
@@ -335,6 +407,39 @@ export class WorkersAiProvider implements AiProvider {
       throw new CallFailure(signal.aborted ? 'timeout' : 'unavailable', { status: res.status });
     }
   }
+}
+
+/** 안전 검사 응답의 result.response(객체 또는 문자열)를 해석한다. 해석할 수 없으면 null. */
+export function parseGuardResponse(text: string): InputCheck | null {
+  let json: { success?: unknown; result?: { response?: unknown } };
+  try {
+    json = JSON.parse(text) as typeof json;
+  } catch {
+    return null;
+  }
+  if (json === null || typeof json !== 'object' || json.success === false) return null;
+  const response = json.result?.response;
+  if (response !== null && typeof response === 'object') {
+    const { safe, categories } = response as { safe?: unknown; categories?: unknown };
+    if (typeof safe !== 'boolean') return null;
+    return {
+      safe,
+      categories: Array.isArray(categories)
+        ? categories.filter((c): c is string => typeof c === 'string')
+        : [],
+    };
+  }
+  if (typeof response !== 'string') return null;
+  const [first = '', ...rest] = response.trim().split(/\r?\n/);
+  const head = first.trim().toLowerCase();
+  if (head === 'safe') return { safe: true, categories: [] };
+  if (head !== 'unsafe') return null;
+  const categories = rest
+    .join(',')
+    .split(',')
+    .map((c) => c.trim().toUpperCase())
+    .filter((c) => /^S\d{1,2}$/.test(c));
+  return { safe: false, categories };
 }
 
 /** 이미지 응답: JSON 의 result.image(base64) 이거나 이미지 바이너리. */

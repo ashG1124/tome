@@ -79,6 +79,7 @@ class TestAiProvider implements AiProvider {
     this.run('evidence', () => this.inner.evidence(input));
   draft: AiProvider['draft'] = (input) => this.run('draft', () => this.inner.draft(input));
   image: AiProvider['image'] = (input) => this.run('image', () => this.inner.image(input));
+  checkInput: AiProvider['checkInput'] = (text) => this.inner.checkInput(text);
 }
 
 interface Owner {
