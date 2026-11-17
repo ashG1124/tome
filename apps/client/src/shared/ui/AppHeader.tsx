@@ -70,11 +70,13 @@ export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderP
         </Link>
         <Link
           to={agoraTo}
-          aria-label={COPY['HD-01']}
           aria-current={current === 'agora' ? 'page' : undefined}
           className={sectionLink(current === 'agora')}
         >
-          <Wordmark name="logo-agora" widthVar="w-[var(--size-logo-agora-width)]" />
+          {/* AGORA 는 그림 파일이 아니라 글자다(Figma Nav Links 1226:80898, 108×48). 서체 Open Sans */}
+          <span className="flex h-[var(--size-logo-agora-height)] w-[var(--size-logo-agora-width)] items-center [font:var(--text-header-nav)] tracking-[var(--letter-spacing-heading-h1)]">
+            {COPY['HD-01']}
+          </span>
         </Link>
       </nav>
       <Link
