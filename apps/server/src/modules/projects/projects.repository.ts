@@ -158,12 +158,22 @@ export class ProjectsRepository {
   /** 프로젝트와 첫 페이지(index 0)를 만든다. */
   createWithFirstPage(
     tx: Tx,
-    data: { ownerId: string; title: string; remixPartnerId: string | null; lastEditedAt: Date },
+    data: {
+      ownerId: string;
+      title: string;
+      remixPartnerId: string | null;
+      lastEditedAt: Date;
+      kind?: 'original' | 'derive';
+      derivedFromProjectId?: string;
+      derivedFromAnswerId?: string;
+    },
   ): Promise<ProjectRow> {
     return tx.project.create({
       data: {
         ownerId: data.ownerId,
-        kind: 'original',
+        kind: data.kind ?? 'original',
+        derivedFromProjectId: data.derivedFromProjectId,
+        derivedFromAnswerId: data.derivedFromAnswerId,
         title: data.title,
         remixPartnerId: data.remixPartnerId,
         lastEditedAt: data.lastEditedAt,

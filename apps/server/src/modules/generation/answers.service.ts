@@ -10,6 +10,19 @@ import { type AnswerRow, GenerationRepository } from './generation.repository';
 /** 저장 키의 확장자(실제 이미지 형식). */
 const extensionOf = (key: string): string => key.split('.').pop() ?? 'png';
 
+/** 남이 볼 수 있는 답변인가: 게시 중이고, 완료 시각 이전에 확정된 답변(그 뒤 재편집분은 주인 전용). */
+export function isPublicAnswer(
+  project: { postedAt: Date | null; finishedAt: Date | null },
+  answer: { status: string; createdAt: Date },
+): boolean {
+  return (
+    project.postedAt !== null &&
+    project.finishedAt !== null &&
+    answer.status === 'accepted' &&
+    answer.createdAt <= project.finishedAt
+  );
+}
+
 export type AssetVariant = 'full' | 'thumb';
 
 @Injectable()
@@ -33,16 +46,16 @@ export class AnswersService {
     }
     const mine = project.ownerId === auth.creatorId;
     // 남이 보는 게시작은 완료 시점에 이미 확정돼 있던 답변만이다(그 뒤 재편집분은 주인 전용).
-    if (
-      !mine &&
-      (project.postedAt === null ||
-        project.finishedAt === null ||
-        answer.status !== 'accepted' ||
-        answer.createdAt > project.finishedAt)
-    ) {
-      throw new AppError('NOT_FOUND');
-    }
+    if (!mine && !isPublicAnswer(project, answer)) throw new AppError('NOT_FOUND');
     return answer;
+  }
+
+  /** 아고라처럼 "남이 보는 기준"으로 답변을 거를 때 쓴다(requireReadable 의 남 규칙과 같다). */
+  isPublic(
+    project: { postedAt: Date | null; finishedAt: Date | null },
+    answer: { status: string; createdAt: Date },
+  ): boolean {
+    return isPublicAnswer(project, answer);
   }
 
   async get(auth: AuthContext, id: string): Promise<GetAnswerResponse> {
