@@ -22,6 +22,16 @@ describe('job schemas', () => {
     expect(JobStatusSchema.safeParse('paused').success).toBe(false);
   });
 
+  it('requires setId and pageId on a job', () => {
+    const noSet: Record<string, unknown> = { ...job };
+    delete noSet.setId;
+    const noPage: Record<string, unknown> = { ...job };
+    delete noPage.pageId;
+    expect(JobSchema.safeParse(noSet).success).toBe(false);
+    expect(JobSchema.safeParse(noPage).success).toBe(false);
+    expect(JobSchema.safeParse({ ...job, setId: 'x' }).success).toBe(false);
+  });
+
   it('accepts a null nextStage when the job is done', () => {
     expect(JobSchema.safeParse({ ...job, status: 'succeeded', nextStage: null }).success).toBe(
       true,

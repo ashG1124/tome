@@ -64,6 +64,8 @@ export function toAnswer(row: AnswerFullRow): Answer {
 
 interface JobRowLike {
   id: string;
+  setId: string;
+  set: { pageId: string };
   status: Job['status'];
   startStage: string;
   nextStage: string | null;
@@ -76,6 +78,8 @@ export function toJob(row: JobRowLike): Job {
     .map((s) => ({ stage: JobStageSchema.parse(s.stage), status: s.status }));
   return {
     id: row.id,
+    setId: row.setId,
+    pageId: row.set.pageId,
     status: row.status,
     startStage: JobStageSchema.parse(row.startStage),
     nextStage: row.nextStage === null ? null : JobStageSchema.parse(row.nextStage),

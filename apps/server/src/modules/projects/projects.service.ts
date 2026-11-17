@@ -122,6 +122,8 @@ export class ProjectsService {
       // 아직 아무 단계도 돌지 않았으므로 다음에 돌릴 단계는 시작 단계와 같다.
       job: {
         id: job.id,
+        setId: set.id,
+        pageId,
         status: 'pending',
         startStage: 'analyze',
         nextStage: 'analyze',
