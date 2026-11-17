@@ -10,16 +10,20 @@ import { type AnswerRow, GenerationRepository } from './generation.repository';
 /** 저장 키의 확장자(실제 이미지 형식). */
 const extensionOf = (key: string): string => key.split('.').pop() ?? 'png';
 
-/** 남이 볼 수 있는 답변인가: 게시 중이고, 완료 시각 이전에 확정된 답변(그 뒤 재편집분은 주인 전용). */
+/**
+ * 남이 볼 수 있는 답변인가: 게시 중이고, 완료 시각 이전에 "확정"된 답변(그 뒤 재편집분은 주인 전용).
+ * 기준은 생성 시각이 아니라 확정 시각이다(완료 전에 만든 미리보기를 완료 뒤 Apply 하면 비공개).
+ * acceptedAt 이 비어 있는 행(확정 시각 도입 전 데이터·시드 등)은 생성 시각으로 본다(안전장치).
+ */
 export function isPublicAnswer(
   project: { postedAt: Date | null; finishedAt: Date | null },
-  answer: { status: string; createdAt: Date },
+  answer: { status: string; createdAt: Date; acceptedAt: Date | null },
 ): boolean {
   return (
     project.postedAt !== null &&
     project.finishedAt !== null &&
     answer.status === 'accepted' &&
-    answer.createdAt <= project.finishedAt
+    (answer.acceptedAt ?? answer.createdAt) <= project.finishedAt
   );
 }
 
@@ -53,7 +57,7 @@ export class AnswersService {
   /** 아고라처럼 "남이 보는 기준"으로 답변을 거를 때 쓴다(requireReadable 의 남 규칙과 같다). */
   isPublic(
     project: { postedAt: Date | null; finishedAt: Date | null },
-    answer: { status: string; createdAt: Date },
+    answer: { status: string; createdAt: Date; acceptedAt: Date | null },
   ): boolean {
     return isPublicAnswer(project, answer);
   }

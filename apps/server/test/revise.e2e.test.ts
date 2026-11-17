@@ -266,6 +266,45 @@ describe.skipIf(!url)('revise · accept · pin · verification (real Postgres)',
     if (storageDir) await rm(storageDir, { recursive: true, force: true });
   });
 
+  it('a draft made before finishing but accepted after posting stays owner-only (also in the agora)', async () => {
+    const f = await fixture();
+    const viewer = await newOwner();
+    // 완료 전에 미리보기(draft)를 만들어 둔다.
+    const draft = await previewOf(f, editNodes(f.answer.nodes, { k1: { weight: 3 } }));
+    expect(draft.answer.status).toBe('draft');
+
+    const done = await call(
+      'POST',
+      `/projects/${f.projectId}/finish`,
+      f.owner.token,
+      { title: 'Lighthouse', coverAnswerId: f.answer.id },
+      randomUUID(),
+    );
+    expect(done.status).toBe(200);
+    const posted = await call('PUT', `/projects/${f.projectId}/post`, f.owner.token, {
+      posted: true,
+    });
+    expect(posted.status).toBe(200);
+
+    // 완료 뒤에 그 draft 를 Apply 한다 → 생성 시각은 완료 전이지만 확정 시각은 완료 뒤.
+    await sleep(20);
+    expect((await accept(f.owner, draft.answer.id)).status).toBe(200);
+    const row = await prisma.answer.findUniqueOrThrow({ where: { id: draft.answer.id } });
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: f.projectId } });
+    expect(row.createdAt.getTime()).toBeLessThan(project.finishedAt!.getTime());
+    expect(row.acceptedAt!.getTime()).toBeGreaterThan(project.finishedAt!.getTime());
+
+    expect((await call('GET', `/answers/${draft.answer.id}`, viewer.token)).status).toBe(404);
+    expect((await call('GET', `/answers/${draft.answer.id}`, f.owner.token)).status).toBe(200);
+    // 완료 전에 확정된 원래 답변은 공개.
+    expect((await call('GET', `/answers/${f.answer.id}`, viewer.token)).status).toBe(200);
+    const detail = await call('GET', `/agora/projects/${f.projectId}`, viewer.token);
+    expect(detail.status).toBe(200);
+    const text = JSON.stringify(await detail.json());
+    expect(text).toContain(f.answer.id);
+    expect(text).not.toContain(draft.answer.id);
+  });
+
   it('revise → preview → accept makes version 2, and accept spam makes only one version', async () => {
     const f = await fixture();
     const before = { ...ai.calls };
