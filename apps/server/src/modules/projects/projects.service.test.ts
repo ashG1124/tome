@@ -9,6 +9,7 @@ function row(overrides: Partial<ProjectRow> = {}): ProjectRow {
     kind: 'original',
     title: 'Title',
     status: 'building',
+    finishedAt: null,
     postedAt: null,
     coverAnswerId: null,
     lastEditedAt: new Date('2026-01-02T03:04:05.000Z'),

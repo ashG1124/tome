@@ -3,6 +3,14 @@ import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ShelfItem } from './projects.rules';
 
+export interface AnswerSummaryRow {
+  id: string;
+  number: number | null;
+  pinned: boolean;
+  isSample: boolean;
+  createdAt: Date;
+}
+
 export type Tx = Prisma.TransactionClient;
 type Db = Tx | PrismaService;
 
@@ -18,6 +26,7 @@ const SUMMARY_SELECT = {
   shelfPosition: true,
   deletedAt: true,
   hiddenAt: true,
+  finishedAt: true,
   remixPartner: { select: { id: true, kind: true, displayName: true, bio: true } },
 } satisfies Prisma.ProjectSelect;
 
@@ -36,6 +45,11 @@ export interface NewJobData {
 @Injectable()
 export class ProjectsRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** 트랜잭션 밖 읽기용 클라이언트. */
+  get client(): PrismaService {
+    return this.prisma;
+  }
 
   transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(fn, { timeout: 15_000, maxWait: 5_000 });
@@ -76,6 +90,46 @@ export class ProjectsRepository {
       orderBy: [{ shelfPosition: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
       select: { id: true, shelfPosition: true },
     });
+  }
+
+  /** 프로젝트 행을 잠가 완료·게시 요청을 한 줄로 세운다(트랜잭션이 끝나면 풀린다). */
+  async lockProject(tx: Tx, id: string): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${id}::uuid FOR UPDATE`;
+  }
+
+  /** 확정(accepted) 답변 전부. 페이지 순 → 세트 순 → 번호 순. */
+  listAcceptedAnswers(db: Db, projectId: string): Promise<AnswerSummaryRow[]> {
+    return db.answer.findMany({
+      where: { status: 'accepted', set: { projectId } },
+      orderBy: [
+        { set: { page: { index: 'asc' } } },
+        { set: { position: 'asc' } },
+        { number: 'asc' },
+      ],
+      select: { id: true, number: true, pinned: true, isSample: true, createdAt: true },
+    });
+  }
+
+  async saveFinish(
+    tx: Tx,
+    id: string,
+    data: { title: string; coverAnswerId: string; selectionReason: string | null; now: Date },
+  ): Promise<void> {
+    await tx.project.update({
+      where: { id },
+      data: {
+        title: data.title,
+        coverAnswerId: data.coverAnswerId,
+        selectionReason: data.selectionReason,
+        status: 'finished',
+        finishedAt: data.now,
+        lastEditedAt: data.now,
+      },
+    });
+  }
+
+  async savePostedAt(tx: Tx, id: string, postedAt: Date | null): Promise<void> {
+    await tx.project.update({ where: { id }, data: { postedAt } });
   }
 
   async creatorExists(tx: Tx, id: string): Promise<boolean> {

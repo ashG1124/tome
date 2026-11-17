@@ -109,7 +109,6 @@ describe.skipIf(!url)('node comments API (real Postgres)', () => {
     await prisma.project.update({
       where: { id: projectId },
       data: {
-        postedAt: opts.posted ? new Date() : null,
         hiddenAt: opts.hidden ? new Date() : null,
       },
     });
@@ -129,6 +128,14 @@ describe.skipIf(!url)('node comments API (real Postgres)', () => {
         createdById: owner.creatorId,
       },
     });
+    if (opts.posted) {
+      // 완료 시각이 답변 생성보다 뒤여야 남에게 보인다.
+      const now = new Date();
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { finishedAt: now, postedAt: now },
+      });
+    }
     return { projectId, setId, answerId: answer.id };
   };
 

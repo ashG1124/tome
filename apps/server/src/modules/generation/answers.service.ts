@@ -21,7 +21,7 @@ export class AnswersService {
   ) {}
 
   /**
-   * 내 프로젝트의 답변이거나, 남의 것이면 게시된(삭제·숨김 아닌) 프로젝트의 확정 답변만 읽을 수 있다.
+   * 내 프로젝트의 답변이거나, 남의 것이면 게시된(삭제·숨김 아닌) 프로젝트의 완료 시점까지 확정된 답변만 읽을 수 있다.
    * 그 밖에는 존재를 숨기려고 404.
    */
   async requireReadable(auth: AuthContext, id: string): Promise<AnswerRow> {
@@ -32,7 +32,14 @@ export class AnswersService {
       throw new AppError('NOT_FOUND');
     }
     const mine = project.ownerId === auth.creatorId;
-    if (!mine && (project.postedAt === null || answer.status !== 'accepted')) {
+    // 남이 보는 게시작은 완료 시점에 이미 확정돼 있던 답변만이다(그 뒤 재편집분은 주인 전용).
+    if (
+      !mine &&
+      (project.postedAt === null ||
+        project.finishedAt === null ||
+        answer.status !== 'accepted' ||
+        answer.createdAt > project.finishedAt)
+    ) {
       throw new AppError('NOT_FOUND');
     }
     return answer;
