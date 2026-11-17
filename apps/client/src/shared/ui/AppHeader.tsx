@@ -52,8 +52,11 @@ const sectionLink = (active: boolean) =>
       : 'text-[color:var(--color-font-helper-text)] hover:text-[color:var(--color-font-sub-text)]',
   ].join(' ');
 
+/** 기본 프로필 그림 주소. 자산이 없는 환경에서는 undefined */
+const profileIcon = ICON_URLS['profile-default'];
+
 /**
- * 앱 공통 헤더. 왼쪽 TÓME·AGORA 글자 로고(지금 있는 곳은 aria-current), 오른쪽 내 프로필.
+ * 앱 공통 헤더. 왼쪽 TÓME 로고·AGORA 글자(지금 있는 곳은 aria-current), 오른쪽 내 프로필.
  * 시안의 검색 칸은 이번 범위가 아니라 그리지 않는다.
  */
 export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderProps) {
@@ -83,13 +86,19 @@ export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderP
         to={profileTo}
         aria-label={COPY['HD-02']}
         className={[
-          'box-border inline-flex size-[var(--size-header-avatar)] items-center justify-center rounded-[var(--radius-max)]',
-          'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)]',
-          'bg-[color:var(--color-fill-neutral-weak)] text-[color:var(--color-font-sub-text)]',
+          'box-border inline-flex size-[var(--size-header-avatar)] items-center justify-center overflow-hidden rounded-[var(--radius-max)]',
+          // 그림 파일이 없는 환경에서만 테두리 있는 빈 동그라미로 그린다
+          profileIcon === undefined
+            ? 'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)] bg-[color:var(--color-fill-neutral-weak)]'
+            : '',
         ].join(' ')}
       >
-        {/* 기본 프로필 그림 파일이 없어 빈 동그라미로 둔다(자산 필요) */}
-        <span aria-hidden="true" data-avatar-placeholder="" />
+        {/* 기본 프로필(Profile Icon Container 1226:80942). 그라데이션 원색 그대로라 mask 가 아니라 img 로 그린다 */}
+        {profileIcon === undefined ? (
+          <span aria-hidden="true" data-avatar-placeholder="" />
+        ) : (
+          <img src={profileIcon} alt="" className="block size-full" />
+        )}
       </Link>
     </header>
   );
