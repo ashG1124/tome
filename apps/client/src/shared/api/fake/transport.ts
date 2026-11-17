@@ -4,6 +4,10 @@ import { FAKE_TOKEN } from './data';
 import { errorResponse, FakeFailure } from './errors';
 import { matchRoute } from './routes';
 import { fakeState } from './state';
+import { fakeStore, saveFakeStore } from './store';
+
+/** 멱등 기록을 이 개수까지만 둔다. 넘치면 오래된 것부터 지운다(서버는 24시간 보관). */
+export const FAKE_IDEMPOTENCY_MAX = 200;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,7 +32,7 @@ function handle(
   const simulated = takeSimulatedError();
   if (simulated !== null) throw new FakeFailure(simulated);
 
-  const pathname = path.split('?')[0] ?? path;
+  const [pathname = path, search = ''] = path.split('?');
   const matched = matchRoute(method, pathname);
   if (!matched) throw new FakeFailure('NOT_FOUND');
   const { route, params } = matched;
@@ -41,8 +45,32 @@ function handle(
     throw new FakeFailure('IDEMPOTENCY_KEY_MISSING');
   }
 
-  const data = route.response.parse(route.handle({ params, body }));
-  return { status: 200, body: data };
+  // 같은 키 + 같은 요청이면 처음 응답을 그대로, 같은 키로 다른 요청이면 409(서버 규칙과 같다).
+  const key = headers['Idempotency-Key'];
+  const request = `${method} ${path} ${JSON.stringify(body ?? null)}`;
+  const records = fakeStore(fakeState.emptyProjects).idempotency;
+  if (key !== undefined) {
+    const record = records[key];
+    if (record !== undefined) {
+      if (record.request !== request) throw new FakeFailure('IDEMPOTENCY_KEY_REUSED');
+      return { status: record.status, body: record.body };
+    }
+  }
+
+  const data = route.response.parse(
+    route.handle({ params, query: new URLSearchParams(search), body }),
+  );
+  const response = { status: route.status, body: data };
+  // 실패한 요청은 기록하지 않아 같은 키로 다시 시도할 수 있다. 바뀐 데이터는 새로고침해도 남게 저장한다.
+  if (key !== undefined) {
+    records[key] = { request, ...response };
+    const keys = Object.keys(records);
+    for (const old of keys.slice(0, Math.max(0, keys.length - FAKE_IDEMPOTENCY_MAX))) {
+      delete records[old];
+    }
+  }
+  if (method !== 'GET') saveFakeStore();
+  return response;
 }
 
 /** 서버 없이 계약 모양의 고정 데이터를 돌려주는 전송 계층. */
@@ -51,7 +79,7 @@ export const fakeTransport: Transport = async ({ method, path, headers, body }) 
   try {
     return handle(method, path, headers, body);
   } catch (error) {
-    if (error instanceof FakeFailure) return errorResponse(error.code);
+    if (error instanceof FakeFailure) return errorResponse(error.code, error.details);
     throw error;
   }
 };

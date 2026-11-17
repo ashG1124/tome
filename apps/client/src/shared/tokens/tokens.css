@@ -223,4 +223,14 @@
   /* ===== 플래시 메시지(공통) — flash message 1187:62709 ===== */
   --space-gap-3: 8px; /* 디자인 변수 없음, 원값 8px — 플래시 아이콘과 글자 사이 (1187:62709) */
   --space-padding-7: 20px; /* 디자인 변수 없음, 원값 20px — 플래시 좌우 여백 (1187:62709) */
+
+  /* ===== 공통 헤더(AppHeader) — Header 1226:80887 ===== */
+  --size-header-height: 100px; /* 디자인 변수 없음, 원값 100px — 헤더 높이 (1226:80888) */
+  --space-header-x: 21px; /* 디자인 변수 없음, 원값 21px — 헤더 좌우 여백 (1226:80888) */
+  --size-logo-agora-width: 108px; /* 디자인 변수 없음, 원값 108px — AGORA 글자 로고 폭 (1226:80898) */
+  --size-logo-agora-height: 48px; /* 디자인 변수 없음, 원값 48px — AGORA 글자 칸 높이 (1226:80898) */
+  --font-size-header-nav: 32px; /* 디자인 변수 없음 — 108×48 칸·줄 높이 1.5 에서 잰 값, Figma 확인 필요 (1226:80898) */
+  --text-header-nav: var(--font-weight-regular) var(--font-size-header-nav) /
+    var(--line-height-default) var(--font-family-contents); /* 헤더 AGORA 글자 */
+  --size-header-avatar: 40px; /* 디자인 변수 없음, 원값 40px — 헤더 오른쪽 프로필 (1226:80942) */
 }

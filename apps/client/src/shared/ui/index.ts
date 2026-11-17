@@ -1,5 +1,6 @@
-export { Button } from './Button';
+export { AppHeader, type AppHeaderSection } from './AppHeader';
 export { BusyMark } from './BusyMark';
+export { Button } from './Button';
 export { Dialog } from './Dialog';
 export { ErrorNotice } from './ErrorNotice';
 export { Flash, type FlashKind } from './Flash';
