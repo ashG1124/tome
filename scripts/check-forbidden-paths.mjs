@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const FORBIDDEN_PREFIXES = [
   '.tome-docs/',
+  '.tome-assets/',
   'apps/client/src/assets/icons/',
   'apps/client/src/assets/brand/',
 ];

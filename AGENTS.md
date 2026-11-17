@@ -5,7 +5,7 @@
 ## 1. 먼저 할 일
 
 1. 맡은 GitHub Issue를 읽는다. Issue의 "할 일"과 "완료 기준"이 이번 작업의 범위다.
-2. 기획 문서는 저장소 맨 위의 `.tome-docs/` 폴더에 있다(팀원 PC에만 있고 git에서 제외됨). 작업 전에 `.tome-docs/README.md`와 Issue에 해당하는 기능 문서를 직접 연다. 검색 결과에 안 나와도 경로로 열 수 있다. 작업 전에 `pnpm docs:pull`로 최신 문서를 받는다.
+2. 기획 문서는 저장소 맨 위의 `.tome-docs/` 폴더에 있다(팀원 PC에만 있고 git에서 제외됨). 작업 전에 `.tome-docs/README.md`와 Issue에 해당하는 기능 문서를 직접 연다. 검색 결과에 안 나와도 경로로 열 수 있다. 작업 전에 `pnpm docs:pull`로 최신 문서를 받는다. 화면 작업이면 `pnpm assets:pull`도 받는다.
 3. `.tome-docs/`가 없으면 작업을 멈추고 사람에게 알린다. 기획 문서에 없는 내용은 지어내지 말고 질문으로 남긴다.
 4. 작업 전에 바꿀 파일 목록을 먼저 말하고 확인을 받는다.
 
@@ -14,7 +14,7 @@
 - 이 저장소는 공개다. `.tome-docs/`의 내용을 저장소 파일, 코드 주석, Issue, PR, 커밋 메시지에 옮겨 적지 않는다.
 - `.tome-docs/`를 커밋하지 않는다(`git add -f` 금지). `.tome-docs/` 안의 파일을 수정하지 않는다.
 - `.env*` 파일을 읽거나 출력하거나 커밋하지 않는다. 키·토큰·계정 ID·서비스 URL은 코드에 쓰지 않고 환경변수로 받는다.
-- 디자인 자산(`design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`)은 커밋하지 않는다. 없으면 같은 크기의 빈 자리로 그린다.
+- 디자인 자산(`design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`)은 커밋하지 않는다. 팀 자산 저장소를 `.tome-assets/`에 clone 하고 작업 전에 `pnpm assets:pull`로 받는다. 없으면 같은 크기의 빈 자리로 그린다.
 
 ## 3. 담당 폴더
 
@@ -75,4 +75,5 @@ pnpm --filter @tome/client dev
 pnpm test
 pnpm design:check
 pnpm docs:pull
+pnpm assets:pull
 ```
