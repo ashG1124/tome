@@ -151,6 +151,26 @@ describe.skipIf(!url)('database constraints and /health (real Postgres)', () => 
     await newAnswer(set.id, null);
   });
 
+  it('rejects a duplicate Event id at the database', async () => {
+    const id = randomUUID();
+    const data = {
+      id,
+      schemaVersion: 1,
+      type: 'page_add',
+      creatorId,
+      payload: {},
+      source: 'client' as const,
+    };
+    await prisma.event.create({ data });
+    await expect(prisma.event.create({ data })).rejects.toThrow();
+    const skipped = await prisma.event.createMany({ data: [data], skipDuplicates: true });
+    expect(skipped.count).toBe(0);
+    await expect(
+      prisma.event.create({ data: { ...data, id: randomUUID(), schemaVersion: 0 } }),
+    ).rejects.toThrow();
+    expect(await prisma.event.count({ where: { id } })).toBe(1);
+  });
+
   it('GET /health returns 200 and a body that passes HealthResponseSchema', async () => {
     vi.stubEnv('DATABASE_URL', url!);
     vi.stubEnv('AI_PROVIDER', 'mock');
