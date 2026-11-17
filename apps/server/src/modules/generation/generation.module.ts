@@ -14,6 +14,6 @@ import { JobsController } from './jobs.controller';
   imports: [AiModule, IdempotencyModule, ProjectsModule],
   controllers: [WorkspaceController, JobsController, AnswersController],
   providers: [GenerationRepository, GenerationService, AdvanceService, AnswersService],
-  exports: [GenerationService],
+  exports: [GenerationService, AnswersService],
 })
 export class GenerationModule {}

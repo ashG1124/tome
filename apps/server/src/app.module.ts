@@ -4,6 +4,7 @@ import { AiModule } from './ai';
 import { AllExceptionsFilter } from './common';
 import { ConfigModule } from './config';
 import { AdminModule } from './modules/admin/admin.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import { EventsModule } from './modules/events/events.module';
 import { GenerationModule } from './modules/generation/generation.module';
 import { HealthModule } from './modules/health/health.module';
@@ -25,6 +26,7 @@ import { StorageModule } from './storage';
     ProjectsModule,
     GenerationModule,
     EventsModule,
+    CommentsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

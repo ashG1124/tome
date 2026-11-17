@@ -24,7 +24,7 @@ export class AnswersService {
    * 내 프로젝트의 답변이거나, 남의 것이면 게시된(삭제·숨김 아닌) 프로젝트의 확정 답변만 읽을 수 있다.
    * 그 밖에는 존재를 숨기려고 404.
    */
-  private async requireReadable(auth: AuthContext, id: string): Promise<AnswerRow> {
+  async requireReadable(auth: AuthContext, id: string): Promise<AnswerRow> {
     const answer = await this.repo.findAnswer(this.repo.client, id);
     if (!answer) throw new AppError('NOT_FOUND');
     const project = await this.repo.findProject(this.repo.client, answer.set.projectId);
