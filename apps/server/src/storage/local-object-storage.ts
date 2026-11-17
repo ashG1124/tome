@@ -51,6 +51,15 @@ export class LocalObjectStorage implements ObjectStorage {
     await writeFile(`${path}.type`, contentType);
   }
 
+  async get(key: string): Promise<Uint8Array> {
+    const path = this.pathOf(key);
+    try {
+      return new Uint8Array(await readFile(path));
+    } catch {
+      throw new AppError('INTERNAL');
+    }
+  }
+
   async signedGetUrl(key: string, opts: SignedUrlOptions): Promise<string> {
     this.pathOf(key); // 잘못된 키는 서명하지 않는다.
     const payload: TokenPayload = { k: key, e: this.now() + opts.ttlSeconds * 1000 };

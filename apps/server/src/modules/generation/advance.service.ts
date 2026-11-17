@@ -5,6 +5,9 @@ import {
   type JobStage,
   type Node,
   NodeSchema,
+  PhrasesSchema,
+  type Phrases,
+  type NodeSnapshot,
   NodeSnapshotSchema,
   VerificationSchema,
 } from '@tome/shared';
@@ -12,14 +15,21 @@ import { AI_PROVIDER, type AiProvider, type AiResult } from '../../ai';
 import { AppError } from '../../common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { SampleResult } from '../../generated/prisma/client';
-import { OBJECT_STORAGE, type ObjectStorage, answerImageKey, makeThumbnail } from '../../storage';
+import {
+  OBJECT_STORAGE,
+  type ObjectStorage,
+  answerImageKey,
+  makeEditBase,
+  makeThumbnail,
+} from '../../storage';
 import type { AuthContext } from '../session/auth.decorators';
 import { UsageService } from '../usage/usage.service';
 import { emptyTally, estimateNeurons, matchPreset, type UsageTally } from '../usage/usage.rules';
 import { assemblePrompt } from './assemble';
+import { editInstruction } from './edit-instruction';
 import { toAnswer, toJob, toStepResponse, type TextStepOutput } from './generation.mappers';
 import { GenerationRepository, type JobRow, type StepRow } from './generation.repository';
-import { LEASE_MS, MAX_STEP_ATTEMPTS, nextStageOf } from './stages';
+import { LEASE_MS, MAX_STEP_ATTEMPTS, nextStageOf, stageIndex } from './stages';
 import { buildVerification } from './verify';
 
 interface StageResult {
@@ -80,6 +90,8 @@ export class AdvanceService {
 
   /** 세트가 프리셋 문장 그대로일 때만 그 프리셋의 대체 결과를 돌려준다. */
   private async findSampleFor(job: JobRow): Promise<SampleResult | null> {
+    // 편집 재생성은 프리셋 원문 그대로가 아니므로 대체 결과를 쓰지 않는다.
+    if (job.kind === 'revise') return null;
     const key = matchPreset(job.set.presetKey, job.set.prompt);
     return key === null ? null : this.usage.findSample(key);
   }
@@ -182,9 +194,28 @@ export class AdvanceService {
     return step.output as unknown as TextStepOutput;
   }
 
-  /** analyze~draft 중 앞 단계까지 succeeded 인 노드 누적. */
+  /** revise job 이 요청한 노드 스냅샷(저장할 때 이미 검증한 값). */
+  private requestedSnapshot(job: JobRow): NodeSnapshot | null {
+    if (job.kind !== 'revise') return null;
+    const parsed = NodeSnapshotSchema.safeParse(job.requestedNodes);
+    if (!parsed.success) throw new AppError('INTERNAL');
+    return parsed.data;
+  }
+
+  /** analyze~draft 중 앞 단계까지의 노드 누적. revise 는 시작 단계 앞 단계를 요청 노드에서 가져온다. */
   private collectNodes(job: JobRow, upTo: readonly JobStage[]): Node[] {
-    return upTo.flatMap((stage) => this.outputOf(job, stage).nodes);
+    const requested = this.requestedSnapshot(job);
+    return upTo.flatMap((stage) =>
+      requested && stageIndex(stage) < stageIndex(job.startStage)
+        ? requested.nodes.filter((n) => n.stage === stage)
+        : this.outputOf(job, stage).nodes,
+    );
+  }
+
+  private subjectTemplateOf(job: JobRow): string {
+    const requested = this.requestedSnapshot(job);
+    if (requested) return requested.subjectTemplate;
+    return this.outputOf(job, 'analyze').subjectTemplate ?? '';
   }
 
   /**
@@ -384,16 +415,16 @@ export class AdvanceService {
 
   private runAssemble(job: JobRow): StageResult {
     const nodes = this.collectNodes(job, ['analyze', 'research', 'evidence', 'draft']);
-    const { subjectTemplate } = this.outputOf(job, 'analyze');
+    const subjectTemplate = this.subjectTemplateOf(job);
     return {
-      output: asJson(assemblePrompt(subjectTemplate ?? '', nodes)),
+      output: asJson(assemblePrompt(subjectTemplate, nodes)),
       ...NO_AI,
     };
   }
 
   private async runImage(auth: AuthContext, job: JobRow, tally: UsageTally): Promise<StageResult> {
     const nodes = this.collectNodes(job, ['analyze', 'research', 'evidence', 'draft']);
-    const { subjectTemplate } = this.outputOf(job, 'analyze');
+    const subjectTemplate = this.subjectTemplateOf(job);
     const assembled = job.steps.find((s) => s.stage === 'assemble' && s.status === 'succeeded');
     const { assembledPrompt, phrases, excluded } = (assembled?.output ?? {}) as {
       assembledPrompt?: string;
@@ -404,10 +435,20 @@ export class AdvanceService {
 
     const snapshot = NodeSnapshotSchema.safeParse({
       schemaVersion: 1,
-      subjectTemplate: subjectTemplate ?? '',
+      subjectTemplate,
       nodes,
     });
     if (!snapshot.success) throw new AppError('AI_OUTPUT_INVALID');
+
+    if (job.kind === 'revise') {
+      return this.runEditImage(auth, job, {
+        assembledPrompt,
+        phrases: (phrases ?? {}) as Phrases,
+        excluded,
+        snapshot: snapshot.data,
+        tally,
+      });
+    }
 
     tally.called = true;
     tally.imageCount = 1;
@@ -457,6 +498,112 @@ export class AdvanceService {
     };
   }
 
+  /**
+   * revise 의 image 단계: base 이미지를 편집한다. 지시문이 비면 AI 를 부르지 않고 base 이미지를
+   * 새 키로 복사해 쓴다(나중에 base 객체가 지워져도 이 답변은 그대로 보이도록).
+   */
+  private async runEditImage(
+    auth: AuthContext,
+    job: JobRow,
+    built: {
+      assembledPrompt: string;
+      phrases: Phrases;
+      excluded: unknown;
+      snapshot: NodeSnapshot;
+      tally: UsageTally;
+    },
+  ): Promise<StageResult> {
+    const base = job.baseAnswerId
+      ? await this.repo.findAnswer(this.repo.client, job.baseAnswerId)
+      : null;
+    if (!base) throw new AppError('INTERNAL');
+
+    const edit = editInstruction(PhrasesSchema.parse(base.phrases), built.phrases);
+    const id = randomUUID();
+    let imageKey: string;
+    let thumbKey: string;
+    let meta: ReturnType<typeof metaOf> | typeof NO_AI;
+    let provider: string;
+    let model: string;
+
+    if (edit.instruction === null) {
+      const fullBytes = await this.storage.get(base.imageKey);
+      const mimeType = base.imageKey.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+      imageKey = answerImageKey(id, 'full', mimeType);
+      thumbKey = answerImageKey(id, 'thumb');
+      const thumbBytes = base.thumbKey
+        ? await this.storage.get(base.thumbKey)
+        : await makeThumbnail(fullBytes);
+      await this.storage.put(imageKey, fullBytes, mimeType);
+      await this.storage.put(thumbKey, thumbBytes, 'image/jpeg');
+      meta = NO_AI;
+      provider = base.provider;
+      model = base.model;
+    } else {
+      let baseImage: Uint8Array;
+      try {
+        baseImage = await makeEditBase(await this.storage.get(base.imageKey));
+      } catch (error) {
+        if (error instanceof AppError) throw error;
+        throw new AppError('INTERNAL');
+      }
+      // 지시문이 있어 실제로 편집 호출을 하는 경우에만 사용량에 센다.
+      built.tally.called = true;
+      built.tally.imageCount = 1;
+      const generated = await this.ai.image({
+        assembledPrompt: built.assembledPrompt,
+        mode: 'edit',
+        baseImage,
+        editInstruction: edit.instruction,
+      });
+      this.tallyResult(built.tally, generated);
+      const image = generated.value;
+      let thumb: Uint8Array;
+      try {
+        thumb = await makeThumbnail(image.bytes);
+      } catch {
+        throw new AppError('AI_OUTPUT_INVALID');
+      }
+      imageKey = answerImageKey(id, 'full', image.mimeType);
+      thumbKey = answerImageKey(id, 'thumb');
+      await this.storage.put(imageKey, image.bytes, image.mimeType);
+      await this.storage.put(thumbKey, thumb, 'image/jpeg');
+      meta = metaOf(generated);
+      provider = generated.provider;
+      model = generated.model;
+    }
+
+    return {
+      output: { answerId: id },
+      ...meta,
+      answer: {
+        id,
+        data: {
+          id,
+          setId: job.setId,
+          status: 'draft',
+          number: null,
+          origin: 'edited',
+          baseAnswerId: base.id,
+          imageMode: 'edit',
+          imageKey,
+          thumbKey,
+          editInstruction: edit.instruction,
+          assembledPrompt: built.assembledPrompt,
+          phrases: asJson(built.phrases),
+          excluded: asJson(built.excluded ?? []),
+          nodes: asJson(built.snapshot),
+          verification: undefined,
+          provider,
+          model,
+          isSample: false,
+          createdById: auth.creatorId,
+          jobId: job.id,
+        },
+      },
+    };
+  }
+
   private runVerify(job: JobRow): StageResult {
     const nodes = this.collectNodes(job, ['analyze', 'research', 'evidence', 'draft']);
     const verification = VerificationSchema.parse(buildVerification(nodes));
@@ -491,7 +638,15 @@ export class AdvanceService {
         nextStage: nextStageOf(stage),
         ...(result.answer ? { resultAnswerId: result.answer.id } : {}),
       });
-      if (result.answer) {
+      if (result.answer && job.kind === 'revise') {
+        // 취소된 job 의 미리보기는 discarded. 살아 있으면 draft 로 두고 이전 draft 를 민다.
+        await this.repo.createAnswer(tx, {
+          ...result.answer.data,
+          status: active ? 'draft' : 'discarded',
+          number: null,
+        });
+        if (active) await this.repo.discardOtherDrafts(tx, job.setId, result.answer.id);
+      } else if (result.answer) {
         // 그 사이 취소된 job 의 답변은 서가에 보이지 않게 discarded 로 둔다(번호도 쓰지 않는다).
         const number = active ? (await this.repo.maxAcceptedNumber(tx, job.setId)) + 1 : null;
         await this.repo.createAnswer(tx, {

@@ -8,6 +8,8 @@ export interface SignedUrlOptions {
 
 export interface ObjectStorage {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
+  /** 저장된 바이트를 읽는다. 없으면 오류. */
+  get(key: string): Promise<Uint8Array>;
   /** 짧은 수명의 읽기 URL. local 드라이버는 서버 자기 경로(상대 경로)를 돌려준다. */
   signedGetUrl(key: string, opts: SignedUrlOptions): Promise<string>;
   delete(key: string): Promise<void>;

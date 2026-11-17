@@ -16,3 +16,17 @@ export async function makeThumbnail(bytes: Uint8Array): Promise<Uint8Array> {
     .toBuffer();
   return new Uint8Array(out);
 }
+
+/** 이미지 편집 입력: 긴 변 512px 이하 PNG(편집 모델이 PNG 로 받는다). */
+export async function makeEditBase(bytes: Uint8Array): Promise<Uint8Array> {
+  const out = await sharp(bytes)
+    .resize({
+      width: THUMB_MAX_SIDE,
+      height: THUMB_MAX_SIDE,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .png()
+    .toBuffer();
+  return new Uint8Array(out);
+}
