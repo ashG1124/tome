@@ -122,6 +122,8 @@ export const COPY = {
   'P-19a': 'Identity scores',
   'P-19b': 'Axis',
   'P-19c': 'Score',
+  // 프로필: 남의 비공개 아이덴티티(IDENTITY_PRIVATE). 리드 확정 2026-11-18
+  'P-20': 'This creator keeps their identity private.',
   // ---- 공통 헤더(AppHeader 1226:80887): 임시 ID. HD-01 은 Figma 글자 로고 원문, HD-02 는 Figma에 없는 낭독용 이름
   'HD-01': 'AGORA',
   'HD-02': 'My profile',
