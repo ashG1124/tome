@@ -51,7 +51,7 @@ describe('라우트', () => {
     expect(router.state.location.pathname).toBe('/');
     fireEvent.click(project);
 
-    expect(await screen.findByText('Pages: 1')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: `${COPY['W-02']} 1` })).toBeTruthy();
     expect(router.state.location.pathname).toMatch(/^\/projects\/.+/);
   });
 
