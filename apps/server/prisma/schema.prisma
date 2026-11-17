@@ -43,6 +43,7 @@ model Creator {
   connectionsAsPartner Connection[]
   favorites            Favorite[]         @relation("FavoriteOwner")
   favoritedBy          Favorite[]         @relation("FavoriteTarget")
+  agoraComments        AgoraComment[]
 
   @@index([kind])
 }
@@ -166,7 +167,6 @@ enum StepStatus {
   skipped
 }
 
-// remixPartnerSnapshotId · topicId 는 해당 표가 생기는 뒤 단계 마이그레이션에서 컬럼을 추가한다.
 model Project {
   id                     String        @id @default(uuid(7)) @db.Uuid
   ownerId                String        @db.Uuid
@@ -181,6 +181,7 @@ model Project {
   derivedFromAnswerId    String?       @db.Uuid
   remixPartnerId         String?       @db.Uuid
   remixPartnerSnapshotId String?       @db.Uuid
+  topicId                String?       @db.Uuid
   shelfPosition          Int
   lastEditedAt           DateTime      @default(now()) @db.Timestamptz(3)
   createdAt              DateTime      @default(now()) @db.Timestamptz(3)
@@ -194,6 +195,9 @@ model Project {
   derivedFrom          Project?          @relation("ProjectDerivation", fields: [derivedFromProjectId], references: [id], onDelete: SetNull)
   derivatives          Project[]         @relation("ProjectDerivation")
   remixPartnerSnapshot IdentitySnapshot? @relation(fields: [remixPartnerSnapshotId], references: [id], onDelete: SetNull)
+  topic                Topic?            @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  stat                 ProjectStat?
+  agoraComments        AgoraComment[]
   pages                Page[]
   sets                 PromptSet[]
   jobs                 GenerationJob[]
@@ -201,6 +205,7 @@ model Project {
 
   @@index([ownerId, deletedAt, shelfPosition])
   @@index([derivedFromProjectId])
+  @@index([topicId])
 }
 
 // index 0~9 CHECK 는 마이그레이션 SQL 에 직접 있다.
@@ -464,4 +469,44 @@ model Favorite {
 
   @@id([creatorId, targetCreatorId])
   @@index([targetCreatorId])
+}
+
+// ---- 마이그레이션 5: agora ----
+
+model AgoraComment {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  projectId String    @db.Uuid
+  authorId  String    @db.Uuid
+  body      String    @db.VarChar(300)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+  hiddenAt  DateTime? @db.Timestamptz(3)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  Creator @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([authorId])
+}
+
+// 누적 집계. likeCount 는 시드 값만(올리는 API 없음).
+model ProjectStat {
+  projectId   String   @id @db.Uuid
+  viewCount   Int      @default(0)
+  deriveCount Int      @default(0)
+  remixCount  Int      @default(0)
+  likeCount   Int      @default(0)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// 핫토픽 제목. 시드 전용.
+model Topic {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  title     String   @db.VarChar(80)
+  seedOrder Int      @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  projects Project[]
 }

@@ -278,6 +278,26 @@ export class ProjectsService {
     });
   }
 
+  /** 다른 모듈(아고라)용: 호출한 트랜잭션 안에서 서가 맨 앞에 파생 프로젝트와 Page 0 을 만든다. */
+  async createDerived(
+    tx: Tx,
+    auth: AuthContext,
+    data: { title: string; derivedFromProjectId: string; derivedFromAnswerId: string },
+  ): Promise<{ project: ProjectSummary; pageId: string }> {
+    await this.repo.lockShelf(tx, auth.creatorId);
+    await this.repo.shiftShelfDown(tx, auth.creatorId);
+    const row = await this.repo.createWithFirstPage(tx, {
+      ownerId: auth.creatorId,
+      title: data.title,
+      remixPartnerId: null,
+      lastEditedAt: new Date(),
+      kind: 'derive',
+      derivedFromProjectId: data.derivedFromProjectId,
+      derivedFromAnswerId: data.derivedFromAnswerId,
+    });
+    return { project: toSummary(row), pageId: await this.repo.firstPageId(tx, row.id) };
+  }
+
   /** 다른 모듈(워크스페이스)용: 내 프로젝트의 요약. 없음·삭제·숨김 404, 남의 것 403. */
   getOwnedSummary(auth: AuthContext, id: string): Promise<ProjectSummary> {
     return this.repo.transaction(async (tx) => toSummary(await this.requireOwned(tx, auth, id)));
