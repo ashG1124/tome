@@ -53,6 +53,12 @@ export class ProjectsService {
     return { projects: rows.map((row, index) => toSummary({ ...row, shelfPosition: index })) };
   }
 
+  /** 어느 창작자의 게시작(남에게 보여 줄 수 있는 것만). */
+  async listPosted(ownerId: string): Promise<ProjectSummary[]> {
+    const rows = await this.repo.listPosted(ownerId, SHELF_LIMIT);
+    return rows.map((row, index) => toSummary({ ...row, shelfPosition: index }));
+  }
+
   create(auth: AuthContext, key: string | undefined, body: CreateProjectRequest) {
     return this.idempotency.run<CreateProjectResponse>(
       { sessionId: auth.sessionId, key, route: 'POST /projects', body },

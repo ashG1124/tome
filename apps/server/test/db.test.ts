@@ -171,6 +171,13 @@ describe.skipIf(!url)('database constraints and /health (real Postgres)', () => 
     expect(await prisma.event.count({ where: { id } })).toBe(1);
   });
 
+  it('rejects a Favorite pointing at the same creator (self CHECK)', async () => {
+    await expect(
+      prisma.favorite.create({ data: { creatorId, targetCreatorId: creatorId } }),
+    ).rejects.toThrow();
+    expect(await prisma.favorite.count({ where: { creatorId } })).toBe(0);
+  });
+
   it('GET /health returns 200 and a body that passes HealthResponseSchema', async () => {
     vi.stubEnv('DATABASE_URL', url!);
     vi.stubEnv('AI_PROVIDER', 'mock');

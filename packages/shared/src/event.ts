@@ -46,6 +46,55 @@ export type EventType = z.infer<typeof EventTypeSchema>;
 
 const GenericPayloadSchema = z.record(z.string(), z.unknown());
 
+// 아이덴티티 계산이 읽는 필드. 전부 선택이고 모르는 키는 그대로 통과한다(화면이 점차 채워 보낸다).
+const NodeIdFieldSchema = z.string().max(32).optional(); // 건드린 노드 id (k1·d2·s1·e1·a1 …)
+const ReasonFieldSchema = z.string().max(300).optional(); // 사용자가 남긴 이유(빈 문자열 = 이유 없음)
+const PadPointSchema = z.object({ x: z.number(), y: z.number() }); // 의미 패드 좌표(−5~+5)
+
+const weightFields = {
+  nodeId: NodeIdFieldSchema,
+  weightAi: z.number().optional(), // AI 초기 가중치
+  weightFinal: z.number().optional(), // 사용자가 정한 가중치
+  reason: ReasonFieldSchema,
+};
+
+export const WeightDialClickPayloadSchema = z.looseObject(weightFields);
+export const MeaningPointSetPayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  padAi: PadPointSchema.optional(), // AI 초기 패드 좌표
+  padFinal: PadPointSchema.optional(), // 사용자가 정한 패드 좌표
+});
+export const PriorityDragReorderPayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  orderChanged: z.boolean().optional(), // 순서가 실제로 바뀌었는가
+  orderDelta: z.number().min(0).optional(), // 순서 변동 크기(자리 수 합)
+  n: z.number().min(1).optional(), // 비교한 우선순위 노드 수
+});
+export const WeightApplyPayloadSchema = z.looseObject(weightFields);
+export const SourceApplyPayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  reason: ReasonFieldSchema,
+});
+export const PriorityApplyPayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  reason: ReasonFieldSchema,
+});
+export const DraftApplyPayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  changed: z.boolean().optional(), // AI 초안에서 값을 바꾸고 확정했는가
+  reason: ReasonFieldSchema,
+});
+export const EvidenceTogglePayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  enabled: z.boolean().optional(), // 토글 뒤 켜짐 여부
+});
+export const FlagDecisionPayloadSchema = z.looseObject({
+  nodeId: NodeIdFieldSchema,
+  state: z.enum(['kept', 'removed']).optional(), // 불일치 표시에 대한 결정
+  reason: ReasonFieldSchema,
+});
+export const NodeOpenPayloadSchema = z.looseObject({ nodeId: NodeIdFieldSchema });
+
 export const EventPayloadSchemas = {
   page_add: GenericPayloadSchema,
   page_switch: GenericPayloadSchema,
@@ -54,18 +103,18 @@ export const EventPayloadSchemas = {
     hasAttachment: z.boolean(),
   }),
   canvas_revealed: GenericPayloadSchema,
-  node_open: GenericPayloadSchema,
+  node_open: NodeOpenPayloadSchema,
   node_close: GenericPayloadSchema,
-  weight_dial_click: GenericPayloadSchema,
-  meaning_point_set: GenericPayloadSchema,
-  weight_apply: GenericPayloadSchema,
-  priority_drag_reorder: GenericPayloadSchema,
-  source_apply: GenericPayloadSchema,
-  priority_apply: GenericPayloadSchema,
-  evidence_toggle: GenericPayloadSchema,
-  draft_apply: GenericPayloadSchema,
+  weight_dial_click: WeightDialClickPayloadSchema,
+  meaning_point_set: MeaningPointSetPayloadSchema,
+  weight_apply: WeightApplyPayloadSchema,
+  priority_drag_reorder: PriorityDragReorderPayloadSchema,
+  source_apply: SourceApplyPayloadSchema,
+  priority_apply: PriorityApplyPayloadSchema,
+  evidence_toggle: EvidenceTogglePayloadSchema,
+  draft_apply: DraftApplyPayloadSchema,
   verify_toggle: GenericPayloadSchema,
-  flag_decision: GenericPayloadSchema,
+  flag_decision: FlagDecisionPayloadSchema,
   version_nav: GenericPayloadSchema,
   connection_view: GenericPayloadSchema,
   version_save: GenericPayloadSchema,

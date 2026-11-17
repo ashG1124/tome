@@ -45,6 +45,15 @@ describe('identity schemas', () => {
     expect(IdentitySnapshotSchema.safeParse(snapshot).success).toBe(true);
     expect(ratio(1)).toBe(true);
     expect(ratio(1.01)).toBe(false);
+    expect(ratio(-0.01)).toBe(false);
+  });
+
+  it('allows a null reasonedRatio when there are too few edits', () => {
+    const result = IdentitySnapshotSchema.safeParse({
+      ...snapshot,
+      metrics: { ...metrics, reasonedRatio: null },
+    });
+    expect(result.success).toBe(true);
   });
 
   it('rejects negative counts', () => {
