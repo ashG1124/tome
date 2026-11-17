@@ -6,6 +6,7 @@ import {
   DerivedFromSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
+  FinishProjectResponseSchema,
   PostProjectRequestSchema,
   PostProjectResponseSchema,
   ProjectListResponseSchema,
@@ -65,6 +66,11 @@ describe('project schemas', () => {
     expect(WorkspaceResponseSchema.safeParse(ws).success).toBe(true);
     expect(WorkspaceResponseSchema.safeParse({ ...ws, activeJob: job }).success).toBe(true);
     expect(WorkspaceResponseSchema.safeParse({ ...ws, currentPageId: 'x' }).success).toBe(false);
+  });
+
+  it('parses the finish response', () => {
+    expect(FinishProjectResponseSchema.safeParse({ project }).success).toBe(true);
+    expect(FinishProjectResponseSchema.safeParse({}).success).toBe(false);
   });
 
   it('parses finish candidates', () => {

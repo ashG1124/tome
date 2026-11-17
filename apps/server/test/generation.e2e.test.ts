@@ -272,6 +272,8 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
       const created = CreateProjectResponseSchema.parse(await res.json());
       const job = created.job!;
       expect(job).toMatchObject({ status: 'pending', nextStage: 'analyze', steps: [] });
+      const firstWs = await workspace(owner, created.project.id);
+      expect(job).toMatchObject({ setId: firstWs.sets[0]!.id, pageId: firstWs.currentPageId });
 
       // 중간(research 까지)에서 화면을 닫았다 다시 연 것과 같다.
       const afterResearch = await runStages(owner, job.id, ['analyze', 'research']);
@@ -280,6 +282,8 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
       const mid = await workspace(owner, created.project.id);
       expect(mid.activeJob).toMatchObject({
         id: job.id,
+        setId: job.setId,
+        pageId: job.pageId,
         status: 'running',
         nextStage: 'evidence',
         steps: [
@@ -1073,6 +1077,51 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
         (await call('GET', `/projects/${a.projectId}/workspace?pageId=nope`, owner.token)).status,
       ).toBe(400);
       expect((await call('GET', '/projects/nope/workspace', owner.token)).status).toBe(400);
+    });
+  });
+
+  describe('job set/page ids', () => {
+    it('points activeJob at the real set and page, whichever page is open', async () => {
+      ai.reset();
+      const owner = await newOwner();
+      const { projectId, pageId } = await newEmptyProject(owner);
+      const pageRes = await call(
+        'POST',
+        `/projects/${projectId}/pages`,
+        owner.token,
+        undefined,
+        randomUUID(),
+      );
+      const page2 = CreatePageResponseSchema.parse(await pageRes.json()).page.id;
+      expect(page2).not.toBe(pageId);
+
+      const created = await createSetOk(owner, projectId, page2);
+      expect(created.job).toMatchObject({ setId: created.set.id, pageId: page2 });
+
+      // 첫 페이지·두 번째 페이지 어느 쪽을 열어도 진행 중 job 은 같은 세트·페이지를 가리킨다.
+      for (const open of [pageId, page2]) {
+        const ws = await workspace(owner, projectId, open);
+        expect(ws.activeJob).toMatchObject({
+          id: created.job.id,
+          setId: created.set.id,
+          pageId: page2,
+        });
+      }
+
+      const adv = await advanceOk(owner, created.job.id, 'analyze');
+      expect(adv.job).toMatchObject({ setId: created.set.id, pageId: page2 });
+
+      const got = await call('GET', `/jobs/${created.job.id}`, owner.token);
+      expect(GetJobResponseSchema.parse(await got.json()).job).toMatchObject({
+        setId: created.set.id,
+        pageId: page2,
+      });
+
+      const cancelled = await cancel(owner, created.job.id);
+      expect(CancelJobResponseSchema.parse(await cancelled.json()).job).toMatchObject({
+        setId: created.set.id,
+        pageId: page2,
+      });
     });
   });
 

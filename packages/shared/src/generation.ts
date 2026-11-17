@@ -29,6 +29,8 @@ export type JobStep = z.infer<typeof JobStepSchema>;
 
 export const JobSchema = z.object({
   id: IdSchema,
+  setId: IdSchema,
+  pageId: IdSchema,
   status: JobStatusSchema,
   startStage: JobStageSchema,
   nextStage: JobStageSchema.nullable(),

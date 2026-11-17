@@ -72,6 +72,11 @@ export const FinishCandidatesResponseSchema = z.object({
 });
 export type FinishCandidatesResponse = z.infer<typeof FinishCandidatesResponseSchema>;
 
+export const FinishProjectResponseSchema = z.object({
+  project: ProjectSummarySchema,
+});
+export type FinishProjectResponse = z.infer<typeof FinishProjectResponseSchema>;
+
 export const FinishProjectRequestSchema = z.object({
   title: z.string().trim().min(1).max(LIMITS.TITLE_MAX),
   coverAnswerId: IdSchema,

@@ -53,6 +53,8 @@ export const answer: Answer = {
 
 export const job: Job = {
   id: ID_C,
+  setId: ID_B,
+  pageId: ID_A,
   status: 'running',
   startStage: 'analyze',
   nextStage: 'research',

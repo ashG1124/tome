@@ -38,6 +38,7 @@ const EXPECTED_NAMES = [
   'PromptSetSchema',
   'FinishCandidatesResponseSchema',
   'FinishProjectRequestSchema',
+  'FinishProjectResponseSchema',
   'PostProjectRequestSchema',
   'PostProjectResponseSchema',
   'DerivedFromSchema',

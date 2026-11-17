@@ -176,6 +176,8 @@ export class GenerationService {
             },
             job: {
               id: job.id,
+              setId: set.id,
+              pageId: body.pageId,
               status: 'pending',
               startStage: 'analyze',
               nextStage: 'analyze',

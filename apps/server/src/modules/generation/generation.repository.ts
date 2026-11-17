@@ -35,13 +35,14 @@ const JOB_ARGS = {
   include: {
     steps: true,
     project: { select: PROJECT_ACCESS_SELECT },
-    set: { select: { prompt: true } },
+    set: { select: { prompt: true, pageId: true } },
   },
 } as const;
 export type JobRow = Prisma.GenerationJobGetPayload<typeof JOB_ARGS>;
 export type StepRow = JobRow['steps'][number];
 
-export type JobWithSteps = Prisma.GenerationJobGetPayload<{ include: { steps: true } }>;
+const JOB_STEPS_ARGS = { include: { steps: true, set: { select: { pageId: true } } } } as const;
+export type JobWithSteps = Prisma.GenerationJobGetPayload<typeof JOB_STEPS_ARGS>;
 
 export interface ClaimResult {
   kind: 'claimed' | 'succeeded' | 'busy';
@@ -174,12 +175,12 @@ export class GenerationRepository {
   findActiveJob(db: Db, projectId: string): Promise<JobWithSteps | null> {
     return db.generationJob.findFirst({
       where: { projectId, status: { in: [...ACTIVE_JOB_STATUSES] } },
-      include: { steps: true },
+      ...JOB_STEPS_ARGS,
     });
   }
 
   findJobWithSteps(db: Db, id: string): Promise<JobWithSteps | null> {
-    return db.generationJob.findUnique({ where: { id }, include: { steps: true } });
+    return db.generationJob.findUnique({ where: { id }, ...JOB_STEPS_ARGS });
   }
 
   /** 진행 중(pending·running)일 때만 취소한다. 바뀐 행 수를 돌려준다. */
