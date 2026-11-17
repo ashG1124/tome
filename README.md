@@ -24,7 +24,7 @@ pnpm install
 
 ## 디자인 자산
 
-팀 안에서 받은 파일을 `design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`에 넣습니다(git 제외). 없어도 빈 자리로 화면은 뜹니다.
+팀 안내에 따라 자산 저장소를 저장소 맨 위 `.tome-assets/`에 clone 하고, 작업 전에 `pnpm assets:pull`로 최신을 받습니다. 이 명령이 `design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`에 파일을 복사합니다(모두 git 제외, 커밋하지 마세요). 없어도 빈 자리로 화면은 뜹니다.
 
 ## 화면만 실행 (서버·Docker 없이 가짜 응답 모드)
 
@@ -69,4 +69,4 @@ GitHub Project의 Ready 카드에서 Issue를 고른 뒤, `AGENTS.md`의 순서�
 ## 서체
 
 - 서체: Pretendard Variable (`apps/client/src/assets/fonts/pretendard/`, SIL OFL 1.1, 라이선스 파일 동봉, 원본 수정 없음)
-- 디자인 자산(아이콘·로고·Figma 참조)은 이 저장소에 넣지 않습니다. 팀 안에서 파일로 공유합니다.
+- 디자인 자산(아이콘·로고·Figma 참조)은 이 저장소에 넣지 않습니다. 팀 자산 저장소를 clone 한 뒤 `pnpm assets:pull`로 받습니다.

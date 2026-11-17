@@ -22,6 +22,7 @@ test('금지되는 경로', () => {
     'docs/design-ref/a.png',
     'design-ref/a.png',
     '.tome-docs/a.md',
+    '.tome-assets/design-ref/a.png',
     'apps/client/src/assets/icons/a.svg',
     'apps/client/src/assets/brand/logo.svg',
   ]) {
