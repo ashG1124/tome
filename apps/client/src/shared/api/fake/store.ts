@@ -107,9 +107,12 @@ export function saveFakeStore(): void {
   }
 }
 
-/** 처음 쓸 때 저장해 둔 데이터를, 없으면 고정 데이터를 쓴다. emptyProjects 면 빈 서가로 시작한다. */
+/**
+ * 처음 쓸 때 저장해 둔 데이터를, 없으면 고정 데이터를 쓴다.
+ * emptyProjects(주소의 ?fakeProjects=empty)면 저장해 둔 데이터가 있어도 빈 서가로 새로 시작한다.
+ */
 export function fakeStore(emptyProjects: boolean): FakeStore {
-  store ??= load() ?? seed(emptyProjects);
+  store ??= emptyProjects ? seed(true) : (load() ?? seed(false));
   return store;
 }
 

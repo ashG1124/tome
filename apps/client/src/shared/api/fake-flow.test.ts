@@ -100,6 +100,17 @@ describe('가짜 응답: 서가', () => {
     const created = await api.createProject({});
     expect((await api.listProjects()).projects.map((p) => p.id)).toEqual([created.project.id]);
   });
+
+  it('저장해 둔 가짜 데이터가 있어도 ?fakeProjects=empty 로 열면 빈 서가로 새로 시작한다', async () => {
+    await signIn();
+    await api.createProject({});
+    expect((await api.listProjects()).projects.length).toBeGreaterThan(0);
+
+    // 새로고침처럼: 메모리는 비우고 저장소(localStorage)는 남긴 채 주소 옵션만 바꿔 연다
+    dropFakeStoreMemory();
+    fakeState.emptyProjects = true;
+    expect((await api.listProjects()).projects).toEqual([]);
+  });
 });
 
 describe('가짜 응답: 워크스페이스·페이지·세트', () => {
