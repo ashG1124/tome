@@ -4,6 +4,11 @@
 #   DATABASE_URL        pooled 연결 주소
 #   CORS_ORIGIN         허용할 웹앱 출처(쉼표로 여러 개)
 #   ADMIN_TOKEN         관리 API(X-Admin-Token) 보호용. 값은 리드와만 공유
+#   R2_ENDPOINT         R2 S3 API 주소(https://<계정ID>.r2.cloudflarestorage.com, 버킷 이름은 붙이지 않음)
+#   R2_BUCKET           이미지 버킷 이름(공개 접근 끔)
+#   R2_ACCESS_KEY_ID    그 버킷 하나에만 Object Read & Write 인 R2 API 토큰의 키 ID
+#   R2_SECRET_ACCESS_KEY  같은 토큰의 비밀 키
+# R2_* 넷은 배포 전에 먼저 등록한다(STORAGE_DRIVER=r2 라서 없으면 서버가 켜지지 않는다).
 # 새 비밀값은 worker/index.ts 의 envVars 에도 추가해야 컨테이너에 전달된다.
 # 배포 순서: (direct 주소로) prisma migrate deploy → wrangler deploy --var APP_VERSION:<커밋 해시>
 # 자세한 방법은 PR #67 본문 "배포 방법".

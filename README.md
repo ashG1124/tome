@@ -49,6 +49,7 @@ pnpm --filter @tome/server start:dev
 ```
 
 `.env`의 `PORT`가 3000이면 `http://localhost:3000/health`, 서버 컨테이너(`docker compose up -d server`)는 `http://localhost:3001/health`로 확인합니다.
+이미지는 기본으로 로컬 폴더(`STORAGE_DRIVER=local`)에 저장합니다. 로컬에서 R2를 쓰려면 `.env`에 `STORAGE_DRIVER=r2`와 `R2_*` 네 값을 넣습니다(값은 인프라 담당에게 받고, 커밋하지 않습니다).
 DB 테스트까지 돌리려면 `TEST_DATABASE_URL`에 위 DB 주소를 넣고 `pnpm --filter @tome/server test`를 실행합니다(없으면 DB 테스트는 건너뜁니다).
 
 ## 검사
