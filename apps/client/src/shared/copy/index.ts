@@ -148,3 +148,32 @@ export const SKELETON_COPY = {
   backToHome: 'Back to home',
   pages: (count: number) => `Pages: ${count}`,
 } as const;
+
+export const CANVAS_COPY = {
+  title: 'Generation canvas',
+  prompt: 'Prompt',
+  stages: {
+    analyze: 'Question analysis',
+    research: 'Search',
+    evidence: 'Evidence',
+    draft: 'Draft',
+    verify: 'Verification',
+  },
+  answer: (number: number) => `Answer ${String(number).padStart(2, '0')}`,
+  step: (number: number) => `Step ${number}`,
+  stepDone: (number: number) => `Step ${number} of 5 done`,
+  modelKnowledge: 'Model knowledge',
+  generating: 'Generating…',
+  pending: 'Waiting for this step.',
+  skipped: 'Not measured',
+  retry: COPY['E-01b'],
+  failed: COPY['E-01a'],
+  fit: 'Fit view',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  instructions:
+    'Use Left and Right to move between steps, Up and Down within a step, and Home or End to move to the first or last node.',
+  sample: COPY['C-06'],
+  sampleDescription: COPY['C-07'],
+  started: 'Generation started.',
+} as const;

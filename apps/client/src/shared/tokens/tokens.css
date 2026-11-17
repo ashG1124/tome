@@ -234,3 +234,21 @@
     var(--line-height-default) var(--font-family-contents); /* 헤더 AGORA 글자 */
   --size-header-avatar: 40px; /* 디자인 변수 없음, 원값 40px — 헤더 오른쪽 프로필 (1226:80942) */
 }
+
+:root {
+  --canvas-node-width: 300px;
+  --canvas-node-height: 62px;
+  --canvas-prompt-width: 400px;
+  --canvas-answer-width: 440px;
+  --canvas-answer-height: 280px;
+  --canvas-column-gap: 80px;
+  --canvas-row-gap: 48px;
+  --canvas-set-gap: 120px;
+  --canvas-header-height: 64px;
+  --canvas-preview-radius: 16px;
+  --color-canvas-node: #f0f4f8;
+}
+
+:root {
+  --canvas-node-surface-height: 60px;
+}

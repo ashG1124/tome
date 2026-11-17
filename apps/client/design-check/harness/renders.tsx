@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ProjectSummary } from '@tome/shared';
 import type { ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { canvasDesignFixtures } from '../../src/features/canvas';
 import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
@@ -83,3 +84,8 @@ Object.assign(renders, {
   'tabs/identity': tabs('identity'),
   'tabs/compare': tabs('compare'),
 });
+
+renders['canvas/keyword'] = canvasDesignFixtures.keyword;
+for (let index = 1; index <= 8; index++)
+  renders[`canvas/preview-generating-${String(index).padStart(2, '0')}`] =
+    canvasDesignFixtures.gradient;

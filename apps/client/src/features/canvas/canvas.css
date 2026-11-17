@@ -1,0 +1,262 @@
+@property --canvas-gradient-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 270deg;
+}
+
+.generation-canvas {
+  position: relative;
+  width: 100%;
+  height: max(60vh, calc(var(--grid-margin) * 7));
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: var(--radius-node);
+  overflow: hidden;
+  background-color: var(--color-background-default);
+  background-image: radial-gradient(
+    var(--color-grayscale-3) var(--stroke-weight-light),
+    transparent var(--stroke-weight-light)
+  );
+  background-size: var(--grid-gutter) var(--grid-gutter);
+}
+.generation-canvas .react-flow {
+  --xy-edge-stroke-default: var(--color-node-line);
+  --xy-edge-stroke-width-default: var(--stroke-weight-bold);
+  --xy-handle-background-color-default: var(--color-node-line);
+  --xy-handle-border-color-default: var(--color-background-default);
+}
+.canvas-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+  color: var(--color-font-sub-text);
+  font: var(--text-body-b1-m);
+}
+.canvas-heading > span {
+  color: var(--color-font-helper-text);
+  font: var(--text-body-b2-r);
+}
+.canvas-card {
+  position: relative;
+  box-sizing: border-box;
+  min-height: inherit;
+  padding: var(--space-padding-6);
+  background: var(--color-background-default);
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: var(--radius-node);
+  box-shadow: var(--shadow-connection);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b1-r);
+}
+.canvas-card:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.canvas-card--prompt {
+  background: var(--color-prompt);
+}
+.canvas-card p {
+  margin: 0;
+}
+.canvas-prompt-text {
+  overflow-wrap: anywhere;
+}
+.canvas-output-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding-inline-end: var(--space-padding-8);
+}
+.canvas-card small {
+  display: block;
+  color: var(--color-font-helper-text);
+  font: var(--text-body-b2-r);
+  margin-top: var(--space-padding-3);
+}
+.canvas-weight {
+  position: absolute;
+  right: var(--space-padding-6);
+  top: var(--space-padding-6);
+  color: var(--color-font-sub-text);
+}
+.canvas-card--placeholder {
+  padding: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+.canvas-placeholder {
+  min-height: inherit;
+}
+.canvas-skeleton {
+  background: var(--color-gray-20);
+}
+.canvas-card--answer {
+  padding: var(--space-padding-3);
+}
+.canvas-image-slot {
+  width: 100%;
+  aspect-ratio: 11 / 7;
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  background-color: var(--color-gray-20);
+}
+.canvas-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.canvas-gradient {
+  background-image: linear-gradient(
+    var(--canvas-gradient-angle),
+    color-mix(in srgb, var(--color-fill-brand) 50%, transparent),
+    color-mix(in srgb, var(--color-fill-point) 50%, transparent)
+  );
+  animation: canvas-gradient-turn 4s linear infinite;
+}
+.canvas-answer-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-gap-4);
+  padding: var(--space-padding-6);
+  font: var(--text-body-b2-r);
+}
+.canvas-answer-footer > span {
+  color: var(--color-font-helper-text);
+}
+.canvas-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-gap-4);
+  padding: var(--space-padding-6);
+  color: var(--color-peach-text);
+  font: var(--text-body-b2-r);
+}
+.canvas-card--error {
+  border: var(--stroke-weight-bold) solid var(--color-tome-peach-5);
+}
+.canvas-retry,
+.canvas-controls button {
+  border: var(--stroke-weight-light) solid var(--color-border-input);
+  border-radius: var(--radius-input);
+  padding: var(--space-padding-3) var(--space-padding-6);
+  background: var(--color-background-default);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b2-m);
+  cursor: pointer;
+}
+.canvas-controls {
+  display: flex;
+  gap: var(--space-padding-3);
+  padding: var(--space-padding-3);
+  background: var(--color-background-default);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-floating);
+}
+.canvas-sr-only {
+  position: absolute;
+  width: var(--stroke-weight-light);
+  height: var(--stroke-weight-light);
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes canvas-gradient-turn {
+  0% {
+    --canvas-gradient-angle: 270deg;
+  }
+  12.5% {
+    --canvas-gradient-angle: 237.53deg;
+  }
+  25% {
+    --canvas-gradient-angle: 180deg;
+  }
+  37.5% {
+    --canvas-gradient-angle: 122.47deg;
+  }
+  50% {
+    --canvas-gradient-angle: 90deg;
+  }
+  62.5% {
+    --canvas-gradient-angle: 57.53deg;
+  }
+  75% {
+    --canvas-gradient-angle: 0deg;
+  }
+  87.5% {
+    --canvas-gradient-angle: -57.53deg;
+  }
+  100% {
+    --canvas-gradient-angle: -90deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-gradient {
+    animation: none;
+    --canvas-gradient-angle: 270deg;
+  }
+}
+
+.canvas-retry:disabled {
+  background: var(--color-gray-20);
+  color: var(--color-font-disable);
+  border-color: var(--color-border-default);
+  cursor: not-allowed;
+}
+
+.canvas-card--output {
+  background: var(--color-canvas-node);
+  box-shadow: none;
+  text-align: center;
+  font: var(--text-subtitle-st2-m);
+  letter-spacing: var(--letter-spacing-default);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.canvas-output-text {
+  padding-inline: var(--space-padding-4);
+}
+.canvas-image-slot {
+  border-radius: var(--canvas-preview-radius);
+}
+.canvas-card--answer {
+  padding: 0;
+  border: 0;
+  box-shadow: var(--shadow-preview);
+  background: var(--color-background-default);
+}
+.canvas-sample {
+  color: var(--color-font-helper-text);
+  font: var(--text-body-b2-r);
+  padding: 0 var(--space-padding-6) var(--space-padding-6);
+}
+
+.canvas-gradient {
+  background-color: var(--color-background-default);
+}
+
+.canvas-card--output {
+  min-height: var(--canvas-node-surface-height);
+  padding-block: calc(var(--space-padding-6) - var(--stroke-weight-light));
+}
+
+.workspace-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.workspace-canvas .generation-canvas {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+.canvas-load-error {
+  position: absolute;
+  top: var(--space-padding-6);
+  left: var(--space-padding-6);
+  z-index: 1;
+}

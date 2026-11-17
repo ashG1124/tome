@@ -18,6 +18,7 @@ export interface DesignCase {
   height: number;
   /** true 이면 스크린샷 전에 대상 안의 입력칸에 포커스를 준다. */
   focus?: boolean;
+  gradientAngle?: number;
   allowedDiff?: AllowedDiff;
 }
 
@@ -172,3 +173,20 @@ cases.push(
     allowedDiff: tabsDiff(0.202),
   },
 );
+
+cases.push({
+  id: 'canvas/keyword',
+  ref: 'design-ref/components/step-1-keyword/open-off__1226-67936.png',
+  width: 301,
+  height: 60,
+});
+for (const [index, angle] of [270, 237.53, 180, 122.47, 90, 57.53, 0, 302.47].entries()) {
+  const number = String(index + 1).padStart(2, '0');
+  cases.push({
+    id: `canvas/preview-generating-${number}`,
+    ref: `design-ref/components/tome-generate/property-1-${number}__1192-${64320 + index}.png`,
+    width: 440,
+    height: 280,
+    gradientAngle: angle,
+  });
+}
