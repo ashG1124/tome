@@ -395,10 +395,10 @@ export class GenerationRepository {
   }
 
   /** draft 일 때만 accepted 로 바꾼다. 바뀐 행 수. */
-  async acceptDraft(tx: Tx, id: string, number: number): Promise<number> {
+  async acceptDraft(tx: Tx, id: string, number: number, acceptedAt: Date): Promise<number> {
     const result = await tx.answer.updateMany({
       where: { id, status: 'draft' },
-      data: { status: 'accepted', number },
+      data: { status: 'accepted', number, acceptedAt },
     });
     return result.count;
   }

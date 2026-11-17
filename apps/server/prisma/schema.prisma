@@ -268,8 +268,9 @@ model Answer {
   pinned             Boolean      @default(false)
   createdById        String       @db.Uuid
   createdAt          DateTime     @default(now()) @db.Timestamptz(3)
+  acceptedAt         DateTime?    @db.Timestamptz(3)
 
-  set                PromptSet     @relation(fields: [setId], references: [id], onDelete: Cascade)
+  set                PromptSet    @relation(fields: [setId], references: [id], onDelete: Cascade)
   baseAnswer         Answer?       @relation("AnswerEditChain", fields: [baseAnswerId], references: [id], onDelete: SetNull)
   editedAnswers      Answer[]      @relation("AnswerEditChain")
   copiedFrom         Answer?       @relation("AnswerCopy", fields: [copiedFromAnswerId], references: [id], onDelete: SetNull)

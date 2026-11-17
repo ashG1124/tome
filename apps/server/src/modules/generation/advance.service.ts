@@ -653,6 +653,7 @@ export class AdvanceService {
           ...result.answer.data,
           status: active ? 'accepted' : 'discarded',
           number,
+          acceptedAt: active ? now : null,
         });
       }
       if (result.verifyAnswerId) {

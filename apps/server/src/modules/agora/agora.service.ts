@@ -323,6 +323,7 @@ export class AgoraService {
       id: newId,
       setId: set.id,
       status: 'accepted',
+      acceptedAt: new Date(),
       number: 1,
       origin: 'derived_copy',
       imageKey,
