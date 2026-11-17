@@ -1,0 +1,85 @@
+name: Deploy
+
+# main 에 병합(push)되면 실서버에 배포한다(#45). 순서는 손으로 하던 배포와 같다:
+#   ① 운영 DB 마이그레이션(direct 주소) → ② wrangler deploy(APP_VERSION=커밋) → ③ /health 의 version 확인
+# 이 저장소는 공개라 Actions 로그도 공개다. 주소·계정·토큰은 모두 Secrets 로만 받는다
+# (Secrets 값은 로그에서 *** 로 가려진다). DB 호스트가 찍히는 줄은 따로 걸러 낸다.
+#
+# 필요한 설정(저장소 Settings → Secrets and variables → Actions):
+#   Secrets   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DIRECT_DATABASE_URL, API_BASE_URL
+#   Variables DEPLOY_FREEZE  ("true" 면 배포 동결: 배포하지 않고 경고만 남긴다)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 배포가 겹치지 않게 한 번에 하나씩. 진행 중인 배포는 취소하지 않는다.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  frozen:
+    name: frozen
+    if: vars.DEPLOY_FREEZE == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "::warning title=배포 동결 중::DEPLOY_FREEZE=true 라서 배포하지 않았습니다. 동결을 풀려면 저장소 변수 DEPLOY_FREEZE 를 false 로 바꾸세요."
+
+  deploy:
+    name: deploy
+    if: vars.DEPLOY_FREEZE != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate production DB
+        env:
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+        run: |
+          set -o pipefail
+          pnpm exec prisma migrate deploy 2>&1 | { grep -v -i 'datasource\|neon.tech\|postgres' || true; }
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          set -o pipefail
+          version="${GITHUB_SHA::7}"
+          echo "APP_VERSION=$version"
+          pnpm exec wrangler deploy --var "APP_VERSION:$version" 2>&1 | { grep -v -i 'workers.dev' || true; }
+
+      - name: Check /health version
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          version="${GITHUB_SHA::7}"
+          # 새 컨테이너로 바뀌는 데 시간이 걸려서 최대 5분 동안 다시 본다.
+          for i in $(seq 1 30); do
+            got=$(curl -s -m 30 "$API_BASE_URL/health" | jq -r '.version // empty' 2>/dev/null || true)
+            echo "try $i: version=${got:-none}"
+            if [ "$got" = "$version" ]; then
+              echo "::notice title=배포 완료::/health version=$version"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error title=배포 확인 실패::/health 의 version 이 $version 이 아닙니다"
+          exit 1
