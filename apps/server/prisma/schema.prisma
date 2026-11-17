@@ -37,6 +37,8 @@ model Creator {
   consents        ConsentRecord[]
   projects        Project[]       @relation("ProjectOwner")
   remixedProjects Project[]       @relation("ProjectRemixPartner")
+  comments        NodeComment[]
+  events          Event[]
 
   @@index([kind])
 }
@@ -71,6 +73,7 @@ model DemoSession {
   accessCode AccessCode      @relation(fields: [accessCodeId], references: [id], onDelete: Restrict)
   consents   ConsentRecord[]
   jobs       GenerationJob[]
+  events     Event[]
 
   @@index([creatorId])
 }
@@ -188,6 +191,7 @@ model Project {
   pages             Page[]
   sets              PromptSet[]
   jobs              GenerationJob[]
+  events            Event[]
 
   @@index([ownerId, deletedAt, shelfPosition])
   @@index([derivedFromProjectId])
@@ -220,6 +224,7 @@ model PromptSet {
   page    Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
   answers Answer[]
   jobs    GenerationJob[]
+  events  Event[]
 
   @@unique([pageId, position])
   @@index([projectId])
@@ -261,6 +266,8 @@ model Answer {
   sampleResult     SampleResult? @relation(fields: [sampleResultId], references: [id], onDelete: SetNull)
   coverOf          Project[]     @relation("ProjectCover")
   derivedProjects  Project[]     @relation("ProjectDerivedFromAnswer")
+  comments         NodeComment[]
+  events           Event[]
 
   @@index([setId, pinned])
 }
@@ -337,4 +344,53 @@ model SampleResult {
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   answers Answer[]
+}
+
+// ---- 마이그레이션 3: editing ----
+
+model NodeComment {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  answerId  String    @db.Uuid
+  nodeId    String
+  authorId  String    @db.Uuid
+  body      String    @db.VarChar(300)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  answer Answer  @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  author Creator @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([answerId, deletedAt])
+  @@index([authorId])
+}
+
+enum EventSource {
+  client
+  server
+}
+
+// append-only. id 는 클라이언트가 만든 uuid(서버 이벤트는 서버가 만든 uuid)라 PK 가 중복 전송을 막는다.
+// 프로젝트 삭제·숨김 때 지우지 않는다(projectId 로 이어 두고 계산 쪽이 거른다).
+model Event {
+  id            String      @id @db.Uuid
+  schemaVersion Int         @db.SmallInt
+  type          String
+  creatorId     String      @db.Uuid
+  sessionId     String?     @db.Uuid
+  projectId     String?     @db.Uuid
+  setId         String?     @db.Uuid
+  answerId      String?     @db.Uuid
+  payload       Json
+  clientTs      DateTime?   @db.Timestamptz(3)
+  serverTs      DateTime    @default(now()) @db.Timestamptz(3)
+  source        EventSource
+
+  creator Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  session DemoSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  project Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  set     PromptSet?   @relation(fields: [setId], references: [id], onDelete: SetNull)
+  answer  Answer?      @relation(fields: [answerId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId, serverTs])
+  @@index([projectId])
 }
