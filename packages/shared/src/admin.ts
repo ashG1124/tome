@@ -44,3 +44,18 @@ export type AdminSettingsRequest = z.infer<typeof AdminSettingsRequestSchema>;
 
 export const AdminSettingsResponseSchema = z.object({ settings: UsageCapsSchema });
 export type AdminSettingsResponse = z.infer<typeof AdminSettingsResponseSchema>;
+
+/** 데모 리셋 범위: persona·visitor·seed 를 뺀 전부. */
+export const AdminResetScopeSchema = z.enum(['persona', 'visitor', 'all-nonseed']);
+export type AdminResetScope = z.infer<typeof AdminResetScopeSchema>;
+
+export const AdminResetRequestSchema = z.object({ scope: AdminResetScopeSchema });
+export type AdminResetRequest = z.infer<typeof AdminResetRequestSchema>;
+
+export const AdminResetResponseSchema = z.object({
+  /** 지운 프로젝트 수 */
+  deleted: z.number().int().min(0),
+  /** 걸린 시간(밀리초) */
+  ms: z.number().int().min(0),
+});
+export type AdminResetResponse = z.infer<typeof AdminResetResponseSchema>;
