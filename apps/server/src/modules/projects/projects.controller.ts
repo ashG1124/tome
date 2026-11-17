@@ -1,8 +1,23 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Res,
+} from '@nestjs/common';
 import {
   type CreateProjectRequest,
   CreateProjectRequestSchema,
+  type FinishProjectRequest,
+  FinishProjectRequestSchema,
   IdSchema,
+  type PostProjectRequest,
+  PostProjectRequestSchema,
   type UpdateProjectRequest,
   UpdateProjectRequestSchema,
 } from '@tome/shared';
@@ -49,5 +64,36 @@ export class ProjectsController {
     @Param('id', new ZodValidationPipe(IdSchema)) id: string,
   ): Promise<void> {
     await this.projects.remove(auth, id);
+  }
+
+  @Get(':id/finish-candidates')
+  finishCandidates(
+    @CurrentSession() auth: AuthContext,
+    @Param('id', new ZodValidationPipe(IdSchema)) id: string,
+  ) {
+    return this.projects.finishCandidates(auth, id);
+  }
+
+  @Post(':id/finish')
+  @HttpCode(200)
+  async finish(
+    @CurrentSession() auth: AuthContext,
+    @IdempotencyKey() key: string | undefined,
+    @Param('id', new ZodValidationPipe(IdSchema)) id: string,
+    @Body(new ZodValidationPipe(FinishProjectRequestSchema)) body: FinishProjectRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.projects.finish(auth, key, id, body);
+    res.status(result.statusCode);
+    return result.body;
+  }
+
+  @Put(':id/post')
+  post(
+    @CurrentSession() auth: AuthContext,
+    @Param('id', new ZodValidationPipe(IdSchema)) id: string,
+    @Body(new ZodValidationPipe(PostProjectRequestSchema)) body: PostProjectRequest,
+  ) {
+    return this.projects.setPosted(auth, id, body);
   }
 }

@@ -23,6 +23,7 @@ const PROJECT_ACCESS_SELECT = {
   id: true,
   ownerId: true,
   postedAt: true,
+  finishedAt: true,
   deletedAt: true,
   hiddenAt: true,
 } satisfies Prisma.ProjectSelect;

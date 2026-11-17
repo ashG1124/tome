@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import type {
   CreateProjectRequest,
   CreateProjectResponse,
+  FinishCandidatesResponse,
+  FinishProjectRequest,
+  FinishProjectResponse,
   Job,
+  PostProjectRequest,
+  PostProjectResponse,
   ProjectListResponse,
   ProjectSummary,
   PromptSet,
@@ -10,6 +15,8 @@ import type {
   UpdateProjectResponse,
 } from '@tome/shared';
 import { AppError } from '../../common';
+import { EventsService } from '../events/events.service';
+import { toAnswerSummary } from '../generation/generation.mappers';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { UsageService } from '../usage/usage.service';
 import type { AuthContext } from '../session/auth.decorators';
@@ -45,6 +52,7 @@ export class ProjectsService {
     private readonly repo: ProjectsRepository,
     private readonly idempotency: IdempotencyService,
     private readonly usage: UsageService,
+    private readonly events: EventsService,
   ) {}
 
   async list(auth: AuthContext): Promise<ProjectListResponse> {
@@ -189,6 +197,72 @@ export class ProjectsService {
       for (const change of shelfChanges(rest, order)) {
         await this.repo.setShelfPosition(tx, change.id, change.shelfPosition);
       }
+    });
+  }
+
+  /** 완료 후보: 핀한 확정 답변, 핀이 하나도 없으면 확정 답변 전부. */
+  async finishCandidates(auth: AuthContext, id: string): Promise<FinishCandidatesResponse> {
+    await this.repo.transaction(async (tx) => this.requireOwned(tx, auth, id));
+    const accepted = await this.repo.listAcceptedAnswers(this.repo.client, id);
+    const pinned = accepted.filter((answer) => answer.pinned);
+    return { answers: (pinned.length > 0 ? pinned : accepted).map(toAnswerSummary) };
+  }
+
+  /** 완료. 다시 완료하면 대표·제목·이유를 갱신하고 완료 시각도 새로 찍는다(게시작 스냅샷 시점). */
+  finish(auth: AuthContext, key: string | undefined, id: string, body: FinishProjectRequest) {
+    return this.idempotency.run<FinishProjectResponse>(
+      { sessionId: auth.sessionId, key, route: `POST /projects/${id}/finish`, body },
+      async (tx) => {
+        await this.repo.lockProject(tx, id);
+        await this.requireOwned(tx, auth, id);
+        const accepted = await this.repo.listAcceptedAnswers(tx, id);
+        if (accepted.length === 0) throw new AppError('NOT_FINISHABLE');
+        if (!accepted.some((answer) => answer.id === body.coverAnswerId)) {
+          throw new AppError('VALIDATION_FAILED', undefined, {
+            fields: [
+              { path: 'coverAnswerId', message: 'Choose one of the versions in this project.' },
+            ],
+          });
+        }
+        await this.repo.saveFinish(tx, id, {
+          title: body.title,
+          coverAnswerId: body.coverAnswerId,
+          selectionReason: body.reason ?? null,
+          now: new Date(),
+        });
+        await this.events.recordServerEvent(tx, {
+          type: 'project_finish',
+          creatorId: auth.creatorId,
+          sessionId: auth.sessionId,
+          projectId: id,
+          answerId: body.coverAnswerId,
+        });
+        const updated = await this.repo.findById(tx, id);
+        return { statusCode: 200, body: { project: toSummary(updated!) } };
+      },
+    );
+  }
+
+  /** 게시 토글. 켜기는 완료된 프로젝트만. 상태가 바뀔 때만 시각과 이벤트를 남긴다. */
+  setPosted(auth: AuthContext, id: string, body: PostProjectRequest): Promise<PostProjectResponse> {
+    return this.repo.transaction(async (tx) => {
+      await this.repo.lockProject(tx, id);
+      const project = await this.requireOwned(tx, auth, id);
+      const wasPosted = project.postedAt !== null;
+      if (body.posted && project.status !== 'finished') throw new AppError('NOT_FINISHED');
+      if (body.posted === wasPosted) {
+        return { postedAt: project.postedAt?.toISOString() ?? null };
+      }
+      const postedAt = body.posted ? new Date() : null;
+      await this.repo.savePostedAt(tx, id, postedAt);
+      await this.events.recordServerEvent(tx, {
+        type: 'project_post',
+        creatorId: auth.creatorId,
+        sessionId: auth.sessionId,
+        projectId: id,
+        payload: { posted: body.posted },
+      });
+      return { postedAt: postedAt?.toISOString() ?? null };
     });
   }
 

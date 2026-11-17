@@ -1216,7 +1216,7 @@ describe.skipIf(!url)('generation API (real Postgres)', () => {
       // 게시된 프로젝트의 답변은 남도 읽을 수 있다(job 은 여전히 소유자만).
       await prisma.project.update({
         where: { id: created.project.id },
-        data: { postedAt: new Date() },
+        data: { finishedAt: new Date(), postedAt: new Date() },
       });
       const read = await call('GET', `/answers/${answerId}`, bob.token);
       expect(read.status).toBe(200);
