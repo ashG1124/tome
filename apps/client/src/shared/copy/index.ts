@@ -119,6 +119,13 @@ export const COPY = {
   'P-17': 'Still recording. Your identity appears after a few more edits.',
   'P-18-ai-top-right': 'I take the lead but I only nudge it a little.',
   'P-18-decision-bottom-left': 'I chase new directions and I want the numbers to back them up',
+  // 말풍선 나머지 6개(리드 확정 문구)
+  'P-18-ai-bottom-right': 'I take the lead and make big changes.',
+  'P-18-ai-top-left': 'I let the AI lead and only nudge it a little.',
+  'P-18-ai-bottom-left': 'I let the AI lead, but when I step in, I change a lot.',
+  'P-18-decision-bottom-right': 'I chase new directions and follow my gut.',
+  'P-18-decision-top-left': 'I refine one idea and let the numbers decide.',
+  'P-18-decision-top-right': 'I refine one idea and trust my gut.',
   'P-19a': 'Identity scores',
   'P-19b': 'Axis',
   'P-19c': 'Score',

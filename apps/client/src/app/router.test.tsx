@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 
 describe('라우트', () => {
-  it.each(['/', '/consent', '/projects/abc'])(
+  it.each(['/', '/consent', '/projects/abc', '/creators/abc'])(
     '세션이 없으면 %s 에서 /enter 로 간다',
     async (path) => {
       const router = renderAt(path);

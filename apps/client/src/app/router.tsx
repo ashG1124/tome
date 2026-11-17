@@ -3,6 +3,7 @@ import { hasSession } from '../shared/api';
 import { ConsentPage } from '../pages/consent';
 import { EnterPage } from '../pages/enter';
 import { HomePage } from '../pages/home';
+import { ProfilePage } from '../pages/profile';
 import { WorkspacePage } from '../pages/workspace';
 import { Layout } from './layout';
 
@@ -20,6 +21,7 @@ export const routes: RouteObject[] = [
       { path: '/consent', loader: requireSession, element: <ConsentPage /> },
       { path: '/', loader: requireSession, element: <HomePage /> },
       { path: '/projects/:id', loader: requireSession, element: <WorkspacePage /> },
+      { path: '/creators/:id', loader: requireSession, element: <ProfilePage /> },
       { path: '*', loader: () => redirect('/') },
     ],
   },

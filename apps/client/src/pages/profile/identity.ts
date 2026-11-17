@@ -106,12 +106,20 @@ export function formatDay(iso: string | null, locale?: string, timeZone?: string
 export interface MetricsView {
   sessions: number;
   nodeEdits: number;
-  /** 이유를 남긴 편집 비율. 반올림한 정수 % */
-  depthPercent: number;
+  /** 이유를 남긴 편집 비율. 반올림한 정수 %. 값이 없으면 null(화면은 "—") */
+  depthPercent: number | null;
   /** 첫 기록 날짜(절대 날짜) */
   firstRecorded: string | null;
   /** 마지막 활동 날짜(절대 날짜) */
   lastActive: string | null;
+}
+
+/**
+ * 이유를 남긴 편집 비율(0~1)을 반올림한 %로. 서버가 아직 셀 편집이 없어 null 을 주면 null.
+ * 지금 공유 스키마는 number 지만 null 허용으로 바뀔 예정이라(#36) 미리 null 도 받는다.
+ */
+export function depthPercentOf(ratio: number | null): number | null {
+  return ratio === null ? null : Math.round(ratio * 100);
 }
 
 /** 왼쪽 지표 3개(Scale·Depth·Duration)에 보여 줄 값. 기간은 상대 표기 없이 날짜로만 보여 준다. */
@@ -123,7 +131,7 @@ export function metricsView(
   return {
     sessions: metrics.sessions,
     nodeEdits: metrics.nodeEdits,
-    depthPercent: Math.round(metrics.reasonedRatio * 100),
+    depthPercent: depthPercentOf(metrics.reasonedRatio),
     firstRecorded: formatDay(metrics.firstRecordedAt, locale, timeZone),
     lastActive: formatDay(metrics.lastActiveAt, locale, timeZone),
   };
@@ -160,4 +168,11 @@ export function compareMarkers(compare: CompareResponse, chart: ChartKey): Compa
   const mine = chartPoint(compare.me.axes, chart);
   if (mine !== null) markers.push({ creator: compare.me.creator, me: true, point: mine });
   return markers;
+}
+
+export type BubbleSide = 'above' | 'below';
+
+/** 좌표 위 말풍선을 아바타 위에 둘지 아래에 둘지. 판 위쪽 30% 안이면 아래로(판 밖으로 나가지 않게). */
+export function bubbleSide(point: ChartPoint): BubbleSide {
+  return point.top < 30 ? 'below' : 'above';
 }

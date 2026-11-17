@@ -13,8 +13,10 @@ import {
   compareMarkers,
   formatDay,
   identityView,
+  depthPercentOf,
   metricsView,
   quadrantOf,
+  bubbleSide,
 } from './identity';
 
 const AXES: IdentityAxes = {
@@ -146,6 +148,29 @@ describe('metricsView', () => {
   });
 });
 
+describe('depthPercentOf', () => {
+  it('비율을 반올림한 %로, 값이 없으면(null) null 이라 화면은 "—"', () => {
+    expect(depthPercentOf(0.536)).toBe(54);
+    expect(depthPercentOf(0)).toBe(0);
+    expect(depthPercentOf(null)).toBeNull();
+  });
+});
+
+describe('좌표 방향(Figma 그대로)', () => {
+  it('세로축은 + 가 아래: Bold·Divergent(+) 쪽 점수가 크면 아래로 간다', () => {
+    const bold = { ...AXES, scaleIntensity: 80 };
+    const passive = { ...AXES, scaleIntensity: -80 };
+    expect(chartPoint(bold, 'ai')?.top).toBeGreaterThan(50);
+    expect(chartPoint(passive, 'ai')?.top).toBeLessThan(50);
+    expect(chartPoint({ ...AXES, direction: 80 }, 'decision')?.top).toBeGreaterThan(50);
+  });
+
+  it('가로축은 + 가 오른쪽: Dominance·Intuition(+) 쪽', () => {
+    expect(chartPoint({ ...AXES, aiRelation: 80 }, 'ai')?.left).toBeGreaterThan(50);
+    expect(chartPoint({ ...AXES, decisionBasis: 80 }, 'decision')?.left).toBeGreaterThan(50);
+  });
+});
+
 describe('axisRows', () => {
   it('정해진 순서로 정렬하고, 빠진 축은 null, 점수는 반올림', () => {
     expect(
@@ -193,5 +218,12 @@ describe('compareMarkers', () => {
       'Judy',
       'Julian',
     ]);
+  });
+});
+
+describe('bubbleSide', () => {
+  it('보통은 아바타 위, 위쪽 가장자리 근처면 아래에 둔다', () => {
+    expect(bubbleSide({ left: 10, top: 70 })).toBe('above');
+    expect(bubbleSide({ left: 90, top: 29 })).toBe('below');
   });
 });
