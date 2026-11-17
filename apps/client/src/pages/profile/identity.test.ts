@@ -72,8 +72,9 @@ describe('chartPoint', () => {
     expect(chartPoint(AXES, 'ai')).toEqual({ left: 80, top: 30 });
   });
 
-  it('decision 좌표는 가로 = 판단 근거, 세로 = 방향', () => {
-    expect(chartPoint(AXES, 'decision')).toEqual({ left: 40, top: 90 });
+  it('decision 좌표는 가로 = 판단 근거(+ 가 왼쪽), 세로 = 방향', () => {
+    // decisionBasis −20(직관 쪽) → 가운데보다 오른쪽(60%)
+    expect(chartPoint(AXES, 'decision')).toEqual({ left: 60, top: 90 });
   });
 
   it('범위를 벗어난 점수는 끝에 맞추고, 점수가 하나라도 없으면 null', () => {
@@ -84,9 +85,11 @@ describe('chartPoint', () => {
 });
 
 describe('quadrantOf', () => {
-  it('세로 음수 = 위, 가로 음수 = 왼쪽', () => {
+  it('세로 음수 = 위, 가로는 화면 위치 기준(판단 근거는 + 가 왼쪽)', () => {
     expect(quadrantOf(AXES, 'ai')).toBe('top-right');
-    expect(quadrantOf(AXES, 'decision')).toBe('bottom-left');
+    // decisionBasis −20 = 직관 쪽 = 오른쪽
+    expect(quadrantOf(AXES, 'decision')).toBe('bottom-right');
+    expect(quadrantOf({ ...AXES, decisionBasis: 80 }, 'decision')).toBe('bottom-left');
   });
 
   it('축 위(정확히 0)거나 점수가 없으면 null', () => {
@@ -165,9 +168,17 @@ describe('좌표 방향(Figma 그대로)', () => {
     expect(chartPoint({ ...AXES, direction: 80 }, 'decision')?.top).toBeGreaterThan(50);
   });
 
-  it('가로축은 + 가 오른쪽: Dominance·Intuition(+) 쪽', () => {
+  it('AI 관계는 + 가 오른쪽(Dominance), 판단 근거는 + 가 왼쪽(Evidence, 서버 basisScore 부호)', () => {
     expect(chartPoint({ ...AXES, aiRelation: 80 }, 'ai')?.left).toBeGreaterThan(50);
-    expect(chartPoint({ ...AXES, decisionBasis: 80 }, 'decision')?.left).toBeGreaterThan(50);
+    expect(chartPoint({ ...AXES, decisionBasis: 80 }, 'decision')?.left).toBeLessThan(50);
+    expect(chartPoint({ ...AXES, decisionBasis: -80 }, 'decision')?.left).toBeGreaterThan(50);
+  });
+
+  it('근거형(+80)은 근거 쪽(왼쪽) 말풍선, 직관형(−80)은 직관 쪽(오른쪽) 말풍선', () => {
+    const evidence = { ...AXES, decisionBasis: 80, direction: -40 };
+    const intuition = { ...AXES, decisionBasis: -80, direction: -40 };
+    expect(quadrantOf(evidence, 'decision')).toBe('top-left');
+    expect(quadrantOf(intuition, 'decision')).toBe('top-right');
   });
 });
 

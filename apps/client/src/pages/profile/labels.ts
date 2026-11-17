@@ -10,12 +10,15 @@ export const AXIS_LABELS: Readonly<
   decision: { top: 'P-13e', bottom: 'P-13f', left: 'P-13g', right: 'P-13h' },
 };
 
-/** 숨김 표에서 축 하나를 부르는 이름: "왼쪽(위) – 오른쪽(아래)" */
+/**
+ * 숨김 표에서 축 하나를 부르는 이름: "− 쪽 – + 쪽". 네 축 모두 점수가 + 일수록 뒤 이름 쪽이다.
+ * (판단 근거는 + 가 Evidence 라서 화면 왼쪽 이름이 뒤에 온다)
+ */
 export function axisName(axis: keyof IdentityAxes): string {
   const pair: Record<keyof IdentityAxes, [CopyKey, CopyKey]> = {
     aiRelation: ['P-13c', 'P-13d'],
     scaleIntensity: ['P-13a', 'P-13b'],
-    decisionBasis: ['P-13g', 'P-13h'],
+    decisionBasis: ['P-13h', 'P-13g'],
     direction: ['P-13e', 'P-13f'],
   };
   const [from, to] = pair[axis];

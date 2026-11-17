@@ -17,14 +17,19 @@ export type ChartKey = 'ai' | 'decision';
 type AxisKey = keyof IdentityAxes;
 
 /**
- * 좌표 한 장에 쓰는 두 축. 가로는 −100이 왼쪽·+100이 오른쪽, 세로는 −100이 위·+100이 아래다.
- * ai: 가로 = AI와의 관계(왼쪽 자율 존중 ↔ 오른쪽 주도), 세로 = 조작 강도(위 약하게 ↔ 아래 과감하게)
- * decision: 가로 = 판단 근거(왼쪽 근거 ↔ 오른쪽 직관), 세로 = 방향(위 수렴 ↔ 아래 발산)
+ * 좌표 한 장에 쓰는 두 축. 세로는 −100이 위·+100이 아래다(Figma 그대로).
+ * 가로는 X_SIGN 이 +1 이면 +100이 오른쪽, −1 이면 +100이 왼쪽이다.
+ * ai: 가로 = AI와의 관계(왼쪽 자율 존중 ↔ 오른쪽 주도, + 가 오른쪽), 세로 = 조작 강도(위 약하게 ↔ 아래 과감하게)
+ * decision: 가로 = 판단 근거(왼쪽 근거 ↔ 오른쪽 직관). 서버 점수는 + 가 근거(Evidence)라서 + 를 왼쪽에 찍는다.
+ *           세로 = 방향(위 수렴 ↔ 아래 발산)
  */
 export const CHART_AXES: Readonly<Record<ChartKey, { x: AxisKey; y: AxisKey }>> = {
   ai: { x: 'aiRelation', y: 'scaleIntensity' },
   decision: { x: 'decisionBasis', y: 'direction' },
 };
+
+/** 가로축 방향: +1 이면 + 점수가 오른쪽, −1 이면 왼쪽. 판단 근거는 + = Evidence = 왼쪽이다. */
+const X_SIGN: Readonly<Record<ChartKey, 1 | -1>> = { ai: 1, decision: -1 };
 
 /** 화면 읽기 프로그램용 숨김 표의 행 순서(좌표 1의 가로·세로, 좌표 2의 가로·세로) */
 export const AXIS_ORDER: readonly AxisKey[] = [
@@ -54,7 +59,7 @@ export function chartPoint(axes: IdentityAxes, chart: ChartKey): ChartPoint | nu
   const sx = axes[x];
   const sy = axes[y];
   if (sx === null || sy === null) return null;
-  return { left: toPercent(sx), top: toPercent(sy) };
+  return { left: toPercent(X_SIGN[chart] * sx), top: toPercent(sy) };
 }
 
 export type Quadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -65,7 +70,8 @@ export function quadrantOf(axes: IdentityAxes, chart: ChartKey): Quadrant | null
   const sx = axes[x];
   const sy = axes[y];
   if (sx === null || sy === null || sx === 0 || sy === 0) return null;
-  return `${sy < 0 ? 'top' : 'bottom'}-${sx < 0 ? 'left' : 'right'}`;
+  // 화면 기준 가로 위치로 본다(판단 근거는 + 가 왼쪽)
+  return `${sy < 0 ? 'top' : 'bottom'}-${X_SIGN[chart] * sx < 0 ? 'left' : 'right'}`;
 }
 
 export interface IdentityView {

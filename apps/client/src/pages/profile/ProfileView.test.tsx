@@ -157,14 +157,16 @@ describe('ProfileView', () => {
     expect(screen.getByRole('heading', { name: COPY['P-09'] })).toBeTruthy();
     expect(screen.getByRole('heading', { name: COPY['P-11'] })).toBeTruthy();
     expect(screen.getByText(COPY['P-18-ai-top-right'])).toBeTruthy();
-    expect(screen.getByText(COPY['P-18-decision-bottom-left'])).toBeTruthy();
+    // decisionBasis −20 = 직관 쪽(오른쪽), direction +80 = 아래
+    expect(screen.getByText(COPY['P-18-decision-bottom-right'])).toBeTruthy();
 
     const table = screen.getByRole('table', { name: COPY['P-19a'] });
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows.map((r) => r.textContent)).toEqual([
       `${COPY['P-13c']} – ${COPY['P-13d']}60`,
       `${COPY['P-13a']} – ${COPY['P-13b']}-40`,
-      `${COPY['P-13g']} – ${COPY['P-13h']}-20`,
+      // 숨김 표 이름은 "− 쪽 – + 쪽": 판단 근거는 + 가 Evidence
+      `${COPY['P-13h']} – ${COPY['P-13g']}-20`,
       `${COPY['P-13e']} – ${COPY['P-13f']}80`,
     ]);
   });
