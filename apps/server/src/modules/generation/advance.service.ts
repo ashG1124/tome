@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type AdvanceJobResponse,
   type JobStage,
@@ -11,8 +11,11 @@ import {
 import { AI_PROVIDER, type AiProvider, type AiResult } from '../../ai';
 import { AppError } from '../../common';
 import type { Prisma } from '../../generated/prisma/client';
+import type { SampleResult } from '../../generated/prisma/client';
 import { OBJECT_STORAGE, type ObjectStorage, answerImageKey, makeThumbnail } from '../../storage';
 import type { AuthContext } from '../session/auth.decorators';
+import { UsageService } from '../usage/usage.service';
+import { emptyTally, estimateNeurons, matchPreset, type UsageTally } from '../usage/usage.rules';
 import { assemblePrompt } from './assemble';
 import { toAnswer, toJob, toStepResponse, type TextStepOutput } from './generation.mappers';
 import { GenerationRepository, type JobRow, type StepRow } from './generation.repository';
@@ -36,11 +39,32 @@ const asJson = (value: unknown) => value as Prisma.InputJsonValue;
 /** assemble·verify 처럼 AI 를 부르지 않은 단계의 메타. */
 const NO_AI = { provider: null, model: null, fallbackUsed: false, neuronsEst: null } as const;
 
+/** 대체 결과로 채운 단계의 메타. 사용량에 세지 않는다. */
+const SAMPLE_META = {
+  provider: 'sample',
+  model: 'sample',
+  fallbackUsed: false,
+  neuronsEst: 0,
+} as const;
+
+/** 한도 확인과 사용량 집계 대상(AI 를 부르는 단계). */
+const AI_STAGES: readonly JobStage[] = ['analyze', 'research', 'evidence', 'draft', 'image'];
+
+/** 재시도·폴백 뒤에도 실패했을 때 대체 결과로 메울 수 있는 오류. SAFETY_BLOCKED 는 대체하지 않는다. */
+const SAMPLE_FALLBACK_CODES: readonly string[] = [
+  'AI_UNAVAILABLE',
+  'AI_TIMEOUT',
+  'AI_OUTPUT_INVALID',
+];
+
 const metaOf = (result: AiResult<unknown>) => ({
   provider: result.provider,
   model: result.model,
   fallbackUsed: result.fallbackUsed,
-  neuronsEst: result.neurons ?? null,
+  // 헤더 값이 없으면 사용량 집계와 같은 모델별 추정값을 남긴다(mock 은 비용이 없어 그대로 비움).
+  neuronsEst:
+    result.neurons ??
+    (result.provider === 'mock' ? null : estimateNeurons(result.provider, result.model)),
 });
 
 @Injectable()
@@ -49,7 +73,25 @@ export class AdvanceService {
     private readonly repo: GenerationRepository,
     @Inject(AI_PROVIDER) private readonly ai: AiProvider,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
+    private readonly usage: UsageService,
   ) {}
+
+  private readonly logger = new Logger(AdvanceService.name);
+
+  /** 세트가 프리셋 문장 그대로일 때만 그 프리셋의 대체 결과를 돌려준다. */
+  private async findSampleFor(job: JobRow): Promise<SampleResult | null> {
+    const key = matchPreset(job.set.presetKey, job.set.prompt);
+    return key === null ? null : this.usage.findSample(key);
+  }
+
+  /** 사용량 기록 실패가 사용자 요청을 깨뜨리지 않게 한다(이미 나간 호출 비용은 로그로만 남긴다). */
+  private async recordUsage(tally: UsageTally): Promise<void> {
+    try {
+      await this.usage.record(tally);
+    } catch {
+      this.logger.error('usage record failed');
+    }
+  }
 
   async advance(auth: AuthContext, jobId: string, stage: JobStage): Promise<AdvanceJobResponse> {
     const job = await this.repo.findJob(this.repo.client, jobId);
@@ -73,6 +115,20 @@ export class AdvanceService {
       throw new AppError('STAGE_OUT_OF_ORDER', undefined, { expected: job.nextStage });
     }
 
+    // AI 를 부르는 단계는 실행 전에 상한을 본다. 이미 대체 결과로 채우는 job 은 AI 를 안 부르므로 건너뛴다.
+    let sample: SampleResult | null = null;
+    const sampleMode = job.steps.some((s) => s.status === 'succeeded' && s.provider === 'sample');
+    if (sampleMode) {
+      sample = await this.findSampleFor(job);
+      if (!sample) throw new AppError('INTERNAL');
+    } else if (AI_STAGES.includes(stage)) {
+      const limit = (await this.usage.checkLimits()).code;
+      if (limit) {
+        sample = await this.findSampleFor(job);
+        if (!sample) throw new AppError(limit);
+      }
+    }
+
     const startedAt = new Date();
     const claim = await this.repo.claimStep(
       job.id,
@@ -88,7 +144,7 @@ export class AdvanceService {
 
     // 요청 연결(abort)과 분리: 여기서 끝까지 실행·저장한다. 클라이언트가 끊겨도 멈추지 않는다.
     try {
-      const result = await this.execute(auth, job, stage);
+      const result = await this.executeOrSample(auth, job, stage, sample);
       await this.save(job, stage, result, startedAt);
     } catch (error) {
       const code = error instanceof AppError ? error.code : 'AI_UNAVAILABLE';
@@ -131,25 +187,152 @@ export class AdvanceService {
     return upTo.flatMap((stage) => this.outputOf(job, stage).nodes);
   }
 
-  private async execute(auth: AuthContext, job: JobRow, stage: JobStage): Promise<StageResult> {
+  /**
+   * 대체 결과를 쓰기로 했으면 그 값으로 채운다. 아니면 AI 단계를 실행하고, 재시도·폴백 뒤에도
+   * 실패하면(SAFETY_BLOCKED 제외) 프리셋 그대로인 세트에 한해 대체 결과로 메운다.
+   */
+  private async executeOrSample(
+    auth: AuthContext,
+    job: JobRow,
+    stage: JobStage,
+    sample: SampleResult | null,
+  ): Promise<StageResult> {
+    if (sample) return this.executeSample(auth, job, stage, sample);
+
+    const tally = emptyTally(stage === 'image' ? 'image' : 'text');
+    let result: StageResult | null = null;
+    let failure: unknown;
+    try {
+      result = await this.execute(auth, job, stage, tally);
+    } catch (error) {
+      failure = error;
+    }
+    // AI 를 이미 부른 뒤라면 성공이든 실패든 비용이 나갔다.
+    await this.recordUsage(tally);
+    if (result) return result;
+
+    if (failure instanceof AppError && SAMPLE_FALLBACK_CODES.includes(failure.code)) {
+      const fallback = await this.findSampleFor(job);
+      if (fallback) return this.executeSample(auth, job, stage, fallback);
+    }
+    throw failure;
+  }
+
+  private async execute(
+    auth: AuthContext,
+    job: JobRow,
+    stage: JobStage,
+    tally: UsageTally,
+  ): Promise<StageResult> {
     switch (stage) {
       case 'analyze':
       case 'research':
       case 'evidence':
       case 'draft':
-        return this.runText(job, stage);
+        return this.runText(job, stage, tally);
       case 'assemble':
         return this.runAssemble(job);
       case 'image':
-        return this.runImage(auth, job);
+        return this.runImage(auth, job, tally);
       case 'verify':
         return this.runVerify(job);
     }
   }
 
+  // ---- 대체 결과 ----
+
+  private executeSample(
+    auth: AuthContext,
+    job: JobRow,
+    stage: JobStage,
+    sample: SampleResult,
+  ): StageResult {
+    const snapshot = NodeSnapshotSchema.safeParse(sample.nodes);
+    if (!snapshot.success) throw new AppError('INTERNAL');
+    const snap = snapshot.data;
+    switch (stage) {
+      case 'analyze':
+      case 'research':
+      case 'evidence':
+      case 'draft': {
+        const nodes = snap.nodes.filter((n) => n.stage === stage);
+        if (nodes.length === 0) throw new AppError('INTERNAL');
+        const output: TextStepOutput = { nodes };
+        if (stage === 'analyze') output.subjectTemplate = snap.subjectTemplate;
+        return { output: asJson(output), ...SAMPLE_META };
+      }
+      case 'assemble':
+        return {
+          output: asJson(assemblePrompt(snap.subjectTemplate, snap.nodes)),
+          ...SAMPLE_META,
+        };
+      case 'image':
+        return this.sampleImage(auth, job, sample, snap);
+      case 'verify': {
+        if (!job.resultAnswerId) throw new AppError('INTERNAL');
+        const parsed =
+          sample.verification === null ? null : VerificationSchema.safeParse(sample.verification);
+        const verification = parsed?.success
+          ? parsed.data
+          : VerificationSchema.parse(buildVerification(snap.nodes));
+        return {
+          output: asJson({ verification }),
+          ...SAMPLE_META,
+          verifyAnswerId: job.resultAnswerId,
+        };
+      }
+    }
+  }
+
+  /** 새 이미지를 올리지 않고 대체 결과의 이미지 키를 그대로 가리키는 답변을 만든다. */
+  private sampleImage(
+    auth: AuthContext,
+    job: JobRow,
+    sample: SampleResult,
+    snap: ReturnType<typeof NodeSnapshotSchema.parse>,
+  ): StageResult {
+    const assembled = job.steps.find((s) => s.stage === 'assemble' && s.status === 'succeeded');
+    const { assembledPrompt, phrases, excluded } = (assembled?.output ?? {}) as {
+      assembledPrompt?: string;
+      phrases?: unknown;
+      excluded?: unknown;
+    };
+    if (assembledPrompt === undefined) throw new AppError('INTERNAL');
+    const id = randomUUID();
+    return {
+      output: { answerId: id },
+      ...SAMPLE_META,
+      answer: {
+        id,
+        data: {
+          id,
+          setId: job.setId,
+          status: 'accepted',
+          number: null,
+          origin: 'sample',
+          imageMode: 'generate',
+          imageKey: sample.imageKey,
+          thumbKey: sample.thumbKey,
+          assembledPrompt,
+          phrases: asJson(phrases ?? {}),
+          excluded: asJson(excluded ?? []),
+          nodes: asJson(snap),
+          verification: undefined,
+          provider: 'sample',
+          model: 'sample',
+          isSample: true,
+          sampleResultId: sample.id,
+          createdById: auth.creatorId,
+          jobId: job.id,
+        },
+      },
+    };
+  }
+
   private async runText(
     job: JobRow,
     stage: 'analyze' | 'research' | 'evidence' | 'draft',
+    tally: UsageTally,
   ): Promise<StageResult> {
     const before = (['analyze', 'research', 'evidence', 'draft'] as const).slice(
       0,
@@ -160,8 +343,12 @@ export class AdvanceService {
 
     const output: TextStepOutput = { nodes: [] };
     let meta: AiResult<unknown>;
+    // 공급자가 재시도·폴백 횟수를 알려 주지 않아 단계당 호출 1회로 센다.
+    tally.called = true;
+    tally.textCalls = 1;
     if (stage === 'analyze') {
       const result = await this.ai.analyze(input);
+      this.tallyResult(tally, result);
       const { subjectTemplate, nodes } = result.value;
       if (typeof subjectTemplate !== 'string' || subjectTemplate.trim() === '') {
         throw new AppError('AI_OUTPUT_INVALID');
@@ -171,6 +358,7 @@ export class AdvanceService {
       meta = result;
     } else {
       const result = await this.ai[stage](input);
+      this.tallyResult(tally, result);
       output.nodes = result.value;
       meta = result;
     }
@@ -189,6 +377,11 @@ export class AdvanceService {
     return { output: asJson(output), ...metaOf(meta) };
   }
 
+  private tallyResult(tally: UsageTally, result: AiResult<unknown>): void {
+    if (result.fallbackUsed) tally.fallbackCount = 1;
+    tally.neurons = estimateNeurons(result.provider, result.model, result.neurons);
+  }
+
   private runAssemble(job: JobRow): StageResult {
     const nodes = this.collectNodes(job, ['analyze', 'research', 'evidence', 'draft']);
     const { subjectTemplate } = this.outputOf(job, 'analyze');
@@ -198,7 +391,7 @@ export class AdvanceService {
     };
   }
 
-  private async runImage(auth: AuthContext, job: JobRow): Promise<StageResult> {
+  private async runImage(auth: AuthContext, job: JobRow, tally: UsageTally): Promise<StageResult> {
     const nodes = this.collectNodes(job, ['analyze', 'research', 'evidence', 'draft']);
     const { subjectTemplate } = this.outputOf(job, 'analyze');
     const assembled = job.steps.find((s) => s.stage === 'assemble' && s.status === 'succeeded');
@@ -216,7 +409,10 @@ export class AdvanceService {
     });
     if (!snapshot.success) throw new AppError('AI_OUTPUT_INVALID');
 
+    tally.called = true;
+    tally.imageCount = 1;
     const generated = await this.ai.image({ assembledPrompt, mode: 'generate' });
+    this.tallyResult(tally, generated);
     const image = generated.value;
     // 원본은 받은 바이트 그대로, 썸네일은 긴 변 512px JPEG. 디코드할 수 없는 이미지는 출력 위반이다.
     let thumb: Uint8Array;

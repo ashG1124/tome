@@ -288,7 +288,7 @@ describe.skipIf(!url)('session, consent and admin API (real Postgres)', () => {
       expect(me.status).toBe(200);
       const body = MeResponseSchema.parse(await me.json());
       expect(body.consented).toBe(false);
-      expect(body.limits).toEqual({});
+      expect(body.limits).toEqual({ dailyLimitReached: false, budgetReached: false });
       expect(body.creator.id).toBe(session.creator.id);
 
       const blocked = await call('GET', '/__test/protected', session.token);

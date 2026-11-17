@@ -1,7 +1,9 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { loadEnv } from '../../src/config';
 import { PrismaClient } from '../../src/generated/prisma/client';
+import { createObjectStorage } from '../../src/storage';
 import { SEED_CREATORS } from './creators';
+import { loadSampleResults } from './sample-results';
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -22,6 +24,8 @@ async function main(): Promise<void> {
       });
     }
     console.log(`Seeded ${SEED_CREATORS.length} creators.`);
+    const samples = await loadSampleResults(prisma, createObjectStorage(env));
+    console.log(`Seeded ${samples} sample results.`);
   } finally {
     await prisma.$disconnect();
   }

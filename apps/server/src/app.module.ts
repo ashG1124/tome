@@ -10,6 +10,7 @@ import { GenerationModule } from './modules/generation/generation.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { SessionGuard } from './modules/session/session.guard';
+import { UsageModule } from './modules/usage/usage.module';
 import { SessionModule } from './modules/session/session.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './storage';
@@ -27,6 +28,7 @@ import { StorageModule } from './storage';
     GenerationModule,
     EventsModule,
     CommentsModule,
+    UsageModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

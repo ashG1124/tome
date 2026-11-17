@@ -11,6 +11,7 @@ import type {
 } from '@tome/shared';
 import { AppError } from '../../common';
 import { IdempotencyService } from '../idempotency/idempotency.service';
+import { UsageService } from '../usage/usage.service';
 import type { AuthContext } from '../session/auth.decorators';
 import {
   JobKeyTakenError,
@@ -43,6 +44,7 @@ export class ProjectsService {
   constructor(
     private readonly repo: ProjectsRepository,
     private readonly idempotency: IdempotencyService,
+    private readonly usage: UsageService,
   ) {}
 
   async list(auth: AuthContext): Promise<ProjectListResponse> {
@@ -69,6 +71,10 @@ export class ProjectsService {
           }
         }
         const prompt = resolvePrompt(body.prompt, body.presetKey);
+        // 세트·job 을 만들기 전에 상한을 본다. 프리셋 그대로면 통과(advance 가 대체 결과로 채운다).
+        if (prompt !== undefined) {
+          await this.usage.assertWithinLimitsOrSample(body.presetKey, prompt);
+        }
 
         await this.repo.lockShelf(tx, auth.creatorId);
         await this.repo.shiftShelfDown(tx, auth.creatorId);

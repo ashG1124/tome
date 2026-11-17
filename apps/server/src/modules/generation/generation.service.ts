@@ -13,6 +13,7 @@ import { AppError } from '../../common';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import type { AuthContext } from '../session/auth.decorators';
 import { ProjectsService } from '../projects/projects.service';
+import { UsageService } from '../usage/usage.service';
 import {
   type Db,
   GenerationRepository,
@@ -28,6 +29,7 @@ export class GenerationService {
     private readonly repo: GenerationRepository,
     private readonly idempotency: IdempotencyService,
     private readonly projects: ProjectsService,
+    private readonly usage: UsageService,
   ) {}
 
   /** 없거나 지워졌거나 숨겨졌으면 404, 남의 것이면 403 (이 순서). */
@@ -139,6 +141,9 @@ export class GenerationService {
         if (key !== undefined && (await this.repo.jobKeyExists(tx, auth.sessionId, key))) {
           throw new AppError('IDEMPOTENCY_KEY_REUSED');
         }
+
+        // 세트·job 을 만들기 전에 상한을 본다. 프리셋 그대로면 통과(advance 가 대체 결과로 채운다).
+        await this.usage.assertWithinLimitsOrSample(body.presetKey, body.prompt);
 
         let set: { id: string; position: number; prompt: string };
         let job: { id: string };

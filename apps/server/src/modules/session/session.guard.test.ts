@@ -5,6 +5,7 @@ import type { AppError } from '../../common';
 import { AllowBeforeConsent, AUTH_REQUEST_KEY, Public } from './auth.decorators';
 import { LoginRateLimiter } from './login-rate-limiter';
 import { SessionGuard } from './session.guard';
+import type { UsageService } from '../usage/usage.service';
 import type { SessionRepository, SessionRow } from './session.repository';
 import { hashToken, SessionService } from './session.service';
 
@@ -36,7 +37,10 @@ function fakeRepo(overrides: Record<string, unknown> = {}) {
 }
 
 function run(repo: SessionRepository, handler: keyof Routes, authorization?: string) {
-  const guard = new SessionGuard(new Reflector(), new SessionService(repo, new LoginRateLimiter()));
+  const guard = new SessionGuard(
+    new Reflector(),
+    new SessionService(repo, new LoginRateLimiter(), {} as UsageService),
+  );
   const request: Record<string, unknown> = { headers: authorization ? { authorization } : {} };
   const context = {
     getHandler: () => Routes.prototype[handler],
