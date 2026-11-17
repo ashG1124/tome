@@ -1,0 +1,36 @@
+{
+  "name": "@tome/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "client·server 가 공유하는 요청/응답 zod 스키마와 추론 타입",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && node scripts/mark-cjs.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "~4.6.7"
+  },
+  "devDependencies": {
+    "vitest": "~4.1.12"
+  }
+}

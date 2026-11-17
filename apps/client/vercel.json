@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "corepack enable pnpm && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @tome/shared build && pnpm --filter @tome/client build",
+  "outputDirectory": "dist",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../../packages/shared ../../package.json ../../pnpm-lock.yaml ../../pnpm-workspace.yaml",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

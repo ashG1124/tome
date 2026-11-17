@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+.git
+apps/client
+!apps/client/package.json
+apps/server/src/generated
+playwright-report
+test-results
+.tome-docs
+design-ref

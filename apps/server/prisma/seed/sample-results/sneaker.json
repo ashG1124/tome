@@ -1,0 +1,141 @@
+{
+  "placeholder": true,
+  "scenarioKey": "sneaker",
+  "title": "Sneaker redesign",
+  "promptVariants": [
+    "A pair of sneakers redesigned in a cyberpunk neon style, side view on a clean background"
+  ],
+  "nodes": {
+    "schemaVersion": 1,
+    "subjectTemplate": "A pair of {k1} in a neon style, side view on a {k2}",
+    "nodes": [
+      {
+        "id": "k1",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "cyberpunk sneakers",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k2",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "clean background",
+        "enabled": true,
+        "weight": 5,
+        "pad": {
+          "x": -2,
+          "y": 1,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 5,
+          "pad": {
+            "x": -2,
+            "y": 1
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "d1",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "Footwear concept art",
+        "enabled": true,
+        "parentIds": ["k1"]
+      },
+      {
+        "id": "s1",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Silhouette over texture",
+        "enabled": true,
+        "order": 0,
+        "parentIds": ["d1"],
+        "aiInitial": {
+          "order": 0
+        }
+      },
+      {
+        "id": "e1",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Side views make the sole and silhouette of a shoe easy to read.",
+        "enabled": true,
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "macro",
+        "parentIds": ["s1"]
+      },
+      {
+        "id": "a1",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "neon accents",
+        "enabled": true,
+        "weight": 6,
+        "category": "color",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 6,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a2",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "glossy sole",
+        "enabled": true,
+        "weight": 5,
+        "category": "material",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 5,
+          "enabled": true
+        }
+      }
+    ]
+  },
+  "verification": {
+    "status": "skipped",
+    "criteria": [
+      {
+        "id": "v1",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows neon accents.",
+        "enabled": true,
+        "parentIds": ["a1"]
+      },
+      {
+        "id": "v2",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows glossy sole.",
+        "enabled": true,
+        "parentIds": ["a2"]
+      }
+    ],
+    "mismatches": []
+  }
+}

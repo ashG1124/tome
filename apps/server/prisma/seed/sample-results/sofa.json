@@ -1,0 +1,141 @@
+{
+  "placeholder": true,
+  "scenarioKey": "sofa",
+  "title": "Cozy sofa",
+  "promptVariants": [
+    "A cozy mid-century sofa in a sunlit living room, warm natural tones, interior photo"
+  ],
+  "nodes": {
+    "schemaVersion": 1,
+    "subjectTemplate": "A cozy {k1} in a {k2}, warm natural tones, interior photo",
+    "nodes": [
+      {
+        "id": "k1",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "mid-century sofa",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k2",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "sunlit living room",
+        "enabled": true,
+        "weight": 5,
+        "pad": {
+          "x": -2,
+          "y": 1,
+          "xAxis": ["Textured", "Smooth"],
+          "yAxis": ["Horizon", "Surrounding"]
+        },
+        "parentIds": [],
+        "aiInitial": {
+          "weight": 5,
+          "pad": {
+            "x": -2,
+            "y": 1
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "d1",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "Interior photography",
+        "enabled": true,
+        "parentIds": ["k1"]
+      },
+      {
+        "id": "s1",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Warmth over minimalism",
+        "enabled": true,
+        "order": 0,
+        "parentIds": ["d1"],
+        "aiInitial": {
+          "order": 0
+        }
+      },
+      {
+        "id": "e1",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Interior photos often rely on window light to show texture and warmth.",
+        "enabled": true,
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "macro",
+        "parentIds": ["s1"]
+      },
+      {
+        "id": "a1",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "warm natural tones",
+        "enabled": true,
+        "weight": 6,
+        "category": "color",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 6,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a2",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "soft window light",
+        "enabled": true,
+        "weight": 5,
+        "category": "lighting",
+        "parentIds": ["e1"],
+        "aiInitial": {
+          "weight": 5,
+          "enabled": true
+        }
+      }
+    ]
+  },
+  "verification": {
+    "status": "skipped",
+    "criteria": [
+      {
+        "id": "v1",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows warm natural tones.",
+        "enabled": true,
+        "parentIds": ["a1"]
+      },
+      {
+        "id": "v2",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows soft window light.",
+        "enabled": true,
+        "parentIds": ["a2"]
+      }
+    ],
+    "mismatches": []
+  }
+}
