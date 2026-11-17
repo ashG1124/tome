@@ -55,6 +55,16 @@ export class ProjectsRepository {
     });
   }
 
+  /** 게시된 프로젝트(삭제·숨김 제외), 최근 게시 순. */
+  listPosted(ownerId: string, limit: number): Promise<ProjectRow[]> {
+    return this.prisma.project.findMany({
+      where: { ownerId, deletedAt: null, hiddenAt: null, postedAt: { not: null } },
+      orderBy: [{ postedAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+      select: SUMMARY_SELECT,
+    });
+  }
+
   findById(db: Db, id: string): Promise<ProjectRow | null> {
     return db.project.findUnique({ where: { id }, select: SUMMARY_SELECT });
   }

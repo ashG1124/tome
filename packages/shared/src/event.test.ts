@@ -71,3 +71,45 @@ describe('event batches', () => {
     expect(EventBatchResponseSchema.safeParse({ accepted: -1, duplicates: 0 }).success).toBe(false);
   });
 });
+
+describe('identity signal payloads', () => {
+  const parse = (type: string, payload: Record<string, unknown>) =>
+    EventEnvelopeSchema.safeParse({ ...event, type, payload }).success;
+
+  it('accepts an empty payload and unknown keys for every signal type', () => {
+    for (const type of [
+      'weight_dial_click',
+      'meaning_point_set',
+      'priority_drag_reorder',
+      'weight_apply',
+      'source_apply',
+      'priority_apply',
+      'draft_apply',
+      'evidence_toggle',
+      'flag_decision',
+      'node_open',
+    ]) {
+      expect(parse(type, {})).toBe(true);
+      expect(parse(type, { somethingNew: 1 })).toBe(true);
+    }
+  });
+
+  it('accepts the documented fields', () => {
+    expect(
+      parse('weight_apply', { nodeId: 'k1', weightAi: 5, weightFinal: 9, reason: 'bolder' }),
+    ).toBe(true);
+    expect(
+      parse('meaning_point_set', { nodeId: 'k1', padAi: { x: 0, y: 0 }, padFinal: { x: 3, y: 4 } }),
+    ).toBe(true);
+    expect(parse('priority_drag_reorder', { orderChanged: true, orderDelta: 2, n: 4 })).toBe(true);
+    expect(parse('flag_decision', { nodeId: 'v1', state: 'kept', reason: '' })).toBe(true);
+    expect(parse('draft_apply', { changed: false })).toBe(true);
+  });
+
+  it('rejects fields of the wrong type', () => {
+    expect(parse('flag_decision', { state: 'maybe' })).toBe(false);
+    expect(parse('weight_apply', { weightFinal: 'high' })).toBe(false);
+    expect(parse('meaning_point_set', { padFinal: { x: 1 } })).toBe(false);
+    expect(parse('draft_apply', { changed: 'yes' })).toBe(false);
+  });
+});

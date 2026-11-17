@@ -63,6 +63,11 @@ export class EventsService {
     return { accepted, duplicates };
   }
 
+  /** 아이덴티티 계산용 읽기. 삭제·숨김 프로젝트의 이벤트는 빠진다. 서버 시각 순. */
+  listForIdentity(creatorId: string) {
+    return this.events.listForCreator(creatorId);
+  }
+
   /**
    * 서버가 변경 트랜잭션 안에서 남기는 이벤트. 트랜잭션이 되돌려지면 같이 사라진다.
    * payload 가 종류별 스키마에 맞지 않으면 던진다(호출하는 쪽 버그).

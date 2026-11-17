@@ -32,13 +32,17 @@ model Creator {
   seedOrder      Int?        @unique
   createdAt      DateTime    @default(now()) @db.Timestamptz(3)
 
-  accessCodes     AccessCode[]
-  sessions        DemoSession[]
-  consents        ConsentRecord[]
-  projects        Project[]       @relation("ProjectOwner")
-  remixedProjects Project[]       @relation("ProjectRemixPartner")
-  comments        NodeComment[]
-  events          Event[]
+  accessCodes          AccessCode[]
+  sessions             DemoSession[]
+  consents             ConsentRecord[]
+  projects             Project[]          @relation("ProjectOwner")
+  remixedProjects      Project[]          @relation("ProjectRemixPartner")
+  comments             NodeComment[]
+  events               Event[]
+  identitySnapshots    IdentitySnapshot[]
+  connectionsAsPartner Connection[]
+  favorites            Favorite[]         @relation("FavoriteOwner")
+  favoritedBy          Favorite[]         @relation("FavoriteTarget")
 
   @@index([kind])
 }
@@ -164,34 +168,36 @@ enum StepStatus {
 
 // remixPartnerSnapshotId · topicId 는 해당 표가 생기는 뒤 단계 마이그레이션에서 컬럼을 추가한다.
 model Project {
-  id                   String        @id @default(uuid(7)) @db.Uuid
-  ownerId              String        @db.Uuid
-  kind                 ProjectKind
-  title                String        @db.VarChar(60)
-  status               ProjectStatus @default(building)
-  finishedAt           DateTime?     @db.Timestamptz(3)
-  postedAt             DateTime?     @db.Timestamptz(3)
-  coverAnswerId        String?       @db.Uuid
-  selectionReason      String?       @db.VarChar(300)
-  derivedFromProjectId String?       @db.Uuid
-  derivedFromAnswerId  String?       @db.Uuid
-  remixPartnerId       String?       @db.Uuid
-  shelfPosition        Int
-  lastEditedAt         DateTime      @default(now()) @db.Timestamptz(3)
-  createdAt            DateTime      @default(now()) @db.Timestamptz(3)
-  deletedAt            DateTime?     @db.Timestamptz(3)
-  hiddenAt             DateTime?     @db.Timestamptz(3)
+  id                     String        @id @default(uuid(7)) @db.Uuid
+  ownerId                String        @db.Uuid
+  kind                   ProjectKind
+  title                  String        @db.VarChar(60)
+  status                 ProjectStatus @default(building)
+  finishedAt             DateTime?     @db.Timestamptz(3)
+  postedAt               DateTime?     @db.Timestamptz(3)
+  coverAnswerId          String?       @db.Uuid
+  selectionReason        String?       @db.VarChar(300)
+  derivedFromProjectId   String?       @db.Uuid
+  derivedFromAnswerId    String?       @db.Uuid
+  remixPartnerId         String?       @db.Uuid
+  remixPartnerSnapshotId String?       @db.Uuid
+  shelfPosition          Int
+  lastEditedAt           DateTime      @default(now()) @db.Timestamptz(3)
+  createdAt              DateTime      @default(now()) @db.Timestamptz(3)
+  deletedAt              DateTime?     @db.Timestamptz(3)
+  hiddenAt               DateTime?     @db.Timestamptz(3)
 
-  owner             Creator   @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  remixPartner      Creator?  @relation("ProjectRemixPartner", fields: [remixPartnerId], references: [id], onDelete: SetNull)
-  coverAnswer       Answer?   @relation("ProjectCover", fields: [coverAnswerId], references: [id], onDelete: SetNull)
-  derivedFromAnswer Answer?   @relation("ProjectDerivedFromAnswer", fields: [derivedFromAnswerId], references: [id], onDelete: SetNull)
-  derivedFrom       Project?  @relation("ProjectDerivation", fields: [derivedFromProjectId], references: [id], onDelete: SetNull)
-  derivatives       Project[] @relation("ProjectDerivation")
-  pages             Page[]
-  sets              PromptSet[]
-  jobs              GenerationJob[]
-  events            Event[]
+  owner                Creator           @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  remixPartner         Creator?          @relation("ProjectRemixPartner", fields: [remixPartnerId], references: [id], onDelete: SetNull)
+  coverAnswer          Answer?           @relation("ProjectCover", fields: [coverAnswerId], references: [id], onDelete: SetNull)
+  derivedFromAnswer    Answer?           @relation("ProjectDerivedFromAnswer", fields: [derivedFromAnswerId], references: [id], onDelete: SetNull)
+  derivedFrom          Project?          @relation("ProjectDerivation", fields: [derivedFromProjectId], references: [id], onDelete: SetNull)
+  derivatives          Project[]         @relation("ProjectDerivation")
+  remixPartnerSnapshot IdentitySnapshot? @relation(fields: [remixPartnerSnapshotId], references: [id], onDelete: SetNull)
+  pages                Page[]
+  sets                 PromptSet[]
+  jobs                 GenerationJob[]
+  events               Event[]
 
   @@index([ownerId, deletedAt, shelfPosition])
   @@index([derivedFromProjectId])
@@ -258,16 +264,18 @@ model Answer {
   createdById        String       @db.Uuid
   createdAt          DateTime     @default(now()) @db.Timestamptz(3)
 
-  set              PromptSet     @relation(fields: [setId], references: [id], onDelete: Cascade)
-  baseAnswer       Answer?       @relation("AnswerEditChain", fields: [baseAnswerId], references: [id], onDelete: SetNull)
-  editedAnswers    Answer[]      @relation("AnswerEditChain")
-  copiedFrom       Answer?       @relation("AnswerCopy", fields: [copiedFromAnswerId], references: [id], onDelete: SetNull)
-  copies           Answer[]      @relation("AnswerCopy")
-  sampleResult     SampleResult? @relation(fields: [sampleResultId], references: [id], onDelete: SetNull)
-  coverOf          Project[]     @relation("ProjectCover")
-  derivedProjects  Project[]     @relation("ProjectDerivedFromAnswer")
-  comments         NodeComment[]
-  events           Event[]
+  set                PromptSet     @relation(fields: [setId], references: [id], onDelete: Cascade)
+  baseAnswer         Answer?       @relation("AnswerEditChain", fields: [baseAnswerId], references: [id], onDelete: SetNull)
+  editedAnswers      Answer[]      @relation("AnswerEditChain")
+  copiedFrom         Answer?       @relation("AnswerCopy", fields: [copiedFromAnswerId], references: [id], onDelete: SetNull)
+  copies             Answer[]      @relation("AnswerCopy")
+  sampleResult       SampleResult? @relation(fields: [sampleResultId], references: [id], onDelete: SetNull)
+  coverOf            Project[]     @relation("ProjectCover")
+  connections        Connection[]  @relation("ConnectionAnswer")
+  appliedConnections Connection[]  @relation("ConnectionAppliedIn")
+  derivedProjects    Project[]     @relation("ProjectDerivedFromAnswer")
+  comments           NodeComment[]
+  events             Event[]
 
   @@index([setId, pinned])
 }
@@ -393,4 +401,67 @@ model Event {
 
   @@index([creatorId, serverTs])
   @@index([projectId])
+}
+
+// 열람 시 계산해 쌓아 두는 아이덴티티 기록(append-only). 최신 행이 현재 값이다.
+model IdentitySnapshot {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  creatorId    String   @db.Uuid
+  algoVersion  String
+  axes         Json
+  metrics      Json
+  eventCount   Int
+  projectCount Int
+  provisional  Boolean
+  computedAt   DateTime @db.Timestamptz(3)
+
+  creator     Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  connections Connection[]
+  projects    Project[]
+
+  @@index([creatorId, computedAt])
+}
+
+enum ConnectionStatus {
+  shown
+  applied
+  dismissed
+}
+
+// 리믹스 상대와의 갈림 힌트. 이번 단계는 표만 있다(API 는 뒤 Issue).
+model Connection {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  answerId          String           @db.Uuid
+  nodeId            String
+  partnerId         String           @db.Uuid
+  partnerSnapshotId String           @db.Uuid
+  predictedAction   String
+  templateKey       String
+  evidenceCount     Int
+  evidenceTotal     Int
+  axis              String
+  status            ConnectionStatus @default(shown)
+  appliedInAnswerId String?          @db.Uuid
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+
+  answer          Answer           @relation("ConnectionAnswer", fields: [answerId], references: [id], onDelete: Cascade)
+  partner         Creator          @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  partnerSnapshot IdentitySnapshot @relation(fields: [partnerSnapshotId], references: [id], onDelete: NoAction)
+  appliedInAnswer Answer?          @relation("ConnectionAppliedIn", fields: [appliedInAnswerId], references: [id], onDelete: SetNull)
+
+  @@unique([answerId, nodeId, partnerId])
+  @@index([partnerId])
+}
+
+// 자기 자신 금지 CHECK 는 마이그레이션 SQL 에 직접 있다.
+model Favorite {
+  creatorId       String   @db.Uuid
+  targetCreatorId String   @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  creator Creator @relation("FavoriteOwner", fields: [creatorId], references: [id], onDelete: Cascade)
+  target  Creator @relation("FavoriteTarget", fields: [targetCreatorId], references: [id], onDelete: Cascade)
+
+  @@id([creatorId, targetCreatorId])
+  @@index([targetCreatorId])
 }

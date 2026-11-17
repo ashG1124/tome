@@ -17,7 +17,8 @@ export type IdentityAxes = z.infer<typeof IdentityAxesSchema>;
 export const IdentityMetricsSchema = z.object({
   sessions: CountSchema,
   nodeEdits: CountSchema,
-  reasonedRatio: z.number().min(0).max(1),
+  // 이유를 남길 수 있는 편집이 5개 미만이면 null(화면은 "—").
+  reasonedRatio: z.number().min(0).max(1).nullable(),
   firstRecordedAt: IsoDateTimeSchema.nullable(),
   lastActiveAt: IsoDateTimeSchema.nullable(),
   originBreakdown: z.object({
