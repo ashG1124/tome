@@ -309,6 +309,12 @@ describe.skipIf(!url)('seed content and POST /admin/reset (real Postgres)', () =
     expect(before.counts.projects).toBe(20);
     expect(before.counts.answers).toBe(plan.answers.length);
     expect(before.counts.events).toBe(plan.events.length);
+    // 시드 accepted 답변은 확정 시각(acceptedAt)이 createdAt 으로 채워진다.
+    const accepted = await prisma.answer.findMany({
+      where: { id: { in: plan.answers.map((a) => a.id) }, status: 'accepted' },
+    });
+    expect(accepted.length).toBeGreaterThan(0);
+    for (const a of accepted) expect(a.acceptedAt?.getTime()).toBe(a.createdAt.getTime());
   });
 
   it('reset persona: restores persona content, keeps sessions/consent, leaves seed and visitor alone', async () => {

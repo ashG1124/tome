@@ -154,6 +154,7 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
       pinned: false,
       createdById: answer.createdById,
       createdAt: answer.createdAt,
+      acceptedAt: answer.status === 'accepted' ? answer.createdAt : null,
     };
     await tx.answer.upsert({
       where: { id: answer.id },
