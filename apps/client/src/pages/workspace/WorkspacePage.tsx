@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { Navigate, useParams, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
 import { ErrorNotice, Icon } from '../../shared/ui';
+import { finishAvailability, FinishModal } from './finish';
 import { IconMenu } from './IconMenu';
 import { pageIdFromSearch, pageMenu } from './pageMenu';
 import { PromptBar, type PromptSubmit } from './PromptBar';
@@ -24,6 +25,14 @@ export function WorkspacePage() {
   const addingPage = useRef(false);
   // 화면에 잠금을 보여 주는 값(ref 는 연타를 막고, 이 값은 + 버튼을 잠근다)
   const [adding, setAdding] = useState(false);
+  const navigate = useNavigate();
+  const [finishOpen, setFinishOpen] = useState(false);
+  const finishButton = useRef<HTMLElement | null>(null);
+  const candidates = useQuery({
+    queryKey: ['finish-candidates', id],
+    queryFn: () => api.getFinishCandidates(id),
+    enabled: finishOpen,
+  });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['workspace', id] });
   // 입력 중인 글은 페이지마다 화면에만 보존한다(새로고침 전까지).
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -34,6 +43,12 @@ export function WorkspacePage() {
   const pageId = workspace.data?.currentPageId ?? '';
   const bar = workspace.data ? promptBarInfo(workspace.data) : null;
   const menu = workspace.data ? pageMenu(workspace.data) : null;
+
+  // 완료 모달을 끝내면 서가를 다시 받고 홈으로 간다. 홈은 done 플래시를 띄운다.
+  const finished = () => {
+    void queryClient.invalidateQueries({ queryKey: ['projects'] });
+    void navigate('/', { state: { flash: 'done' } });
+  };
 
   // 새 페이지를 만들고 그 페이지로 옮긴다. 연달아 눌러도 한 번만 만든다.
   const addPage = async () => {
@@ -93,6 +108,17 @@ export function WorkspacePage() {
             onSelectPage={(next) => setSearch({ page: next })}
             onAddPage={() => void addPage()}
             addingPage={adding}
+            finish={
+              workspace.data
+                ? {
+                    ...finishAvailability(workspace.data),
+                    onOpen: () => {
+                      finishButton.current = document.activeElement as HTMLElement | null;
+                      setFinishOpen(true);
+                    },
+                  }
+                : undefined
+            }
           />
         </div>
       ) : null}
@@ -118,6 +144,24 @@ export function WorkspacePage() {
           </div>
         </div>
       ) : null}
+      <FinishModal
+        open={finishOpen}
+        onOpenChange={setFinishOpen}
+        candidates={candidates.data?.answers}
+        candidatesError={candidates.error}
+        onRetryCandidates={() => void candidates.refetch()}
+        steps={{
+          finish: (request) => api.finishProject(id, request),
+          post: () => api.postProject(id, { posted: true }),
+        }}
+        onFinished={finished}
+        onCloseAutoFocus={(event) => {
+          // 모달을 닫으면 끝내기 버튼으로 포커스를 돌려준다.
+          if (finishButton.current === null) return;
+          event.preventDefault();
+          finishButton.current.focus();
+        }}
+      />
     </section>
   );
 }
