@@ -131,31 +131,54 @@ export function countSessions(events: Pick<CalcEvent, 'sessionId' | 'serverTs'>[
   return sessions;
 }
 
-/** 축 A: 값 변화 크기 평균. 읽을 수 없는 신호는 그 신호만 뺀다. */
+/** 축 A 의 조작 한 건이 주는 변화 크기(0~1). 읽을 수 없는 신호는 그 신호만 뺀다. 신호가 없으면 null. */
+function intensityOf(event: CalcEvent): number | null {
+  if (!STRENGTH_TYPES.has(event.type)) return null;
+  const signals: number[] = [];
+  const weightAi = num(event.payload.weightAi);
+  const weightFinal = num(event.payload.weightFinal);
+  if (weightAi !== null && weightFinal !== null) {
+    signals.push(Math.abs(weightFinal - weightAi) / IDENTITY_CONSTANTS.WEIGHT_RANGE);
+  }
+  const padAi = point(event.payload.padAi);
+  const padFinal = point(event.payload.padFinal);
+  if (padAi && padFinal) {
+    const dist = Math.hypot(padFinal.x - padAi.x, padFinal.y - padAi.y);
+    signals.push(dist / IDENTITY_CONSTANTS.PAD_DIST_MAX);
+  }
+  const n = num(event.payload.n);
+  const delta = num(event.payload.orderDelta);
+  if (event.payload.orderChanged === false) signals.push(0);
+  else if (delta !== null && n !== null && n > 0) signals.push(delta / n);
+  return signals.length > 0 ? clamp(mean(signals), 0, 1) : null;
+}
+
+/** 축 A: 값 변화 크기 평균. */
 function intensityScore(events: CalcEvent[]): number | null {
   const perEvent: number[] = [];
   for (const event of events) {
-    if (!STRENGTH_TYPES.has(event.type)) continue;
-    const signals: number[] = [];
-    const weightAi = num(event.payload.weightAi);
-    const weightFinal = num(event.payload.weightFinal);
-    if (weightAi !== null && weightFinal !== null) {
-      signals.push(Math.abs(weightFinal - weightAi) / IDENTITY_CONSTANTS.WEIGHT_RANGE);
-    }
-    const padAi = point(event.payload.padAi);
-    const padFinal = point(event.payload.padFinal);
-    if (padAi && padFinal) {
-      const dist = Math.hypot(padFinal.x - padAi.x, padFinal.y - padAi.y);
-      signals.push(dist / IDENTITY_CONSTANTS.PAD_DIST_MAX);
-    }
-    const n = num(event.payload.n);
-    const delta = num(event.payload.orderDelta);
-    if (event.payload.orderChanged === false) signals.push(0);
-    else if (delta !== null && n !== null && n > 0) signals.push(delta / n);
-    if (signals.length > 0) perEvent.push(clamp(mean(signals), 0, 1));
+    const value = intensityOf(event);
+    if (value !== null) perEvent.push(value);
   }
   if (perEvent.length === 0) return null;
   return toScore((mean(perEvent) - IDENTITY_CONSTANTS.REF_A) * 2);
+}
+
+/** 축 B 의 조작 한 건: 유저 주도면 true, 자율 존중이면 false, 읽을 수 없으면 null. */
+function leadingOf(event: CalcEvent): boolean | null {
+  if (event.type === 'draft_apply' && typeof event.payload.changed === 'boolean') {
+    return event.payload.changed;
+  }
+  if (event.type === 'flag_decision') {
+    if (event.payload.state === 'kept') return true;
+    if (event.payload.state === 'removed') return false;
+  } else if (
+    event.type === 'priority_drag_reorder' &&
+    typeof event.payload.orderChanged === 'boolean'
+  ) {
+    return event.payload.orderChanged;
+  }
+  return null;
 }
 
 /** 축 B: 유저 주도(+) 대 자율 존중(−). */
@@ -163,18 +186,7 @@ function collaborationScore(events: CalcEvent[]): number | null {
   let lead = 0;
   let respect = 0;
   for (const event of events) {
-    let leading: boolean | null = null;
-    if (event.type === 'draft_apply' && typeof event.payload.changed === 'boolean') {
-      leading = event.payload.changed;
-    } else if (event.type === 'flag_decision') {
-      if (event.payload.state === 'kept') leading = true;
-      else if (event.payload.state === 'removed') leading = false;
-    } else if (
-      event.type === 'priority_drag_reorder' &&
-      typeof event.payload.orderChanged === 'boolean'
-    ) {
-      leading = event.payload.orderChanged;
-    }
+    const leading = leadingOf(event);
     if (leading === true) lead += 1;
     else if (leading === false) respect += 1;
   }
@@ -183,20 +195,49 @@ function collaborationScore(events: CalcEvent[]): number | null {
   return toScore((lead - respect) / total);
 }
 
+/** 축 C 의 조작 한 건이 건드린 노드의 성향. 읽을 수 없으면 null. */
+function basisDomainOf(event: CalcEvent): 'evidence' | 'intuitive' | null {
+  if (!DOMAIN_TYPES.has(event.type)) return null;
+  const nodeId = nodeIdOf(event);
+  return nodeId === null ? null : domainOf(nodeId);
+}
+
 /** 축 C: (근거 노드 − 직관 노드) / 합. 문서의 공식과 테스트 표(T-2)를 그대로 따른다. */
 function basisScore(events: CalcEvent[]): number | null {
   let evidence = 0;
   let intuitive = 0;
   for (const event of events) {
-    if (!DOMAIN_TYPES.has(event.type)) continue;
-    const nodeId = nodeIdOf(event);
-    const domain = nodeId === null ? null : domainOf(nodeId);
+    const domain = basisDomainOf(event);
     if (domain === 'evidence') evidence += 1;
     else if (domain === 'intuitive') intuitive += 1;
   }
   const total = evidence + intuitive;
   if (total === 0) return null;
   return toScore((evidence - intuitive) / total);
+}
+
+export type SignalAxis = 'scaleIntensity' | 'aiRelation' | 'decisionBasis';
+
+/**
+ * 축 점수가 읽는 조작마다 방향 부호를 하나씩 돌려준다(+1 / −1 / 0). 길이가 그 축의 조작 전체 수다.
+ * 점수 공식과 같은 입력 정의를 쓴다: 축 A 는 평균 강도 기준(REF_A)보다 크면 +, 작으면 −, 같으면 0,
+ * 축 B 는 유저 주도 +, 자율 존중 −, 축 C 는 근거 노드 +, 직관 노드 −.
+ */
+export function axisSignals(events: CalcEvent[], axis: SignalAxis): number[] {
+  const signs: number[] = [];
+  for (const event of events) {
+    if (axis === 'scaleIntensity') {
+      const value = intensityOf(event);
+      if (value !== null) signs.push(Math.sign(value - IDENTITY_CONSTANTS.REF_A));
+    } else if (axis === 'aiRelation') {
+      const leading = leadingOf(event);
+      if (leading !== null) signs.push(leading ? 1 : -1);
+    } else {
+      const domain = basisDomainOf(event);
+      if (domain !== null) signs.push(domain === 'evidence' ? 1 : -1);
+    }
+  }
+  return signs;
 }
 
 /** 축 D: 세트당 건드린 key·시도·version 을 기준값에 견줘 평균. 기준과 같으면 0, 많으면 발산(+). */

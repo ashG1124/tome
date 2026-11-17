@@ -4,6 +4,7 @@ import {
   ConnectionSchema,
   RemixCandidatesResponseSchema,
   RemixStateSchema,
+  SetRemixPartnerResponseSchema,
   SetRemixPartnerRequestSchema,
 } from './remix.js';
 import { ID_A, ID_B, creator } from './testing/fixtures.js';
@@ -33,6 +34,15 @@ describe('remix schemas', () => {
 
   it('parses remix state', () => {
     expect(RemixStateSchema.safeParse({ partner: creator, snapshotId: ID_B }).success).toBe(true);
+  });
+
+  it('parses a set-partner response with or without a partner', () => {
+    expect(SetRemixPartnerResponseSchema.safeParse({ remix: null }).success).toBe(true);
+    expect(
+      SetRemixPartnerResponseSchema.safeParse({ remix: { partner: creator, snapshotId: ID_B } })
+        .success,
+    ).toBe(true);
+    expect(SetRemixPartnerResponseSchema.safeParse({}).success).toBe(false);
   });
 
   it('parses connections and rejects unknown status', () => {

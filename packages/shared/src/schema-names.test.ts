@@ -77,6 +77,7 @@ const EXPECTED_NAMES = [
   'CreatorProfileResponseSchema',
   'RemixCandidatesResponseSchema',
   'SetRemixPartnerRequestSchema',
+  'SetRemixPartnerResponseSchema',
   'RemixStateSchema',
   'ConnectionSchema',
   'ConnectionListResponseSchema',

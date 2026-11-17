@@ -45,3 +45,6 @@ export const ConnectionListResponseSchema = z.object({
   connections: z.array(ConnectionSchema),
 });
 export type ConnectionListResponse = z.infer<typeof ConnectionListResponseSchema>;
+
+export const SetRemixPartnerResponseSchema = z.object({ remix: RemixStateSchema.nullable() });
+export type SetRemixPartnerResponse = z.infer<typeof SetRemixPartnerResponseSchema>;
