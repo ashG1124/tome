@@ -60,7 +60,55 @@ export const cases: DesignCase[] = [
     height: 48,
     allowedDiff: BORDER_DIFF,
   },
+  // ---- 홈 서가(#23): 사진 없는 카드(좁을 때) 3종류와 + Project 칸
+  {
+    id: 'home-thumbnail/my-work',
+    ref: 'design-ref/components/home-thumbnail/project-type-my-work-bg-img-off-hover-off__1226-80117.png',
+    width: 108,
+    height: 192,
+    allowedDiff: cardTextDiff(0.1003),
+  },
+  {
+    id: 'home-thumbnail/remix',
+    ref: 'design-ref/components/home-thumbnail/project-type-remix-bg-img-off-hover-off__1226-79005.png',
+    width: 108,
+    height: 192,
+    allowedDiff: cardTextDiff(0.0976),
+  },
+  {
+    // 이 시안만 제목이 다른 변형보다 1px 아래(1226:79054 top 183 vs 182)라 조금 더 다르다.
+    id: 'home-thumbnail/derive',
+    ref: 'design-ref/components/home-thumbnail/project-type-derive-bg-img-off-hover-off__1226-79054.png',
+    width: 108,
+    height: 192,
+    allowedDiff: cardTextDiff(0.1384),
+  },
+  {
+    // 시안 그림은 점선 테두리가 상자 밖으로 1px 씩 나와 110×194 다. 하네스가 1px 띄워 그린다.
+    // 실측: diffRatio 6.20% → max 6.7%(+0.5%p).
+    id: 'thumbnail-new-project/default',
+    ref: 'design-ref/components/thumbnail-new-project/new-project__1185-58168.png',
+    width: 110,
+    height: 194,
+    allowedDiff: {
+      max: 0.067,
+      reason:
+        '점선 3:1(--color-border-input #898F9C, 시안 #A4A9B3)과 글자·아이콘 색 진하게(#A4A9B3 → #6A7281), 브라우저 점선 간격',
+    },
+  },
 ];
+
+/**
+ * 홈 카드: 한글 제목(18px SemiBold 3줄)과 태그 글자의 테두리 픽셀이 시안 그림(Figma 정적 SemiBold)과
+ * 브라우저(Pretendard Variable 600) 사이에서 다르게 그려진다. 위치·크기·색은 같다(±2px 이동 시험에서 0px 이 가장 작음,
+ * 제목 색 #121212·태그 바탕 같음). 실측값 + 0.5%p 를 상한으로 둔다.
+ */
+function cardTextDiff(max: number): AllowedDiff {
+  return {
+    max,
+    reason: '한글 제목·태그 글자 테두리 렌더링 차이(Figma 정적 폰트 vs 브라우저 가변 폰트)',
+  };
+}
 
 // ---- 공통 부품: 플래시(1187:62709)·탭(Identity Segment 1897:65652)
 const FLASH_DIR = 'design-ref/components/flash-message';
