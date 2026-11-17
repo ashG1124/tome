@@ -26,6 +26,8 @@ pnpm install
 
 팀 안내에 따라 자산 저장소를 저장소 맨 위 `.tome-assets/`에 clone 하고, 작업 전에 `pnpm assets:pull`로 최신을 받습니다. 이 명령이 `design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`에 파일을 복사합니다(모두 git 제외, 커밋하지 마세요). 없어도 빈 자리로 화면은 뜹니다.
 
+배포본(Vercel)은 빌드 때 환경변수 `ASSETS_REPO`(`<owner>/<repo>` 형식)와 `ASSETS_REPO_TOKEN`으로 자산 저장소에서 `icons`·`brand`만 받아 복사합니다(`scripts/assets-build-fetch.mjs`). 환경변수가 없으면 받기를 건너뛰고 빈 자리로 빌드합니다. 자산 저장소만 바뀌었다면 코드 변경이 없어도 Vercel에서 Redeploy 해야 반영됩니다.
+
 ## 화면만 실행 (서버·Docker 없이 가짜 응답 모드)
 
 ```bash
