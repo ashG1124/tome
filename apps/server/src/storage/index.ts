@@ -10,4 +10,4 @@ export {
 } from './object-storage';
 export { R2ObjectStorage } from './r2-object-storage';
 export { createObjectStorage, StorageModule } from './storage.module';
-export { makeThumbnail, THUMB_MAX_SIDE, THUMB_QUALITY } from './thumbnail';
+export { makeEditBase, makeThumbnail, THUMB_MAX_SIDE, THUMB_QUALITY } from './thumbnail';

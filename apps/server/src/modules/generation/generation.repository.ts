@@ -124,6 +124,13 @@ export class GenerationRepository {
     });
   }
 
+  findSet(db: Db, id: string) {
+    return db.promptSet.findUnique({
+      where: { id },
+      select: { id: true, pageId: true, project: { select: PROJECT_ACCESS_SELECT } },
+    });
+  }
+
   listSetsWithAnswers(db: Db, pageId: string) {
     return db.promptSet.findMany({
       where: { pageId },
@@ -161,6 +168,46 @@ export class GenerationRepository {
         nextStage: 'analyze',
         status: 'pending',
         appliedConnectionIds: [],
+        idempotencyKey: data.idempotencyKey,
+        createdBySessionId: data.sessionId,
+      },
+      select: { id: true },
+    });
+  }
+
+  /** 같은 세트의 진행 중 revise job 을 모두 취소한다. 바뀐 행 수. */
+  async cancelActiveReviseJobs(tx: Tx, setId: string, now: Date): Promise<number> {
+    const result = await tx.generationJob.updateMany({
+      where: { setId, kind: 'revise', status: { in: [...ACTIVE_JOB_STATUSES] } },
+      data: { status: 'cancelled', finishedAt: now },
+    });
+    return result.count;
+  }
+
+  createReviseJob(
+    tx: Tx,
+    data: {
+      projectId: string;
+      setId: string;
+      sessionId: string;
+      idempotencyKey: string;
+      baseAnswerId: string;
+      requestedNodes: Prisma.InputJsonValue;
+      appliedConnectionIds: string[];
+      startStage: string;
+    },
+  ): Promise<{ id: string }> {
+    return tx.generationJob.create({
+      data: {
+        projectId: data.projectId,
+        setId: data.setId,
+        kind: 'revise',
+        baseAnswerId: data.baseAnswerId,
+        requestedNodes: data.requestedNodes,
+        appliedConnectionIds: data.appliedConnectionIds,
+        startStage: data.startStage,
+        nextStage: data.startStage,
+        status: 'pending',
         idempotencyKey: data.idempotencyKey,
         createdBySessionId: data.sessionId,
       },
@@ -335,6 +382,32 @@ export class GenerationRepository {
     verification: Prisma.InputJsonValue,
   ): Promise<void> {
     await tx.answer.update({ where: { id: answerId }, data: { verification } });
+  }
+
+  /** 새 미리보기가 생기면 같은 세트의 이전 draft 를 discarded 로 민다. */
+  async discardOtherDrafts(tx: Tx, setId: string, keepId: string): Promise<void> {
+    await tx.answer.updateMany({
+      where: { setId, status: 'draft', id: { not: keepId } },
+      data: { status: 'discarded' },
+    });
+  }
+
+  /** draft 일 때만 accepted 로 바꾼다. 바뀐 행 수. */
+  async acceptDraft(tx: Tx, id: string, number: number): Promise<number> {
+    const result = await tx.answer.updateMany({
+      where: { id, status: 'draft' },
+      data: { status: 'accepted', number },
+    });
+    return result.count;
+  }
+
+  /** 값이 실제로 바뀔 때만 갱신한다. 바뀐 행 수. */
+  async setPinned(tx: Tx, id: string, pinned: boolean): Promise<number> {
+    const result = await tx.answer.updateMany({
+      where: { id, pinned: !pinned },
+      data: { pinned },
+    });
+    return result.count;
   }
 
   findAnswer(db: Db, id: string): Promise<AnswerRow | null> {

@@ -32,6 +32,11 @@ export class R2ObjectStorage implements ObjectStorage {
     });
   }
 
+  async get(key: string): Promise<Uint8Array> {
+    const res = await this.fetchOk(this.urlOf(key), { method: 'GET' });
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
   async signedGetUrl(key: string, opts: SignedUrlOptions): Promise<string> {
     const query = new URLSearchParams({ 'X-Amz-Expires': String(opts.ttlSeconds) });
     if (opts.downloadName !== undefined) {
@@ -59,6 +64,10 @@ export class R2ObjectStorage implements ObjectStorage {
   }
 
   private async send(url: string, init: RequestInit): Promise<void> {
+    await this.fetchOk(url, init);
+  }
+
+  private async fetchOk(url: string, init: RequestInit): Promise<Response> {
     let res: Response;
     try {
       res = await this.aws.fetch(url, init);
@@ -66,5 +75,6 @@ export class R2ObjectStorage implements ObjectStorage {
       throw new AppError('INTERNAL');
     }
     if (!res.ok) throw new AppError('INTERNAL');
+    return res;
   }
 }
