@@ -3,6 +3,7 @@
 // 이 파일은 wrangler 가 따로 번들한다. 서버 빌드(tsconfig 의 src)에는 들어가지 않는다.
 import { Container, getContainer } from '@cloudflare/containers';
 import { env } from 'cloudflare:workers';
+import { isWakeTime, parseWakeWindows } from './wake';
 
 type WorkerEnv = {
   TOME_SERVER: Parameters<typeof getContainer>[0];
@@ -17,6 +18,9 @@ type WorkerEnv = {
   R2_SECRET_ACCESS_KEY: string;
   // 배포할 때 `--var APP_VERSION:<커밋 해시>`로 넣는다. /health 의 version 으로 보인다.
   APP_VERSION?: string;
+  // 운영 시간표(KST, JSON). 이 시간 안에만 cron 이 서버를 깨운다. 형식은 worker/wake.ts.
+  // Worker 에서만 쓰므로 컨테이너(envVars)로는 넘기지 않는다.
+  WAKE_WINDOWS?: string;
 };
 
 const secrets = env as unknown as WorkerEnv;
@@ -56,5 +60,18 @@ export default {
     if (clientIp) headers.set('X-Tome-Client-Ip', clientIp);
     else headers.delete('X-Tome-Client-Ip');
     return getContainer(workerEnv.TOME_SERVER, 'main').fetch(new Request(request, { headers }));
+  },
+
+  // wrangler.toml 의 cron(5분마다)이 부른다(#45).
+  // 운영 시간표 안이면 /health 를 불러 서버를 깨워 둔다. 요청이 오면 잠드는 시간(10분)이 다시 시작된다.
+  // 시간표 밖이면 아무것도 하지 않아 서버는 평소처럼 잠든다.
+  async scheduled(controller: ScheduledController, workerEnv: WorkerEnv): Promise<void> {
+    const windows = parseWakeWindows(workerEnv.WAKE_WINDOWS);
+    if (!isWakeTime(new Date(controller.scheduledTime), windows)) return;
+    const started = Date.now();
+    const res = await getContainer(workerEnv.TOME_SERVER, 'main').fetch(
+      new Request('https://tome-server/health'),
+    );
+    console.log(JSON.stringify({ wake: res.status, ms: Date.now() - started }));
   },
 };
