@@ -63,11 +63,16 @@ describe('프로필 화면 /creators/:id', () => {
     expect(screen.getByText(COPY['P-05']).nextElementSibling?.textContent).toBe('—');
   });
 
-  it('비공개 아이덴티티는 오류 없이 "기록 없음"으로 그린다', async () => {
+  it('남의 비공개 아이덴티티는 오류 없이 Identity 탭 좌표 자리에 P-20 을 보여 준다', async () => {
     await signIn('?fakeIdentity=private');
     renderAt(`/creators/${OTHER?.id ?? ''}`);
     expect(await screen.findByRole('heading', { level: 1, name: OTHER?.displayName })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+    const tab = screen.getByRole('tab', { name: COPY['P-01b'] });
+    fireEvent.mouseDown(tab);
+    fireEvent.click(tab);
+    expect(await screen.findAllByText(COPY['P-20'])).toHaveLength(2);
+    expect(screen.queryByText(COPY['P-17'])).toBeNull();
   });
 
   it('없는 사람이면 오류 안내와 다시 시도 버튼이 보인다', async () => {

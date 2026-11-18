@@ -6,12 +6,12 @@ import { COPY } from '../../shared/copy';
 import { ErrorNotice } from '../../shared/ui';
 import { ProfileView } from './ProfileView';
 
-/** 비공개 아이덴티티(403)는 오류로 보이지 않고 "아이덴티티 없음"으로 그린다. */
-async function identityOrNull(creatorId: string): Promise<IdentityResponse | null> {
+/** 남의 비공개 아이덴티티(403 IDENTITY_PRIVATE)는 오류 안내 대신 'private' 로 받아 좌표 자리에 P-20 을 보여 준다. */
+async function identityOrPrivate(creatorId: string): Promise<IdentityResponse | 'private'> {
   try {
     return await api.getIdentity(creatorId);
   } catch (error) {
-    if (error instanceof ApiRequestError && error.code === 'IDENTITY_PRIVATE') return null;
+    if (error instanceof ApiRequestError && error.code === 'IDENTITY_PRIVATE') return 'private';
     throw error;
   }
 }
@@ -26,7 +26,7 @@ export function ProfilePage() {
   const profile = useQuery({ queryKey: ['creator', id], queryFn: () => api.getCreator(id) });
   const identity = useQuery({
     queryKey: ['creator', id, 'identity'],
-    queryFn: () => identityOrNull(id),
+    queryFn: () => identityOrPrivate(id),
   });
   const compare = useQuery({ queryKey: ['identity-compare'], queryFn: api.getCompare });
 
@@ -51,7 +51,8 @@ export function ProfilePage() {
           key={id}
           creator={profile.data.creator}
           works={profile.data.works}
-          identity={identity.data}
+          identity={identity.data === 'private' ? null : identity.data}
+          identityPrivate={identity.data === 'private'}
           compare={compare.data ?? null}
           onSelectPartner={(creatorId) =>
             void navigate(`/creators/${encodeURIComponent(creatorId)}`)

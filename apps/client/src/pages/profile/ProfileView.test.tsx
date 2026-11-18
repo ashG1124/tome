@@ -83,13 +83,15 @@ const COMPARE: CompareResponse = {
 function setup({
   tab = 'identity',
   data = identity(),
-}: { tab?: ProfileTab; data?: IdentityResponse | null } = {}) {
+  identityPrivate = false,
+}: { tab?: ProfileTab; data?: IdentityResponse | null; identityPrivate?: boolean } = {}) {
   const onSelectPartner = vi.fn();
   render(
     <ProfileView
       creator={JULIAN}
       works={WORKS}
       identity={data}
+      identityPrivate={identityPrivate}
       compare={COMPARE}
       onSelectPartner={onSelectPartner}
       initialTab={tab}
@@ -182,6 +184,13 @@ describe('ProfileView', () => {
     setup({ tab: 'identity', data: null });
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     expect(screen.getAllByText(COPY['P-17'])).toHaveLength(2);
+  });
+
+  it('남의 비공개 아이덴티티면 좌표 자리에 기록 중 대신 P-20 을 보여 준다', () => {
+    setup({ tab: 'identity', data: null, identityPrivate: true });
+    expect(screen.getAllByText(COPY['P-20'])).toHaveLength(2);
+    expect(screen.queryByText(COPY['P-17'])).toBeNull();
+    expect(screen.queryByText(COPY['P-08'])).toBeNull();
   });
 
   it('Compare 탭: 다른 창작자 아바타를 누르면 알리고, 나는 Me 로 표시된다', () => {

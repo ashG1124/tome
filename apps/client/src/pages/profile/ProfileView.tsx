@@ -40,6 +40,8 @@ interface ProfileViewProps {
   works: readonly ProjectSummary[];
   /** 아이덴티티 스냅샷과 숨김 표. 아직 없으면 null(기록 중) */
   identity: IdentityResponse | null;
+  /** 남의 비공개 아이덴티티(IDENTITY_PRIVATE)면 true. 좌표 자리에 "기록 중" 대신 P-20 을 보여 준다 */
+  identityPrivate?: boolean;
   /** Compare 탭 데이터. 아직 없으면 null */
   compare: CompareResponse | null;
   /** Compare 탭에서 다른 창작자 아바타를 눌렀을 때(리믹스 진입은 T10에서 연결) */
@@ -58,6 +60,7 @@ export function ProfileView({
   creator,
   works,
   identity,
+  identityPrivate = false,
   compare,
   onSelectPartner,
   initialTab = 'work',
@@ -70,6 +73,7 @@ export function ProfileView({
   const metrics =
     identity === null ? null : metricsView(identity.snapshot.metrics, locale, timeZone);
   const recording = COPY['P-17'];
+  const identityEmpty = identityPrivate ? COPY['P-20'] : recording;
 
   const identityMarkers = (chart: ChartKey): ChartMarker[] => {
     const point = view.points[chart];
@@ -114,7 +118,8 @@ export function ProfileView({
     <div className="flex items-start gap-[var(--space-padding-8)]">
       <aside className="flex w-[var(--size-profile-column)] shrink-0 flex-col gap-[var(--space-padding-4)]">
         <ProfileCard creator={creator} />
-        <MetricsPanel metrics={metrics} provisional={view.provisional} />
+        {/* 남의 비공개면 "바뀔 수 있음"(P-08)은 뜻이 맞지 않아 보이지 않는다 */}
+        <MetricsPanel metrics={metrics} provisional={view.provisional && !identityPrivate} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-padding-8)]">
         <Tabs
@@ -133,7 +138,7 @@ export function ProfileView({
                   title={COPY[IDENTITY_TITLES[chart].title]}
                   help={COPY[IDENTITY_TITLES[chart].help]}
                   markers={identityMarkers(chart)}
-                  emptyMessage={view.state === 'recording' ? recording : undefined}
+                  emptyMessage={view.state === 'recording' ? identityEmpty : undefined}
                 />
               ))}
               {identity !== null && view.state === 'ready' ? (
