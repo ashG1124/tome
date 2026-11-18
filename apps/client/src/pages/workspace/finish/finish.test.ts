@@ -58,10 +58,15 @@ function workspace(sets: PromptSet[], otherPageSets = 0): WorkspaceParts {
 }
 
 function apiError(code: 'VALIDATION_FAILED' | 'NOT_FINISHABLE' | 'INTERNAL', retryable: boolean) {
-  return new ApiRequestError(code === 'INTERNAL' ? 500 : 409, {
+  const status = code === 'INTERNAL' ? 500 : code === 'VALIDATION_FAILED' ? 400 : 409;
+  return new ApiRequestError(status, {
     code,
     message: code,
     retryable,
+    // 서버의 제목 400 은 details.fields 에 title 이 온다(#113 부터 이때만 E-04)
+    ...(code === 'VALIDATION_FAILED'
+      ? { details: { fields: [{ path: 'title', message: 'Required' }] } }
+      : {}),
   });
 }
 

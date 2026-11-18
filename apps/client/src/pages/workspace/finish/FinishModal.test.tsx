@@ -74,8 +74,16 @@ function fillAndConfirm(title = 'Neon street') {
   return within(dialog);
 }
 
+// 서버의 제목 400 은 details.fields 에 title 이 온다(#113 부터 이때만 E-04)
+const TITLE_FIELDS = { fields: [{ path: 'title', message: 'Required' }] };
+
 const apiError = (code: 'NOT_FINISHABLE' | 'VALIDATION_FAILED', retryable = false) =>
-  new ApiRequestError(code === 'NOT_FINISHABLE' ? 409 : 400, { code, message: code, retryable });
+  new ApiRequestError(code === 'NOT_FINISHABLE' ? 409 : 400, {
+    code,
+    message: code,
+    retryable,
+    ...(code === 'VALIDATION_FAILED' ? { details: TITLE_FIELDS } : {}),
+  });
 
 afterEach(() => {
   vi.useRealTimers();
