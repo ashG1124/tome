@@ -32,6 +32,7 @@ import {
 } from '@tome/shared';
 import { FAKE_PAGE_IDS, FAKE_PROJECTS } from './data';
 import { FakeFailure } from './errors';
+import { FAKE_OTHER_CREATORS } from './identity';
 import {
   FAKE_IMAGE_URL,
   FAKE_STAGE_ORDER,
@@ -105,6 +106,8 @@ export interface FakeStore {
   projects: ProjectRecord[];
   jobs: JobRecord[];
   idempotency: Record<string, IdempotencyRecord>;
+  /** 리믹스 즐겨찾기한 창작자 id(넣은 순서). 이 칸이 생기기 전에 저장한 데이터에는 없다(fake/remix.ts). */
+  favorites?: string[];
 }
 
 let store: FakeStore | null = null;
@@ -283,8 +286,18 @@ export function createProject(
   body: CreateProjectRequest,
   options: FakeGenerationOptions = NO_OPTIONS,
 ): CreateProjectResponse {
-  // 첨부는 첨부 단계(T11) 전까지 서버도 400 이다. 리믹스 상대(remixPartnerId)는 리믹스 단계에서 다룬다.
+  // 첨부는 첨부 단계(T11) 전까지 서버도 400 이다.
   if (body.attachmentId !== undefined) throw new FakeFailure('VALIDATION_FAILED');
+  // 리믹스 상대는 있는 다른 창작자일 때만 저장한다(서버와 같다). 나 자신이나 모르는 id 는 400.
+  const partner =
+    body.remixPartnerId === undefined
+      ? undefined
+      : FAKE_OTHER_CREATORS.find((creator) => creator.id === body.remixPartnerId);
+  if (body.remixPartnerId !== undefined && partner === undefined) {
+    throw new FakeFailure('VALIDATION_FAILED', {
+      fields: [{ path: 'remixPartnerId', message: 'Choose another creator.' }],
+    });
+  }
   const prompt = resolvePrompt(body);
   if (prompt !== undefined) assertWithinLimitsOrSample(options, body.presetKey, prompt);
   for (const record of s.projects) record.summary.shelfPosition += 1;
@@ -298,6 +311,7 @@ export function createProject(
       lastEditedAt: now(),
       shelfPosition: 0,
       kind: 'original',
+      ...(partner === undefined ? {} : { remixPartner: { ...partner } }),
     },
     pages: [{ id: newId(), index: 0 }],
     sets: [],
@@ -673,4 +687,17 @@ export function cancelJob(s: FakeStore, jobId: string): CancelJobResponse {
   if (job.status === 'succeeded' || job.status === 'failed') throw new FakeFailure('JOB_CLOSED');
   job.status = 'cancelled';
   return { job: toJob(job) };
+}
+
+// ---- 리믹스 상대(fake/remix.ts 가 규칙을 보고 부른다) ----
+
+/** 내 프로젝트의 리믹스 상대를 바꾼다. null 이면 해제. 없는 프로젝트는 NOT_FOUND. */
+export function setProjectRemixPartner(
+  s: FakeStore,
+  projectId: string,
+  partner: ProjectSummary['remixPartner'] | null,
+): void {
+  const record = projectOf(s, projectId);
+  if (partner === null || partner === undefined) delete record.summary.remixPartner;
+  else record.summary.remixPartner = { ...partner };
 }

@@ -26,6 +26,9 @@ import {
   PostProjectRequestSchema,
   PostProjectResponseSchema,
   ProjectListResponseSchema,
+  RemixCandidatesResponseSchema,
+  SetRemixPartnerRequestSchema,
+  SetRemixPartnerResponseSchema,
   UpdateProjectRequestSchema,
   UpdateProjectResponseSchema,
   WorkspaceResponseSchema,
@@ -34,6 +37,7 @@ import type { HttpMethod } from '../transport';
 import { FAKE_AGREED_AT, FAKE_CREATOR, FAKE_NOTICE_VERSION, FAKE_TOKEN, fakeHealth } from './data';
 import { FakeFailure } from './errors';
 import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
+import { addFavorite, remixCandidates, removeFavorite, setRemixPartner } from './remix';
 import { fakeState, setFakeConsented } from './state';
 import {
   acceptAnswer,
@@ -308,6 +312,40 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     pattern: '/identity/compare',
     response: CompareResponseSchema,
     handle: () => fakeCompare(fakeState.identityCase),
+  }),
+  // ---- 리믹스(서버 PR #102). ?fakeIdentity=private 면 후보 0명·상대 지정 IDENTITY_PRIVATE(fake/remix.ts)
+  route({
+    method: 'GET',
+    pattern: '/remix/candidates',
+    response: RemixCandidatesResponseSchema,
+    handle: ({ query }) => remixCandidates(store(), query.get('tab'), fakeState.identityCase),
+  }),
+  route({
+    method: 'PUT',
+    pattern: '/me/favorites/:creatorId',
+    // 204: 본문이 없다
+    response: { parse: () => undefined },
+    status: 204,
+    handle: ({ params }) => addFavorite(store(), params.creatorId ?? ''),
+  }),
+  route({
+    method: 'DELETE',
+    pattern: '/me/favorites/:creatorId',
+    response: { parse: () => undefined },
+    status: 204,
+    handle: ({ params }) => removeFavorite(store(), params.creatorId ?? ''),
+  }),
+  route({
+    method: 'PUT',
+    pattern: '/projects/:id/remix-partner',
+    response: SetRemixPartnerResponseSchema,
+    handle: ({ params, body }) =>
+      setRemixPartner(
+        store(),
+        params.id ?? '',
+        parseBody(SetRemixPartnerRequestSchema, body).partnerId,
+        fakeState.identityCase,
+      ),
   }),
 ];
 

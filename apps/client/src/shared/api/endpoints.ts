@@ -28,6 +28,9 @@ import {
   PostProjectRequestSchema,
   PostProjectResponseSchema,
   ProjectListResponseSchema,
+  RemixCandidatesResponseSchema,
+  SetRemixPartnerRequestSchema,
+  SetRemixPartnerResponseSchema,
   UpdateProjectRequestSchema,
   UpdateProjectResponseSchema,
   WorkspaceResponseSchema,
@@ -228,5 +231,41 @@ export const api = {
       path: `/jobs/${segment(jobId)}/cancel`,
       schema: CancelJobResponseSchema,
       idempotent: true,
+    }),
+
+  // ---- 리믹스(서버 PR #102). Connection 은 캔버스 단계에서 더한다.
+
+  /** 리믹스 후보. rising 은 라이징 순서(없으면 시드 순서), favorite 은 즐겨찾기한 순서. 나·비공개는 빠진다. */
+  getRemixCandidates: (tab: 'rising' | 'favorite') =>
+    request({
+      method: 'GET',
+      path: `/remix/candidates?tab=${tab}`,
+      schema: RemixCandidatesResponseSchema,
+    }),
+
+  /** 즐겨찾기(204). 자기 자신은 VALIDATION_FAILED. 같은 사람을 다시 넣어도 그대로라 멱등 키가 없다. */
+  addFavorite: (creatorId: Id) =>
+    request({
+      method: 'PUT',
+      path: `/me/favorites/${segment(creatorId)}`,
+      // 204 라 본문이 없다
+      schema: { parse: () => undefined },
+    }),
+
+  /** 즐겨찾기 해제(204). 없던 사람이어도 성공한다. */
+  removeFavorite: (creatorId: Id) =>
+    request({
+      method: 'DELETE',
+      path: `/me/favorites/${segment(creatorId)}`,
+      schema: { parse: () => undefined },
+    }),
+
+  /** 리믹스 상대 지정(partnerId) · 해제(null). 비공개 상대는 IDENTITY_PRIVATE, 나·visitor 는 VALIDATION_FAILED. */
+  setRemixPartner: (projectId: Id, partnerId: Id | null) =>
+    request({
+      method: 'PUT',
+      path: `/projects/${segment(projectId)}/remix-partner`,
+      body: SetRemixPartnerRequestSchema.parse({ partnerId }),
+      schema: SetRemixPartnerResponseSchema,
     }),
 };
