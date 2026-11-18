@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AdminResetRequestSchema,
+  AdminResetResponseSchema,
   AdminSettingsRequestSchema,
   AdminSettingsResponseSchema,
   AdminUsageResponseSchema,
@@ -39,5 +41,21 @@ describe('admin usage schemas', () => {
       settings: { dailyNeuronCap: 1, monthlyCostCapUsd: 2 },
     });
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe('admin reset schemas', () => {
+  it('request accepts only the three scopes', () => {
+    for (const scope of ['persona', 'visitor', 'all-nonseed']) {
+      expect(AdminResetRequestSchema.safeParse({ scope }).success).toBe(true);
+    }
+    expect(AdminResetRequestSchema.safeParse({ scope: 'seed' }).success).toBe(false);
+    expect(AdminResetRequestSchema.safeParse({}).success).toBe(false);
+  });
+
+  it('response needs non-negative integers', () => {
+    expect(AdminResetResponseSchema.safeParse({ deleted: 3, ms: 120 }).success).toBe(true);
+    expect(AdminResetResponseSchema.safeParse({ deleted: -1, ms: 0 }).success).toBe(false);
+    expect(AdminResetResponseSchema.safeParse({ deleted: 1.5, ms: 0 }).success).toBe(false);
   });
 });

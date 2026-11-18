@@ -11,11 +11,11 @@ export const ERROR_COPY: Record<ErrorCode, readonly CopyKey[] | null> = {
   UNAUTHENTICATED: ['C-04'],
   CONSENT_REQUIRED: ['C-01', 'C-02', 'C-03'],
   FORBIDDEN: ['E-01a'],
-  IDENTITY_PRIVATE: ['S-04'],
+  IDENTITY_PRIVATE: ['P-20'],
   NOT_FOUND: ['E-01a', 'S-06'],
   SET_LIMIT_REACHED: ['S-09'],
   GENERATION_IN_PROGRESS: ['S-03'],
-  VALIDATION_FAILED: ['E-04'],
+  VALIDATION_FAILED: ['E-01a', 'E-04'],
   NOT_FINISHABLE: ['G1'],
   NOT_FINISHED: ['E-05'],
   ATTACHMENT_TOO_LARGE: ['E-06'],
@@ -43,10 +43,24 @@ export const ERROR_COPY: Record<ErrorCode, readonly CopyKey[] | null> = {
   INTERNAL: ['E-01a'],
 };
 
+/** details.fields 에 제목(title) 항목이 있는지. 경로는 '.' 으로 이은 문자열이라 첫 조각이 title 이어도 인정한다. 모양이 다르면 false. */
+function hasTitleField(details: Record<string, unknown> | undefined): boolean {
+  const fields = details?.fields;
+  if (!Array.isArray(fields)) return false;
+  return fields.some((field: unknown) => {
+    if (typeof field !== 'object' || field === null) return false;
+    const path = (field as { path?: unknown }).path;
+    return typeof path === 'string' && path.split('.')[0] === 'title';
+  });
+}
+
 /** 사용자에게 보여 줄 오류 문구 키 하나. 연결 실패는 E-03, 문구가 없는 오류는 E-01a 로 대신한다. */
 export function errorCopyKey(error: unknown): CopyKey {
   if (error instanceof NetworkError) return 'E-03';
-  if (error instanceof ApiRequestError) return ERROR_COPY[error.code]?.[0] ?? 'E-01a';
+  if (error instanceof ApiRequestError) {
+    if (error.code === 'VALIDATION_FAILED') return hasTitleField(error.details) ? 'E-04' : 'E-01a';
+    return ERROR_COPY[error.code]?.[0] ?? 'E-01a';
+  }
   return 'E-01a';
 }
 
