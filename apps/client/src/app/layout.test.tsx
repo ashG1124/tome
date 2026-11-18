@@ -40,12 +40,15 @@ describe('서버 깨우는 중 띠(S-05)', () => {
 
     renderAt('/');
 
-    const banner = await screen.findByRole('status', {}, { timeout: 1400 });
-    expect(banner.textContent).toContain(COPY['S-05']);
-    expect(banner.querySelector('[data-icon]')).toBeNull();
+    // 홈에는 플래시용 status 칸도 있어서, 깨우는 중 띠는 문구로 찾는다.
+    const banner = (await screen.findByText(COPY['S-05'], {}, { timeout: 1400 })).closest(
+      '[role="status"]',
+    );
+    expect(banner).not.toBeNull();
+    expect(banner?.querySelector('[data-icon]')).toBeNull();
 
     expect(await screen.findByRole('link', { name: 'Neon street at night' })).toBeTruthy();
-    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+    await waitFor(() => expect(screen.queryByText(COPY['S-05'])).toBeNull());
   });
 
   it('첫 요청이 빠르면 띠가 뜨지 않는다', async () => {
@@ -55,6 +58,6 @@ describe('서버 깨우는 중 띠(S-05)', () => {
     renderAt('/');
 
     expect(await screen.findByRole('link', { name: 'Neon street at night' })).toBeTruthy();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByText(COPY['S-05'])).toBeNull();
   });
 });
