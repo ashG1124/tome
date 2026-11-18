@@ -108,6 +108,19 @@ export interface FakeStore {
   idempotency: Record<string, IdempotencyRecord>;
   /** 리믹스 즐겨찾기한 창작자 id(넣은 순서). 이 칸이 생기기 전에 저장한 데이터에는 없다(fake/remix.ts). */
   favorites?: string[];
+  /** 리믹스 Connection(답변·상대마다 처음 조회할 때 만든다, fake/remix.ts). */
+  connections?: ConnectionRecord[];
+}
+
+/** 가짜 Connection 한 줄(서버 Connection 표와 같은 뜻). */
+export interface ConnectionRecord {
+  id: string;
+  answerId: string;
+  partnerId: string;
+  nodeId: string;
+  predictedAction: string;
+  sentence: string;
+  status: 'shown' | 'applied' | 'dismissed';
 }
 
 let store: FakeStore | null = null;
@@ -700,4 +713,29 @@ export function setProjectRemixPartner(
   const record = projectOf(s, projectId);
   if (partner === null || partner === undefined) delete record.summary.remixPartner;
   else record.summary.remixPartner = { ...partner };
+}
+
+/**
+ * 답변이 속한 내 프로젝트와 그 답변의 노드 id. 지운 프로젝트나 없는 답변이면 null.
+ * Connection 가짜 응답(fake/remix.ts)이 쓴다.
+ */
+export function answerOwnerOf(
+  s: FakeStore,
+  answerId: string,
+): { projectId: string; partnerId: string | undefined; nodeIds: string[] } | null {
+  for (const record of s.projects) {
+    if (record.deleted === true) continue;
+    for (const set of record.sets) {
+      const answer = set.answers.find((candidate) => candidate.id === answerId);
+      if (answer === undefined) continue;
+      return {
+        projectId: record.summary.id,
+        partnerId: record.summary.remixPartner?.id,
+        nodeIds: answer.nodes.nodes
+          .filter((node) => node.enabled && node.stage !== 'verify')
+          .map((node) => node.id),
+      };
+    }
+  }
+  return null;
 }

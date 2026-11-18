@@ -1,3 +1,4 @@
+import { JobStageSchema } from '@tome/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { api } from './endpoints';
 import { ApiRequestError } from './errors';
@@ -141,5 +142,63 @@ describe('리믹스 상대', () => {
     expect(bad.details).toEqual({
       fields: [{ path: 'remixPartnerId', message: 'Choose another creator.' }],
     });
+  });
+});
+
+describe('Connection', () => {
+  /** 상대를 정해 둔 프로젝트에서 세트 하나를 끝까지 만들어 답변 id 를 받는다. */
+  async function answerWithPartner(partnerId: string | undefined): Promise<string> {
+    const { project, job } = await api.createProject({
+      prompt: 'A lighthouse at dusk',
+      ...(partnerId === undefined ? {} : { remixPartnerId: partnerId }),
+    });
+    if (job === undefined) throw new Error('job 이 없다');
+    for (const stage of JobStageSchema.options) await api.advanceJob(job.id, stage);
+    const workspace = await api.getWorkspace(project.id);
+    const answer = workspace.sets[0]?.latestAnswer;
+    if (!answer) throw new Error('답변이 없다');
+    return answer.id;
+  }
+
+  it('지금 상대 기준으로 갈리는 노드에 Connection 을 만들고, 다시 불러도 같다', async () => {
+    const answerId = await answerWithPartner(LIND.id);
+    const first = await api.listConnections(answerId);
+    expect(first.connections.length).toBeGreaterThan(0);
+    expect(first.connections.length).toBeLessThanOrEqual(5);
+    expect(first.connections.every((c) => c.status === 'shown' && c.sentence.length > 0)).toBe(
+      true,
+    );
+    const again = await api.listConnections(answerId);
+    expect(again.connections.map((c) => c.id)).toEqual(first.connections.map((c) => c.id));
+  });
+
+  it('숨기면 dismissed 가 되고, 다시 숨겨도 같은 상태를 돌려준다', async () => {
+    const answerId = await answerWithPartner(LIND.id);
+    const [target] = (await api.listConnections(answerId)).connections;
+    if (target === undefined) throw new Error('Connection 이 없다');
+    expect(await api.dismissConnection(target.id)).toEqual({ status: 'dismissed' });
+    expect(await api.dismissConnection(target.id)).toEqual({ status: 'dismissed' });
+    const after = await api.listConnections(answerId);
+    expect(after.connections.find((c) => c.id === target.id)?.status).toBe('dismissed');
+  });
+
+  it('상대를 바꾸면 새 상대 기준으로 만들고, 예전 상대 것은 partnerId 로 그대로 볼 수 있다', async () => {
+    const answerId = await answerWithPartner(LIND.id);
+    const lind = await api.listConnections(answerId);
+    const projectId = (await api.listProjects()).projects[0]?.id ?? '';
+    await api.setRemixPartner(projectId, MARA.id);
+    const mara = await api.listConnections(answerId);
+    expect(mara.connections.map((c) => c.id)).not.toEqual(lind.connections.map((c) => c.id));
+    const old = await api.listConnections(answerId, LIND.id);
+    expect(old.connections.map((c) => c.id)).toEqual(lind.connections.map((c) => c.id));
+  });
+
+  it('상대가 없으면 NO_PARTNER(409), 모르는 답변·Connection 은 NOT_FOUND', async () => {
+    const answerId = await answerWithPartner(undefined);
+    const none = await rejection(api.listConnections(answerId));
+    expect(none.status).toBe(409);
+    expect(none.code).toBe('NO_PARTNER');
+    expect((await rejection(api.listConnections(crypto.randomUUID()))).code).toBe('NOT_FOUND');
+    expect((await rejection(api.dismissConnection(crypto.randomUUID()))).code).toBe('NOT_FOUND');
   });
 });

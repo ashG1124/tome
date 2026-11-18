@@ -6,6 +6,8 @@ import {
   AdvanceJobResponseSchema,
   CancelJobResponseSchema,
   CompareResponseSchema,
+  ConnectionListResponseSchema,
+  ConnectionStatusSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
   CreatePageResponseSchema,
@@ -37,7 +39,14 @@ import type { HttpMethod } from '../transport';
 import { FAKE_AGREED_AT, FAKE_CREATOR, FAKE_NOTICE_VERSION, FAKE_TOKEN, fakeHealth } from './data';
 import { FakeFailure } from './errors';
 import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
-import { addFavorite, remixCandidates, removeFavorite, setRemixPartner } from './remix';
+import {
+  addFavorite,
+  dismissConnection,
+  listConnections,
+  remixCandidates,
+  removeFavorite,
+  setRemixPartner,
+} from './remix';
 import { fakeState, setFakeConsented } from './state';
 import {
   acceptAnswer,
@@ -346,6 +355,23 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
         parseBody(SetRemixPartnerRequestSchema, body).partnerId,
         fakeState.identityCase,
       ),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/answers/:id/connections',
+    response: ConnectionListResponseSchema,
+    handle: ({ params, query }) =>
+      listConnections(store(), params.id ?? '', query.get('partnerId')),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/connections/:id/dismiss',
+    response: {
+      parse: (data: unknown) => ({
+        status: ConnectionStatusSchema.parse((data as { status?: unknown }).status),
+      }),
+    },
+    handle: ({ params }) => dismissConnection(store(), params.id ?? ''),
   }),
 ];
 

@@ -8,6 +8,8 @@ import {
   AdvanceJobResponseSchema,
   CancelJobResponseSchema,
   CompareResponseSchema,
+  ConnectionListResponseSchema,
+  ConnectionStatusSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
   CreatePageResponseSchema,
@@ -233,7 +235,7 @@ export const api = {
       idempotent: true,
     }),
 
-  // ---- 리믹스(서버 PR #102). Connection 은 캔버스 단계에서 더한다.
+  // ---- 리믹스(서버 PR #102)
 
   /** 리믹스 후보. rising 은 라이징 순서(없으면 시드 순서), favorite 은 즐겨찾기한 순서. 나·비공개는 빠진다. */
   getRemixCandidates: (tab: 'rising' | 'favorite') =>
@@ -267,5 +269,35 @@ export const api = {
       path: `/projects/${segment(projectId)}/remix-partner`,
       body: SetRemixPartnerRequestSchema.parse({ partnerId }),
       schema: SetRemixPartnerResponseSchema,
+    }),
+
+  /**
+   * 답변의 Connection(판단이 갈리는 노드). partnerId 를 빼면 지금 상대 기준으로 처음 볼 때 계산하고,
+   * 예전 상대 id 를 주면 이미 만든 것만 준다. 상대가 없으면 NO_PARTNER.
+   */
+  listConnections: (answerId: Id, partnerId?: Id) =>
+    request({
+      method: 'GET',
+      path: `/answers/${segment(answerId)}/connections${
+        partnerId === undefined ? '' : `?partnerId=${segment(partnerId)}`
+      }`,
+      schema: ConnectionListResponseSchema,
+    }),
+
+  /**
+   * Connection 숨기기. 응답 { status } 는 shared 에 전용 스키마가 없어 ConnectionStatusSchema 로 안쪽만 검사한다.
+   * 이미 applied·dismissed 면 그 상태를 그대로 돌려준다(여러 번 보내도 결과가 같아 멱등 키가 없다).
+   */
+  dismissConnection: (connectionId: Id) =>
+    request({
+      method: 'POST',
+      path: `/connections/${segment(connectionId)}/dismiss`,
+      schema: {
+        parse: (data: unknown) => ({
+          status: ConnectionStatusSchema.parse(
+            typeof data === 'object' && data !== null && 'status' in data ? data.status : undefined,
+          ),
+        }),
+      },
     }),
 };
