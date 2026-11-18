@@ -1,5 +1,9 @@
 import {
   LIMITS,
+  type AcceptAnswerResponse,
+  type CreateRevisionRequest,
+  type CreateRevisionResponse,
+  type NodeSnapshot,
   PROMPT_PRESETS,
   type AdvanceJobResponse,
   type Answer,
@@ -30,7 +34,9 @@ import { FAKE_PAGE_IDS, FAKE_PROJECTS } from './data';
 import { FakeFailure } from './errors';
 import {
   FAKE_IMAGE_URL,
+  FAKE_STAGE_ORDER,
   fakeNodes,
+  fakeRevisionPlan,
   fakeSnapshot,
   fakeVerification,
   isTextStage,
@@ -76,6 +82,7 @@ interface JobRecord {
   steps: JobStep[];
   /** 대체 결과로 채우는 job(상한·AI 실패 + 프리셋 그대로). 이후 단계도 AI 를 부르지 않는다 */
   sample?: boolean;
+  revision?: { baseAnswerId: string; nodes: NodeSnapshot };
 }
 
 /** 주소 옵션으로 고르는 생성 조건(?fakeLimit= · ?fakeSample=). 가짜 라우트가 넘긴다. */
@@ -214,12 +221,15 @@ function toAnswerSummary(answer: Answer): AnswerSummary {
 }
 
 function toPromptSet(set: SetRecord): PromptSet {
+  const accepted = set.answers
+    .filter((answer) => answer.status === 'accepted')
+    .sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
   return {
     id: set.id,
     position: set.position,
     prompt: set.prompt,
-    latestAnswer: set.answers[set.answers.length - 1] ?? null,
-    answers: set.answers.map(toAnswerSummary),
+    latestAnswer: accepted[accepted.length - 1] ?? null,
+    answers: accepted.map(toAnswerSummary),
   };
 }
 
@@ -341,7 +351,7 @@ function answersOf(record: ProjectRecord): Answer[] {
   return [...record.sets]
     .sort((a, b) => a.pageId.localeCompare(b.pageId) || a.position - b.position)
     .flatMap((set) => set.answers)
-    .filter((answer) => answer.status !== 'discarded');
+    .filter((answer) => answer.status === 'accepted');
 }
 
 /** 완료 후보: 핀 꽂은 답변. 핀이 하나도 없으면 전부. */
@@ -467,6 +477,87 @@ function addSet(
   return { set: toPromptSet(set), job: toJob(job) };
 }
 
+function setLocation(s: FakeStore, setId: string) {
+  for (const project of shelf(s)) {
+    const set = project.sets.find((candidate) => candidate.id === setId);
+    if (set) return { project, set };
+  }
+  throw new FakeFailure('NOT_FOUND');
+}
+
+function setAnswerState(
+  s: FakeStore,
+  answer: Answer,
+  status: Answer['status'],
+  number = answer.number,
+): void {
+  answer.status = status;
+  answer.number = number;
+  for (const job of s.jobs) {
+    for (const step of job.steps) {
+      if (step.answer?.id === answer.id) {
+        step.answer.status = status;
+        step.answer.number = number;
+      }
+    }
+  }
+}
+
+export function createRevision(
+  s: FakeStore,
+  setId: string,
+  body: CreateRevisionRequest,
+  options: FakeGenerationOptions = NO_OPTIONS,
+): CreateRevisionResponse {
+  const { project, set } = setLocation(s, setId);
+  const base = set.answers.find((answer) => answer.id === body.baseAnswerId);
+  if (!base) throw new FakeFailure('NOT_FOUND');
+  if (base.status !== 'accepted') throw new FakeFailure('VALIDATION_FAILED');
+  const plan = fakeRevisionPlan(base.nodes, body.nodes);
+  const limit = limitCode(options);
+  if (limit) throw new FakeFailure(limit);
+  const active = s.jobs.filter(
+    (job) => job.projectId === project.summary.id && ACTIVE_STATUSES.includes(job.status),
+  );
+  if (active.some((job) => job.setId !== setId || !job.revision))
+    throw new FakeFailure('GENERATION_IN_PROGRESS');
+  for (const job of active) job.status = 'cancelled';
+  const job: JobRecord = {
+    id: newId(),
+    projectId: project.summary.id,
+    setId,
+    pageId: set.pageId,
+    status: 'pending',
+    startStage: plan.startStage,
+    nextStage: plan.startStage,
+    steps: [],
+    revision: { baseAnswerId: base.id, nodes: structuredClone(body.nodes) },
+  };
+  s.jobs.push(job);
+  return { job: toJob(job), ...plan };
+}
+
+export function acceptAnswer(s: FakeStore, answerId: string): AcceptAnswerResponse {
+  for (const project of shelf(s)) {
+    for (const set of project.sets) {
+      const answer = set.answers.find((candidate) => candidate.id === answerId);
+      if (!answer) continue;
+      if (answer.status !== 'draft') throw new FakeFailure('NOT_DRAFT');
+      const number =
+        Math.max(
+          0,
+          ...set.answers
+            .filter((candidate) => candidate.status === 'accepted')
+            .map((candidate) => candidate.number ?? 0),
+        ) + 1;
+      setAnswerState(s, answer, 'accepted', number);
+      project.summary.lastEditedAt = now();
+      return { answer: { id: answer.id, number, status: 'accepted' } };
+    }
+  }
+  throw new FakeFailure('NOT_FOUND');
+}
+
 // ---- 단계 진행(job) ----
 
 /**
@@ -480,6 +571,7 @@ export function advanceJob(
   options: FakeGenerationOptions = NO_OPTIONS,
 ): AdvanceJobResponse {
   const job = jobOf(s, jobId);
+  if (job.status === 'cancelled') throw new FakeFailure('JOB_CLOSED');
   const done = job.steps.find((step) => step.stage === stage && step.status === 'succeeded');
   if (done) return { job: toJob(job), step: done };
   if (!ACTIVE_STATUSES.includes(job.status)) throw new FakeFailure('JOB_CLOSED');
@@ -489,7 +581,11 @@ export function advanceJob(
   const set = projectOf(s, job.projectId).sets.find((candidate) => candidate.id === job.setId);
   if (!set) throw new FakeFailure('NOT_FOUND');
   // AI 를 부르는 단계 전에 상한·AI 실패(?fakeSample=1)를 본다. 프리셋 문장 그대로면 대체 결과로 채운다(서버와 같다).
-  if (job.sample !== true && (isTextStage(stage) || stage === 'image')) {
+  if (job.revision && (isTextStage(stage) || stage === 'image')) {
+    const limit = limitCode(options);
+    if (limit) throw new FakeFailure(limit);
+  }
+  if (!job.revision && job.sample !== true && (isTextStage(stage) || stage === 'image')) {
     const limit = limitCode(options);
     if (limit !== null || options.sample) {
       if (matchPreset(set.presetKey, set.prompt) !== null) job.sample = true;
@@ -497,7 +593,7 @@ export function advanceJob(
     }
   }
 
-  const step = runStage(job, set, stage);
+  const step = runStage(s, job, set, stage);
   job.steps.push(step);
   job.nextStage = nextStageOf(stage);
   job.status = job.nextStage === null ? 'succeeded' : 'running';
@@ -506,10 +602,19 @@ export function advanceJob(
 
 /** 텍스트 단계(analyze~draft)에서 나온 노드를 모은다. */
 function textNodes(job: JobRecord): Node[] {
-  return job.steps.flatMap((step) => (isTextStage(step.stage) ? (step.nodes ?? []) : []));
+  const earlier =
+    job.revision?.nodes.nodes.filter(
+      (node) =>
+        isTextStage(node.stage) &&
+        FAKE_STAGE_ORDER.indexOf(node.stage) < FAKE_STAGE_ORDER.indexOf(job.startStage),
+    ) ?? [];
+  return [
+    ...earlier,
+    ...job.steps.flatMap((step) => (isTextStage(step.stage) ? (step.nodes ?? []) : [])),
+  ];
 }
 
-function runStage(job: JobRecord, set: SetRecord, stage: JobStage): JobStep {
+function runStage(s: FakeStore, job: JobRecord, set: SetRecord, stage: JobStage): JobStep {
   const base = { stage, status: 'succeeded' as const, fallbackUsed: false };
   const provider = job.sample === true ? 'sample' : 'mock';
   if (isTextStage(stage)) return { ...base, provider, nodes: fakeNodes(stage) };
@@ -520,20 +625,33 @@ function runStage(job: JobRecord, set: SetRecord, stage: JobStage): JobStep {
     const answer: Answer = {
       id,
       // 대체 결과는 번호가 없고(서버와 같다) origin 이 sample 이다
-      number: sample ? null : set.answers.filter((a) => a.number !== null).length + 1,
+      number:
+        sample || job.revision
+          ? null
+          : Math.max(
+              0,
+              ...set.answers.filter((a) => a.status === 'accepted').map((a) => a.number ?? 0),
+            ) + 1,
       pinned: false,
       isSample: sample,
       thumbUrl: FAKE_IMAGE_URL,
       createdAt: now(),
       setId: set.id,
-      status: 'accepted',
-      origin: sample ? 'sample' : 'generated',
-      imageMode: 'generate',
-      baseAnswerId: null,
+      status: job.revision ? 'draft' : 'accepted',
+      origin: job.revision ? 'edited' : sample ? 'sample' : 'generated',
+      imageMode: job.revision ? 'edit' : 'generate',
+      baseAnswerId: job.revision?.baseAnswerId ?? null,
       imageUrl: FAKE_IMAGE_URL,
-      nodes: fakeSnapshot(textNodes(job)),
+      nodes: {
+        ...fakeSnapshot(textNodes(job)),
+        subjectTemplate: job.revision?.nodes.subjectTemplate ?? fakeSnapshot([]).subjectTemplate,
+      },
       verification: null,
     };
+    if (job.revision) {
+      for (const previous of set.answers.filter((entry) => entry.status === 'draft'))
+        setAnswerState(s, previous, 'discarded');
+    }
     set.answers.push(answer);
     return { ...base, provider, answer };
   }
