@@ -1,12 +1,30 @@
 import { useRef, useState, type ComponentPropsWithoutRef } from 'react';
 import type { CardData } from '../model';
-import { CANVAS_COPY } from '../../../shared/copy';
+import { CANVAS_COPY, COPY } from '../../../shared/copy';
 import { useApiImage } from '../../../shared/api';
 
 function AnswerImage({ url, label }: { url: string; label: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
-  useApiImage(url, imageRef);
-  return <img ref={imageRef} className="canvas-image" alt={label} />;
+  const { directSrc, failed } = useApiImage(url, imageRef);
+  const [broken, setBroken] = useState(false);
+  const unavailable = failed || broken;
+  return (
+    <>
+      <img
+        ref={imageRef}
+        src={directSrc}
+        className="canvas-image"
+        alt={label}
+        hidden={unavailable}
+        onError={() => setBroken(true)}
+      />
+      {unavailable ? (
+        <div className="canvas-error" role="status">
+          {COPY['E-01a']}
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 export function GenerationImage({ generating = true }: { generating?: boolean }) {

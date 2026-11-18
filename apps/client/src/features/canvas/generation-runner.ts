@@ -82,7 +82,11 @@ export async function runGeneration({
           retryable: true,
         });
       }
-      if (['analyze', 'evidence', 'draft'].includes(stage) && !result.step.nodes?.length) {
+      if (
+        result.step.status !== 'skipped' &&
+        ['analyze', 'evidence', 'draft'].includes(stage) &&
+        !result.step.nodes?.length
+      ) {
         throw new ApiRequestError(502, {
           code: 'AI_OUTPUT_INVALID',
           message: 'Empty stage output',

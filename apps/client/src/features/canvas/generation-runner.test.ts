@@ -56,6 +56,30 @@ function result(stage: JobStage, nextStage: JobStage | null): AdvanceJobResponse
 }
 afterEach(() => vi.useRealTimers());
 describe('generation runner', () => {
+  it.each(['analyze', 'evidence', 'draft'] as const)(
+    'accepts skipped %s without nodes and continues at nextStage',
+    async (stage) => {
+      const skipped = result(stage, 'verify');
+      skipped.step.status = 'skipped';
+      delete skipped.step.nodes;
+      const advance = vi
+        .fn()
+        .mockResolvedValueOnce(skipped)
+        .mockResolvedValueOnce(result('verify', null));
+      const onError = vi.fn();
+      const onStep = vi.fn();
+      await runGeneration({
+        job: { ...job, nextStage: stage },
+        signal: new AbortController().signal,
+        advance,
+        onStep,
+        onError,
+      });
+      expect(onError).not.toHaveBeenCalled();
+      expect(advance.mock.calls.map((call) => call[1])).toEqual([stage, 'verify']);
+      expect(onStep).toHaveBeenCalledTimes(2);
+    },
+  );
   it('uses the returned next stage, including nonvisual stages', async () => {
     const advance = vi
       .fn()

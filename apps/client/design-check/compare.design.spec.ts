@@ -106,8 +106,6 @@ for (const c of cases) {
           cv.width = w;
           cv.height = h;
           const ctx = cv.getContext('2d')!;
-          ctx.fillStyle = 'white';
-          ctx.fillRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0);
           return ctx.getImageData(0, 0, w, h);
         };
