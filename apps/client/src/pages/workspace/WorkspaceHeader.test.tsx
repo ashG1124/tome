@@ -40,3 +40,24 @@ describe('WorkspaceHeader', () => {
     expect(await screen.findByText('home:update')).toBeTruthy();
   });
 });
+
+describe('WorkspaceHeader 리믹스 상대(#41)', () => {
+  it('상대가 있으면 제목 뒤에 "remix with 이름"을 붙인다(구분 막대는 낭독하지 않는다)', () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/projects/:id',
+          element: <WorkspaceHeader title="Studio desk lamp" partnerName="Lind" />,
+        },
+      ],
+      { initialEntries: ['/projects/p1'] },
+    );
+    render(<RouterProvider router={router} />);
+    // 화면 낭독기가 읽는 이름에는 구분 막대가 없다
+    const heading = screen.getByRole('heading', {
+      level: 1,
+      name: `Studio desk lamp ${COPY['RX-04']} Lind`,
+    });
+    expect(heading.querySelector('[aria-hidden="true"]')?.textContent).toBe('|');
+  });
+});

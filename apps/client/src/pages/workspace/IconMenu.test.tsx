@@ -1,5 +1,6 @@
 import { LIMITS, type WorkspaceResponse } from '@tome/shared';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { COPY } from '../../shared/copy';
 import { IconMenu, type FinishSlot } from './IconMenu';
@@ -117,5 +118,89 @@ describe('IconMenu', () => {
   it('끝내기 칸을 주지 않으면 그리지 않는다', () => {
     setup(1);
     expect(screen.queryByRole('button', { name: COPY['W-04'] })).toBeNull();
+  });
+});
+
+describe('IconMenu 리믹스 칸(#41)', () => {
+  function Harness({ partnerName }: { partnerName?: string }) {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button type="button">outside</button>
+        <IconMenu
+          menu={menuOf(1)}
+          onSelectPage={vi.fn()}
+          onAddPage={vi.fn()}
+          remix={{
+            open,
+            partnerName,
+            panelId: 'remix-panel',
+            onOpen: () => setOpen(true),
+            onClose: () => setOpen(false),
+            panel: (
+              <div id="remix-panel">
+                <button type="button" onClick={() => setOpen(false)}>
+                  pick
+                </button>
+              </div>
+            ),
+          }}
+        />
+      </>
+    );
+  }
+
+  const remixButton = () => screen.getByRole('button', { name: COPY['RX-05'] });
+
+  it('리믹스 버튼을 누르면 패널이 열리고(aria-expanded), 다시 누르면 닫힌다', () => {
+    render(<Harness />);
+    expect(remixButton().getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(remixButton());
+    expect(remixButton().getAttribute('aria-expanded')).toBe('true');
+    expect(remixButton().getAttribute('aria-controls')).toBe('remix-panel');
+    expect(screen.getByRole('button', { name: 'pick' })).toBeTruthy();
+    fireEvent.click(remixButton());
+    expect(screen.queryByRole('button', { name: 'pick' })).toBeNull();
+  });
+
+  it('Esc 로 닫히면 포커스가 리믹스 버튼으로 돌아온다', () => {
+    render(<Harness />);
+    fireEvent.click(remixButton());
+    const pick = screen.getByRole('button', { name: 'pick' });
+    pick.focus();
+    fireEvent.keyDown(pick, { key: 'Escape' });
+    expect(screen.queryByRole('button', { name: 'pick' })).toBeNull();
+    expect(document.activeElement).toBe(remixButton());
+  });
+
+  it('패널 안에서 골라 닫혀도 포커스가 리믹스 버튼으로 돌아온다', () => {
+    render(<Harness />);
+    fireEvent.click(remixButton());
+    const pick = screen.getByRole('button', { name: 'pick' });
+    pick.focus();
+    fireEvent.click(pick);
+    expect(document.activeElement).toBe(remixButton());
+  });
+
+  it('바깥을 누르면 닫히고, 포커스는 누른 곳에 둔다', () => {
+    render(<Harness />);
+    fireEvent.click(remixButton());
+    const outside = screen.getByRole('button', { name: 'outside' });
+    outside.focus();
+    fireEvent.pointerDown(outside);
+    expect(screen.queryByRole('button', { name: 'pick' })).toBeNull();
+    expect(document.activeElement).toBe(outside);
+  });
+
+  it('상대가 있고 닫혀 있으면 "Remix with 이름" 알약을 보이고, 누르면 다시 연다', () => {
+    render(<Harness partnerName="Lind" />);
+    const pill = screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) });
+    fireEvent.click(pill);
+    expect(remixButton().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('상대가 없으면 닫혀 있을 때 알약이 없다', () => {
+    render(<Harness />);
+    expect(screen.queryByRole('button', { name: new RegExp(COPY['RX-01']) })).toBeNull();
   });
 });

@@ -1,14 +1,26 @@
 import type { Id } from '@tome/shared';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { COPY, type CopyKey } from '../../shared/copy';
 import { Icon } from '../../shared/ui';
 import type { PageMenu } from './pageMenu';
+import { RemixLabel } from './remix/RemixPanel';
 
 export interface FinishSlot {
   enabled: boolean;
   /** 꺼져 있을 때 버튼 옆에 한 줄로 보여 줄 이유 문구(G1 등) */
   reason: CopyKey | null;
   onOpen: () => void;
+}
+
+export interface RemixSlot {
+  open: boolean;
+  /** 지금 리믹스 상대 이름. 패널이 닫혀 있으면 버튼 왼쪽에 "Remix with 이름" 알약으로 보인다 */
+  partnerName: string | undefined;
+  panelId: string;
+  onOpen: () => void;
+  onClose: () => void;
+  /** 열렸을 때 버튼 왼쪽에 그릴 패널 */
+  panel: ReactNode;
 }
 
 interface IconMenuProps {
@@ -19,6 +31,8 @@ interface IconMenuProps {
   addingPage?: boolean;
   /** 끝내기(save) 칸. 없으면 그리지 않는다(완료 모달 #34 와 함께 연결). */
   finish?: FinishSlot;
+  /** 리믹스 칸(#41). 없으면 그리지 않는다. */
+  remix?: RemixSlot;
 }
 
 /** 아이콘 메뉴 동그라미. 고른 상태는 진한 면으로 바뀌고, 비활성은 공통 규칙을 따른다. */
@@ -36,7 +50,74 @@ function circle(selected: boolean): string {
 }
 
 /**
- * 워크스페이스 오른쪽 세로 아이콘 메뉴. 위에서부터 페이지 인덱스(페이지 수 표시) · 끝내기.
+ * 리믹스 버튼(Icon Menu remix 1185:59842). 누르면 왼쪽에 "Remix with" 패널이 열리고, 버튼은 진한 면이 된다.
+ * 닫혀 있고 상대가 있으면 왼쪽에 흰 "Remix with 이름" 알약(Control done 1720:80415)을 두고, 누르면 다시 연다.
+ * Esc·바깥 클릭으로 닫히고, 닫힐 때 포커스가 패널 안에 있었으면 리믹스 버튼으로 돌아온다.
+ */
+function RemixButton({ slot }: { slot: RemixSlot }) {
+  const { open, onOpen, onClose } = slot;
+  const wrap = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(open);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (wrap.current !== null && !wrap.current.contains(event.target as Node)) onClose();
+    };
+    document.addEventListener('pointerdown', closeOnOutside);
+    return () => document.removeEventListener('pointerdown', closeOnOutside);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      const active = document.activeElement;
+      const lost = active === null || active === document.body;
+      if (lost || (wrap.current?.contains(active) ?? false)) button.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open]);
+
+  return (
+    <div
+      ref={wrap}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.stopPropagation();
+          onClose();
+        }
+      }}
+      className="relative flex items-center"
+    >
+      {open ? (
+        <div className="absolute top-0 right-[calc(100%+var(--space-gap-5))]">{slot.panel}</div>
+      ) : slot.partnerName !== undefined ? (
+        <button
+          type="button"
+          aria-expanded={false}
+          onClick={onOpen}
+          className="absolute top-0 right-[calc(100%+var(--space-gap-5))] w-[var(--size-remix-panel-width)] cursor-pointer rounded-[var(--radius-max)] border-0 bg-transparent p-0"
+        >
+          <RemixLabel partner={slot.partnerName} open={false} />
+        </button>
+      ) : null}
+      <button
+        ref={button}
+        type="button"
+        aria-label={COPY['RX-05']}
+        aria-expanded={open}
+        aria-controls={open ? slot.panelId : undefined}
+        onClick={open ? onClose : onOpen}
+        className={circle(open)}
+      >
+        <Icon name="glyph-remix" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 워크스페이스 오른쪽 세로 아이콘 메뉴. 위에서부터 페이지 인덱스(페이지 수 표시) · 끝내기 · (구분선) 리믹스.
  * 인덱스를 누르면 왼쪽에 "Page N" 목록이 열리고, 끝내기 자리에 + (페이지 추가)가 나온다.
  * Esc 나 바깥 클릭으로 닫히고, 닫히면 포커스는 인덱스 버튼으로 돌아온다.
  */
@@ -46,6 +127,7 @@ export function IconMenu({
   onAddPage,
   addingPage = false,
   finish,
+  remix,
 }: IconMenuProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -175,6 +257,16 @@ export function IconMenu({
             <Icon name="file-done" />
           </button>
         </div>
+      ) : null}
+
+      {remix !== undefined ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="block h-[var(--stroke-weight-light)] w-[var(--size-avatar-remix)] bg-[color:var(--color-border-dark)]"
+          />
+          <RemixButton slot={remix} />
+        </>
       ) : null}
     </div>
   );
