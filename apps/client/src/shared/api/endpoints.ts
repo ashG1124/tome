@@ -1,4 +1,9 @@
 import {
+  AcceptAnswerResponseSchema,
+  CreateRevisionRequestSchema,
+  CreateRevisionResponseSchema,
+  type CreateRevisionRequest,
+  type IdempotencyKey,
   AdvanceJobRequestSchema,
   AdvanceJobResponseSchema,
   CancelJobResponseSchema,
@@ -180,6 +185,25 @@ export const api = {
       body: PostProjectRequestSchema.parse(body),
       schema: PostProjectResponseSchema,
       idempotent: true,
+    }),
+
+  createRevision: (setId: Id, body: CreateRevisionRequest, idempotencyKey?: IdempotencyKey) =>
+    request({
+      method: 'POST',
+      path: `/sets/${segment(setId)}/revisions`,
+      body: CreateRevisionRequestSchema.parse(body),
+      schema: CreateRevisionResponseSchema,
+      idempotent: true,
+      idempotencyKey,
+    }),
+
+  acceptAnswer: (answerId: Id, idempotencyKey?: IdempotencyKey) =>
+    request({
+      method: 'POST',
+      path: `/answers/${segment(answerId)}/accept`,
+      schema: AcceptAnswerResponseSchema,
+      idempotent: true,
+      idempotencyKey,
     }),
 
   // ---- 단계 진행(job)

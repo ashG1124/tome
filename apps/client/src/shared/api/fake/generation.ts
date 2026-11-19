@@ -4,7 +4,9 @@ import {
   type Node,
   type NodeSnapshot,
   type Verification,
+  type CreateRevisionResponse,
 } from '@tome/shared';
+import { FakeFailure } from './errors';
 
 // 서버의 가짜 AI(apps/server/src/ai/mock-ai.provider.ts)와 같은 고정 노드다.
 // 화면을 만들 때 서버 없이도 5단계가 같은 모양으로 채워지게 한다.
@@ -149,3 +151,79 @@ export function fakeVerification(nodes: readonly Node[]): Verification {
  */
 export const FAKE_IMAGE_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+function equal(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((value, index) => equal(value, b[index]))
+    );
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...keys].every((key) => equal(left[key], right[key]));
+}
+
+export function fakeRevisionPlan(
+  base: NodeSnapshot,
+  requested: NodeSnapshot,
+): Pick<CreateRevisionResponse, 'startStage' | 'changes'> {
+  const invalid = () => {
+    throw new FakeFailure('VALIDATION_FAILED');
+  };
+  if (
+    base.subjectTemplate !== requested.subjectTemplate ||
+    base.nodes.length !== requested.nodes.length
+  )
+    invalid();
+  const stages: Partial<
+    Record<Node['kind'], Partial<Record<'enabled' | 'weight' | 'pad' | 'order', JobStage>>>
+  > = {
+    keyword: { enabled: 'assemble', weight: 'assemble', pad: 'assemble' },
+    attribute: { enabled: 'assemble', weight: 'assemble' },
+    dataType: { enabled: 'evidence' },
+    priority: { enabled: 'evidence', order: 'evidence' },
+    evidence: { enabled: 'draft' },
+  };
+  const fixed = [
+    'stage',
+    'kind',
+    'text',
+    'parentIds',
+    'category',
+    'negative',
+    'sourceType',
+    'domain',
+    'level',
+    'aiInitial',
+  ] as const;
+  const changes: CreateRevisionResponse['changes'] = [];
+  let startStage: JobStage | undefined;
+  for (const next of requested.nodes) {
+    const before = base.nodes.find((node) => node.id === next.id);
+    if (!before) return invalid();
+    if (fixed.some((field) => !equal(before[field], next[field]))) invalid();
+    if (
+      before.pad &&
+      next.pad &&
+      !equal([before.pad.xAxis, before.pad.yAxis], [next.pad.xAxis, next.pad.yAxis])
+    )
+      invalid();
+    for (const field of ['enabled', 'weight', 'pad', 'order'] as const) {
+      if (equal(before[field], next[field])) continue;
+      if ((next.kind === 'criterion' || next.kind === 'mismatch') && field === 'enabled') continue;
+      const stage = stages[next.kind]?.[field];
+      if (!stage) return invalid();
+      changes.push({ nodeId: next.id, field });
+      if (!startStage || FAKE_STAGE_ORDER.indexOf(stage) < FAKE_STAGE_ORDER.indexOf(startStage))
+        startStage = stage;
+    }
+  }
+  if (!startStage) throw new FakeFailure('NO_CHANGES');
+  return { startStage, changes };
+}

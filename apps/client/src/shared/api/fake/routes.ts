@@ -1,4 +1,7 @@
 import {
+  AcceptAnswerResponseSchema,
+  CreateRevisionRequestSchema,
+  CreateRevisionResponseSchema,
   AdvanceJobRequestSchema,
   AdvanceJobResponseSchema,
   CancelJobResponseSchema,
@@ -33,6 +36,8 @@ import { FakeFailure } from './errors';
 import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
 import { fakeState, setFakeConsented } from './state';
 import {
+  acceptAnswer,
+  createRevision,
   advanceJob,
   cancelJob,
   createPage,
@@ -240,6 +245,27 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     response: PostProjectResponseSchema,
     handle: ({ params, body }) =>
       postProject(store(), params.id ?? '', parseBody(PostProjectRequestSchema, body)),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/sets/:id/revisions',
+    response: CreateRevisionResponseSchema,
+    status: 201,
+    idempotent: true,
+    handle: ({ params, body }) =>
+      createRevision(
+        store(),
+        params.id ?? '',
+        parseBody(CreateRevisionRequestSchema, body),
+        generation(),
+      ),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/answers/:id/accept',
+    response: AcceptAnswerResponseSchema,
+    idempotent: true,
+    handle: ({ params }) => acceptAnswer(store(), params.id ?? ''),
   }),
   route({
     method: 'POST',

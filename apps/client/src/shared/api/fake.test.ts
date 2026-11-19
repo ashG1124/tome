@@ -40,6 +40,31 @@ beforeEach(() => {
   resetFake();
 });
 
+describe('멱등 키 전달', () => {
+  it('호출자가 준 키를 유지하고, 없으면 새 키를 만든다', () => {
+    const key = crypto.randomUUID();
+    const options = { token: null, hasBody: false, idempotent: true };
+    expect(buildHeaders({ ...options, idempotencyKey: key })['Idempotency-Key']).toBe(key);
+    const first = buildHeaders(options)['Idempotency-Key'];
+    const second = buildHeaders(options)['Idempotency-Key'];
+    expect(IdempotencyKeySchema.safeParse(first).success).toBe(true);
+    expect(first).not.toBe(second);
+  });
+  it('잘못된 키는 거부하고 멱등 요청이 아니면 키를 보내지 않는다', () => {
+    expect(() =>
+      buildHeaders({ token: null, hasBody: false, idempotent: true, idempotencyKey: 'invalid' }),
+    ).toThrow();
+    expect(
+      buildHeaders({
+        token: null,
+        hasBody: false,
+        idempotent: false,
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    ).not.toHaveProperty('Idempotency-Key');
+  });
+});
+
 describe('가짜 응답 모드', () => {
   it('POST /session 은 계약 모양이고 동의 전이면 consentRequired 다', async () => {
     const session = await api.createSession('any-code');
