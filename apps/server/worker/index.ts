@@ -3,6 +3,7 @@
 // 이 파일은 wrangler 가 따로 번들한다. 서버 빌드(tsconfig 의 src)에는 들어가지 않는다.
 import { Container, getContainer } from '@cloudflare/containers';
 import { env } from 'cloudflare:workers';
+import { resolveAiEnv } from './ai-env';
 import { isWakeTime, parseWakeWindows } from './wake';
 
 type WorkerEnv = {
@@ -21,9 +22,17 @@ type WorkerEnv = {
   // 운영 시간표(KST, JSON). 이 시간 안에만 cron 이 서버를 깨운다. 형식은 worker/wake.ts.
   // Worker 에서만 쓰므로 컨테이너(envVars)로는 넘기지 않는다.
   WAKE_WINDOWS?: string;
+  // 실제 AI 스위치(#62). 'workers-ai' 이고 아래 키 둘이 다 있을 때만 켜진다. 규칙은 worker/ai-env.ts.
+  AI_PROVIDER?: string;
+  WORKERS_AI_ACCOUNT_ID?: string;
+  WORKERS_AI_API_TOKEN?: string;
 };
 
 const secrets = env as unknown as WorkerEnv;
+
+// 스위치를 켰는데 키가 빠졌으면 mock 으로 돌리고 빠진 이름만 로그에 남긴다(값은 안 남김).
+const ai = resolveAiEnv(secrets);
+if (ai.warning) console.warn(ai.warning);
 
 export class TomeServer extends Container {
   defaultPort = 3000;
@@ -44,7 +53,8 @@ export class TomeServer extends Container {
     R2_BUCKET: secrets.R2_BUCKET,
     R2_ACCESS_KEY_ID: secrets.R2_ACCESS_KEY_ID,
     R2_SECRET_ACCESS_KEY: secrets.R2_SECRET_ACCESS_KEY,
-    AI_PROVIDER: 'mock',
+    // 실제 AI 는 Worker 비밀값으로 켜고 끈다. 끌 때는 AI_PROVIDER 를 mock 으로 바꾼다(#62).
+    ...ai.vars,
     PORT: '3000',
   };
 }

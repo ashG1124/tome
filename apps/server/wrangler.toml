@@ -10,6 +10,10 @@
 #   R2_SECRET_ACCESS_KEY  같은 토큰의 비밀 키
 #   WAKE_WINDOWS        운영 시간표(KST, JSON). 이 시간 안에만 cron 이 서버를 깨운다(#45, 형식은 worker/wake.ts).
 #                       없거나 형식이 틀리면 깨우지 않는다. Worker 에서만 쓰고 컨테이너로는 넘기지 않는다.
+#   AI_PROVIDER         실제 AI 스위치(#62). 'workers-ai' 면 켜고, 없거나 'mock' 이면 가짜 AI. 끌 때는 mock 으로 바꾼다.
+#   WORKERS_AI_ACCOUNT_ID  Workers AI 를 부를 계정 ID(리드 계정)
+#   WORKERS_AI_API_TOKEN   Workers AI 권한만 있는 API 토큰
+#                       스위치가 켜졌는데 키가 하나라도 없으면 mock 으로 돌고 경고만 남긴다(worker/ai-env.ts).
 # R2_* 넷은 배포 전에 먼저 등록한다(STORAGE_DRIVER=r2 라서 없으면 서버가 켜지지 않는다).
 # 새 비밀값은 worker/index.ts 의 envVars 에도 추가해야 컨테이너에 전달된다.
 # 배포: main 에 병합되면 .github/workflows/deploy.yml 이 자동으로 한다(#45).
