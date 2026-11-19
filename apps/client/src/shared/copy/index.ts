@@ -134,6 +134,27 @@ export const COPY = {
   // ---- 공통 헤더(AppHeader 1226:80887): 임시 ID. HD-01 은 Figma 글자 로고 원문, HD-02 는 Figma에 없는 낭독용 이름
   'HD-01': 'AGORA',
   'HD-02': 'My profile',
+  // Canvas: provisional copy IDs pending review.
+  'CV-01': 'Generation canvas',
+  'CV-02': 'Prompt',
+  'CV-03': 'Question analysis',
+  'CV-04': 'Search',
+  'CV-05': 'Evidence',
+  'CV-06': 'Draft',
+  'CV-07': 'Verification',
+  'CV-08': 'Answer {number}',
+  'CV-09': 'Step {number}',
+  'CV-10': 'Step {number} of 5 done',
+  'CV-11': 'Model knowledge',
+  'CV-12': 'Generating…',
+  'CV-13': 'Waiting for this step.',
+  'CV-14': 'Not measured',
+  'CV-15': 'Fit view',
+  'CV-16': 'Zoom in',
+  'CV-17': 'Zoom out',
+  'CV-18':
+    'Use Left and Right to move between steps, Up and Down within a step, and Home or End to move to the first or last node.',
+  'CV-19': 'Generation started.',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
 } as const;
@@ -147,4 +168,33 @@ export const SKELETON_COPY = {
   loading: 'Loading…',
   backToHome: 'Back to home',
   pages: (count: number) => `Pages: ${count}`,
+} as const;
+
+/** Presentation adapter; all text is stored by copy ID in COPY. */
+export const CANVAS_COPY = {
+  title: COPY['CV-01'],
+  prompt: COPY['CV-02'],
+  stages: {
+    analyze: COPY['CV-03'],
+    research: COPY['CV-04'],
+    evidence: COPY['CV-05'],
+    draft: COPY['CV-06'],
+    verify: COPY['CV-07'],
+  },
+  answer: (number: number) => COPY['CV-08'].replace('{number}', String(number).padStart(2, '0')),
+  step: (number: number) => COPY['CV-09'].replace('{number}', String(number)),
+  stepDone: (number: number) => COPY['CV-10'].replace('{number}', String(number)),
+  modelKnowledge: COPY['CV-11'],
+  generating: COPY['CV-12'],
+  pending: COPY['CV-13'],
+  skipped: COPY['CV-14'],
+  retry: COPY['E-01b'],
+  failed: COPY['E-01a'],
+  fit: COPY['CV-15'],
+  zoomIn: COPY['CV-16'],
+  zoomOut: COPY['CV-17'],
+  instructions: COPY['CV-18'],
+  sample: COPY['C-06'],
+  sampleDescription: COPY['C-07'],
+  started: COPY['CV-19'],
 } as const;

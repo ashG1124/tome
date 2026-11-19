@@ -11,6 +11,13 @@ const render = target ? renders[target.id] : undefined;
 
 // 스펙이 스크린샷 직전에 호출한다(포커스 등 케이스별 상태 만들기).
 (window as unknown as { __designCheckSetup?: () => void }).__designCheckSetup = () => {
+  if (target?.gradientAngle !== undefined) {
+    const gradient = document.querySelector<HTMLElement>('.canvas-gradient');
+    if (gradient) {
+      gradient.style.animation = 'none';
+      gradient.style.setProperty('--canvas-gradient-angle', `${target.gradientAngle}deg`);
+    }
+  }
   if (target?.focus) {
     document.querySelector<HTMLInputElement>('[data-testid="design-check-target"] input')?.focus();
   }
