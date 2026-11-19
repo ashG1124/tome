@@ -4,11 +4,16 @@ import {
   CreateRevisionResponseSchema,
   AdvanceJobRequestSchema,
   AdvanceJobResponseSchema,
+  AgoraHomeResponseSchema,
+  AgoraProjectResponseSchema,
   CancelJobResponseSchema,
+  CommentListResponseSchema,
   CompareResponseSchema,
   ConnectionListResponseSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
+  CreateAgoraCommentRequestSchema,
+  CreateAgoraCommentResponseSchema,
   CreatePageResponseSchema,
   CreateProjectRequestSchema,
   CreateProjectResponseSchema,
@@ -18,6 +23,7 @@ import {
   CreateSetResponseSchema,
   CreatorProfileResponseSchema,
   DismissConnectionResponseSchema,
+  DeriveProjectResponseSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
   FinishProjectResponseSchema,
@@ -31,11 +37,23 @@ import {
   RemixCandidatesResponseSchema,
   SetRemixPartnerRequestSchema,
   SetRemixPartnerResponseSchema,
+  TopicResponseSchema,
   UpdateProjectRequestSchema,
   UpdateProjectResponseSchema,
   WorkspaceResponseSchema,
 } from '@tome/shared';
+import { NoContentParser } from '../responses';
 import type { HttpMethod } from '../transport';
+import {
+  agoraHome,
+  agoraProject,
+  agoraTopic,
+  createAgoraComment,
+  deleteAgoraComment,
+  deriveFromAgora,
+  listAgoraComments,
+  recordAgoraView,
+} from './agora';
 import { FAKE_AGREED_AT, FAKE_CREATOR, FAKE_NOTICE_VERSION, FAKE_TOKEN, fakeHealth } from './data';
 import { FakeFailure } from './errors';
 import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
@@ -368,6 +386,67 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     pattern: '/connections/:id/dismiss',
     response: DismissConnectionResponseSchema,
     handle: ({ params }) => dismissConnection(store(), params.id ?? ''),
+  }),
+
+  // ---- 아고라(서버 PR #100): 남의 공개작은 고정 데이터, 댓글·파생만 저장소에 남는다(fake/agora.ts)
+  route({
+    method: 'GET',
+    pattern: '/agora',
+    response: AgoraHomeResponseSchema,
+    handle: () => agoraHome(store()),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/agora/topics/:id',
+    response: TopicResponseSchema,
+    handle: ({ params }) => agoraTopic(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/agora/projects/:id',
+    response: AgoraProjectResponseSchema,
+    handle: ({ params }) => agoraProject(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/agora/projects/:id/views',
+    response: NoContentParser,
+    status: 204,
+    handle: ({ params }) => recordAgoraView(params.id ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/agora/projects/:id/derive',
+    response: DeriveProjectResponseSchema,
+    idempotent: true,
+    status: 201,
+    handle: ({ params }) => deriveFromAgora(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/projects/:id/comments',
+    response: CommentListResponseSchema,
+    handle: ({ params, query }) => listAgoraComments(store(), params.id ?? '', query),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/projects/:id/comments',
+    response: CreateAgoraCommentResponseSchema,
+    idempotent: true,
+    status: 201,
+    handle: ({ params, body }) =>
+      createAgoraComment(
+        store(),
+        params.id ?? '',
+        parseBody(CreateAgoraCommentRequestSchema, body),
+      ),
+  }),
+  route({
+    method: 'DELETE',
+    pattern: '/comments/:id',
+    response: NoContentParser,
+    status: 204,
+    handle: ({ params }) => deleteAgoraComment(store(), params.id ?? ''),
   }),
 ];
 

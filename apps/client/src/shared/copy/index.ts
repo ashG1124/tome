@@ -165,6 +165,17 @@ export const COPY = {
   'RX-06': 'Refresh the list',
   'RX-07': 'Add to favorites',
   'RX-08': 'Remove from favorites',
+  // ---- 아고라(#39): 임시 ID. 문장은 Figma 원문(3099:130540, 3099:130760, 1720:101534). A-08 은 Figma에 없는 버튼 이름
+  'A-01': 'Hot Topic',
+  'A-02': 'Comments',
+  'A-03': 'See more',
+  'A-04': 'Derivative',
+  'A-05': 'Go to derive',
+  'A-06': 'Derived from',
+  'A-07': 'Likes',
+  'A-08': 'Post',
+  'A-09': 'Recommended Project',
+  'A-10': 'Rising Creator',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
 } as const;
