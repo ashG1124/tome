@@ -13,6 +13,14 @@ import { Public } from '../session/auth.decorators';
 import { UsageService } from '../usage/usage.service';
 import { AccessCodesService } from './access-codes.service';
 import { AdminGuard } from './admin.guard';
+import {
+  type HideRequest,
+  HideRequestSchema,
+  IdParamSchema,
+  type PurgeVisitorsRequest,
+  PurgeVisitorsRequestSchema,
+} from './moderation.schemas';
+import { ModerationService } from './moderation.service';
 import { ResetService } from './reset.service';
 
 export const LabelSchema = z.string().trim().min(1).max(100);
@@ -26,6 +34,7 @@ export class AdminController {
     private readonly accessCodes: AccessCodesService,
     private readonly usage: UsageService,
     private readonly reset: ResetService,
+    private readonly moderation: ModerationService,
   ) {}
 
   @Put('access-codes/:label')
@@ -46,6 +55,32 @@ export class AdminController {
     @Body(new ZodValidationPipe(AdminSettingsRequestSchema)) body: AdminSettingsRequest,
   ) {
     return this.usage.updateSettings(body);
+  }
+
+  @Post('projects/:id/hide')
+  @HttpCode(204)
+  async hideProject(
+    @Param('id', new ZodValidationPipe(IdParamSchema)) id: string,
+    @Body(new ZodValidationPipe(HideRequestSchema)) body: HideRequest,
+  ): Promise<void> {
+    await this.moderation.hideProject(id, body.hidden);
+  }
+
+  @Post('comments/:id/hide')
+  @HttpCode(204)
+  async hideComment(
+    @Param('id', new ZodValidationPipe(IdParamSchema)) id: string,
+    @Body(new ZodValidationPipe(HideRequestSchema)) body: HideRequest,
+  ): Promise<void> {
+    await this.moderation.hideComment(id, body.hidden);
+  }
+
+  @Post('purge-visitors')
+  @HttpCode(200)
+  purgeVisitors(
+    @Body(new ZodValidationPipe(PurgeVisitorsRequestSchema)) body: PurgeVisitorsRequest,
+  ) {
+    return this.moderation.purgeVisitors(body.confirm);
   }
 
   @Post('reset')
