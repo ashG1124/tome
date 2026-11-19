@@ -45,6 +45,24 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # 설정이 빠졌으면 아무것도 하지 않고 바로 멈춘다. DIRECT_DATABASE_URL 이 비면 prisma.config.ts 가
+      # 로컬 기본 주소로 넘어가 엉뚱한 오류가 나기 때문이다. 값은 찍지 않고 이름만 알려 준다.
+      - name: Check settings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          missing=""
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID DIRECT_DATABASE_URL API_BASE_URL; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=배포 설정 없음::Actions Secrets 가 비어 있습니다:$missing"
+            exit 1
+          fi
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -54,6 +72,8 @@ jobs:
         run: |
           set -o pipefail
           pnpm exec prisma migrate deploy 2>&1 | { grep -v -i 'datasource\|neon.tech\|postgres' || true; }
+          # 적용 결과 요약(마이그레이션 개수·up to date)을 로그에 남긴다. Issue 기록용.
+          pnpm exec prisma migrate status 2>&1 | { grep -v -i 'datasource\|neon.tech\|postgres' || true; }
 
       - name: Deploy
         env:
