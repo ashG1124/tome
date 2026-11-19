@@ -9,7 +9,6 @@ import {
   CancelJobResponseSchema,
   CompareResponseSchema,
   ConnectionListResponseSchema,
-  ConnectionStatusSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
   CreatePageResponseSchema,
@@ -20,6 +19,7 @@ import {
   CreateSetRequestSchema,
   CreateSetResponseSchema,
   CreatorProfileResponseSchema,
+  DismissConnectionResponseSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
   FinishProjectResponseSchema,
@@ -284,20 +284,11 @@ export const api = {
       schema: ConnectionListResponseSchema,
     }),
 
-  /**
-   * Connection 숨기기. 응답 { status } 는 shared 에 전용 스키마가 없어 ConnectionStatusSchema 로 안쪽만 검사한다.
-   * 이미 applied·dismissed 면 그 상태를 그대로 돌려준다(여러 번 보내도 결과가 같아 멱등 키가 없다).
-   */
+  /** Connection 숨기기. 이미 applied·dismissed 면 그 상태를 그대로 돌려준다(여러 번 보내도 결과가 같아 멱등 키가 없다). */
   dismissConnection: (connectionId: Id) =>
     request({
       method: 'POST',
       path: `/connections/${segment(connectionId)}/dismiss`,
-      schema: {
-        parse: (data: unknown) => ({
-          status: ConnectionStatusSchema.parse(
-            typeof data === 'object' && data !== null && 'status' in data ? data.status : undefined,
-          ),
-        }),
-      },
+      schema: DismissConnectionResponseSchema,
     }),
 };

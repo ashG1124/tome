@@ -7,7 +7,6 @@ import {
   CancelJobResponseSchema,
   CompareResponseSchema,
   ConnectionListResponseSchema,
-  ConnectionStatusSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
   CreatePageResponseSchema,
@@ -18,6 +17,7 @@ import {
   CreateSetRequestSchema,
   CreateSetResponseSchema,
   CreatorProfileResponseSchema,
+  DismissConnectionResponseSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
   FinishProjectResponseSchema,
@@ -366,11 +366,7 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
   route({
     method: 'POST',
     pattern: '/connections/:id/dismiss',
-    response: {
-      parse: (data: unknown) => ({
-        status: ConnectionStatusSchema.parse((data as { status?: unknown }).status),
-      }),
-    },
+    response: DismissConnectionResponseSchema,
     handle: ({ params }) => dismissConnection(store(), params.id ?? ''),
   }),
 ];
