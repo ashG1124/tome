@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { IdSchema, IsoDateTimeSchema, LIMITS } from './common.js';
 import { PromptSetSchema } from './answer.js';
-import { DerivedFromSchema, ProjectKindSchema } from './project.js';
+import { DerivedFromSchema, ProjectKindSchema, ProjectSummarySchema } from './project.js';
 import { CreatorSummarySchema } from './session.js';
 
 export const AgoraProjectCardSchema = z.object({
@@ -51,6 +51,9 @@ export const AgoraProjectResponseSchema = z.object({
 });
 export type AgoraProjectResponse = z.infer<typeof AgoraProjectResponseSchema>;
 
+export const DeriveProjectResponseSchema = z.object({ project: ProjectSummarySchema });
+export type DeriveProjectResponse = z.infer<typeof DeriveProjectResponseSchema>;
+
 export const AgoraCommentSchema = z.object({
   id: IdSchema,
   author: CreatorSummarySchema,
@@ -64,6 +67,9 @@ export const CreateAgoraCommentRequestSchema = z.object({
   body: z.string().trim().min(1).max(LIMITS.COMMENT_MAX),
 });
 export type CreateAgoraCommentRequest = z.infer<typeof CreateAgoraCommentRequestSchema>;
+
+export const CreateAgoraCommentResponseSchema = z.object({ comment: AgoraCommentSchema });
+export type CreateAgoraCommentResponse = z.infer<typeof CreateAgoraCommentResponseSchema>;
 
 export const CommentListResponseSchema = z.object({
   comments: z.array(AgoraCommentSchema),

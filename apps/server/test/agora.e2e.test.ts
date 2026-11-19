@@ -3,17 +3,16 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
-  AgoraCommentSchema,
   AgoraHomeResponseSchema,
   AgoraProjectResponseSchema,
   ApiErrorSchema,
   CommentListResponseSchema,
+  CreateAgoraCommentResponseSchema,
   CreateSessionResponseSchema,
+  DeriveProjectResponseSchema,
   LIMITS,
-  ProjectSummarySchema,
   TopicResponseSchema,
 } from '@tome/shared';
-import { z } from 'zod';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { LoginRateLimiter } from '../src/modules/session/login-rate-limiter';
@@ -396,16 +395,14 @@ describe.skipIf(!url)('agora API (real Postgres)', () => {
     const key = randomUUID();
     const res = await call('POST', `/agora/projects/${src.id}/derive`, me.token, undefined, key);
     expect(res.status).toBe(201);
-    const { project } = z.object({ project: ProjectSummarySchema }).parse(await res.json());
+    const { project } = DeriveProjectResponseSchema.parse(await res.json());
     expect(project).toMatchObject({ title: 'Source', kind: 'derive', status: 'building' });
     expect(project.shelfPosition).toBe(0);
     projectIds.push(project.id);
 
     // 같은 키 연타 → 같은 프로젝트 하나
     const again = await call('POST', `/agora/projects/${src.id}/derive`, me.token, undefined, key);
-    expect(z.object({ project: ProjectSummarySchema }).parse(await again.json()).project.id).toBe(
-      project.id,
-    );
+    expect(DeriveProjectResponseSchema.parse(await again.json()).project.id).toBe(project.id);
     expect(await prisma.project.count({ where: { ownerId: me.creatorId, kind: 'derive' } })).toBe(
       1,
     );
@@ -480,9 +477,7 @@ describe.skipIf(!url)('agora API (real Postgres)', () => {
 
     const first = await post(other, { body: '  hello  ' });
     expect(first.status).toBe(201);
-    const created = AgoraCommentSchema.parse(
-      ((await first.json()) as { comment: unknown }).comment,
-    );
+    const created = CreateAgoraCommentResponseSchema.parse(await first.json()).comment;
     expect(created).toMatchObject({ body: 'hello', mine: true });
 
     const key = randomUUID();

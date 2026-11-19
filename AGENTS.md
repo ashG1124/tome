@@ -14,7 +14,7 @@
 - 이 저장소는 공개다. `.tome-docs/`의 내용을 저장소 파일, 코드 주석, Issue, PR, 커밋 메시지에 옮겨 적지 않는다.
 - `.tome-docs/`를 커밋하지 않는다(`git add -f` 금지). `.tome-docs/` 안의 파일을 수정하지 않는다.
 - `.env*` 파일을 읽거나 출력하거나 커밋하지 않는다. 키·토큰·계정 ID·서비스 URL은 코드에 쓰지 않고 환경변수로 받는다.
-- 디자인 자산(`design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`)은 커밋하지 않는다. 팀 자산 저장소를 `.tome-assets/`에 clone 하고 작업 전에 `pnpm assets:pull`로 받는다. 없으면 같은 크기의 빈 자리로 그린다.
+- 디자인 자산(`design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`)은 커밋하지 않는다. 팀 자산 저장소를 `.tome-assets/`에 clone 하고 작업 전에 `pnpm assets:pull`로 받는다. 없으면 같은 크기의 빈 자리로 그린다. 배포본(Vercel)은 빌드 때 환경변수 `ASSETS_REPO`·`ASSETS_REPO_TOKEN` 으로 자산 저장소에서 icons·brand 만 받는다(`scripts/assets-build-fetch.mjs`).
 
 ## 3. 담당 폴더
 

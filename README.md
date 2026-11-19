@@ -26,6 +26,8 @@ pnpm install
 
 팀 안내에 따라 자산 저장소를 저장소 맨 위 `.tome-assets/`에 clone 하고, 작업 전에 `pnpm assets:pull`로 최신을 받습니다. 이 명령이 `design-ref/`, `apps/client/src/assets/icons/`, `apps/client/src/assets/brand/`에 파일을 복사합니다(모두 git 제외, 커밋하지 마세요). 없어도 빈 자리로 화면은 뜹니다.
 
+배포본(Vercel)은 빌드 때 환경변수 `ASSETS_REPO`(`<owner>/<repo>` 형식)와 `ASSETS_REPO_TOKEN`으로 자산 저장소에서 `icons`·`brand`만 받아 복사합니다(`scripts/assets-build-fetch.mjs`). 환경변수가 없으면 받기를 건너뛰고 빈 자리로 빌드합니다. 자산 저장소만 바뀌었다면 코드 변경이 없어도 Vercel에서 Redeploy 해야 반영됩니다.
+
 ## 화면만 실행 (서버·Docker 없이 가짜 응답 모드)
 
 ```bash
@@ -50,7 +52,17 @@ pnpm --filter @tome/server start:dev
 
 `.env`의 `PORT`가 3000이면 `http://localhost:3000/health`, 서버 컨테이너(`docker compose up -d server`)는 `http://localhost:3001/health`로 확인합니다.
 이미지는 기본으로 로컬 폴더(`STORAGE_DRIVER=local`)에 저장합니다. 로컬에서 R2를 쓰려면 `.env`에 `STORAGE_DRIVER=r2`와 `R2_*` 네 값을 넣습니다(값은 인프라 담당에게 받고, 커밋하지 않습니다).
+AI는 기본으로 가짜 응답(`AI_PROVIDER=mock`, 비용 0원)이라 각자 PC에 실제 AI 키를 둘 필요가 없습니다. 실서버의 실제 AI는 Worker 비밀값 `AI_PROVIDER`·`WORKERS_AI_*`로 인프라 담당이 켜고 끕니다.
 DB 테스트까지 돌리려면 `TEST_DATABASE_URL`에 위 DB 주소를 넣고 `pnpm --filter @tome/server test`를 실행합니다(없으면 DB 테스트는 건너뜁니다).
+
+## 실서버 배포 (인프라 담당)
+
+- **자동 배포:** dev를 main에 병합하면 `.github/workflows/deploy.yml`이 운영 DB 마이그레이션 → 배포 → `/health`의 `version` 확인 순서로 돌립니다. Actions 탭의 **Deploy**에서 손으로 다시 돌릴 수도 있습니다(Run workflow).
+- **배포 동결:** 저장소 변수 `DEPLOY_FREEZE`를 `true`로 바꾸면 자동 배포가 멈추고 경고만 남깁니다. 풀 때는 `false`.
+- **운영 시간 깨우기:** Worker가 5분마다 Worker 비밀값 `WAKE_WINDOWS`(한국 시간 시간표, 형식은 `apps/server/worker/wake.ts`)를 보고 그 안일 때만 서버를 깨웁니다. 시간표는 저장소에 적지 않습니다.
+- **자동이 안 될 때(손으로):**
+  - 깨우기: 개장 전·쉬는 시간마다 브라우저로 서버의 `/health`를 엽니다(첫 응답은 몇 초 걸림).
+  - 배포: `apps/server`에서 direct DB 주소로 `pnpm exec prisma migrate deploy` → `npx wrangler deploy --var APP_VERSION:<커밋 해시>` → `/health`의 `version` 확인.
 
 ## 검사
 

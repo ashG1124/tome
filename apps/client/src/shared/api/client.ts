@@ -1,4 +1,4 @@
-import { ApiErrorSchema, type IdempotencyKey } from '@tome/shared';
+import { ApiErrorSchema, IdempotencyKeySchema, type IdempotencyKey } from '@tome/shared';
 import { apiConfig } from './config';
 import { ApiRequestError } from './errors';
 import { fakeTransport } from './fake/transport';
@@ -14,19 +14,25 @@ export function newIdempotencyKey(): IdempotencyKey {
 interface HeaderOptions {
   token: string | null;
   hasBody: boolean;
-  /** true 이면 Idempotency-Key 를 새로 만들어 붙인다. */
+  /** true 이면 전달받은 키를 쓰고, 없으면 새 키를 만든다. */
   idempotent: boolean;
+  idempotencyKey?: IdempotencyKey;
 }
 
 export function buildHeaders({
   token,
   hasBody,
   idempotent,
+  idempotencyKey,
 }: HeaderOptions): Record<string, string> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (hasBody) headers['Content-Type'] = 'application/json';
   if (token !== null) headers.Authorization = `Bearer ${token}`;
-  if (idempotent) headers['Idempotency-Key'] = newIdempotencyKey();
+  if (idempotent)
+    headers['Idempotency-Key'] =
+      idempotencyKey === undefined
+        ? newIdempotencyKey()
+        : IdempotencyKeySchema.parse(idempotencyKey);
   return headers;
 }
 
@@ -44,6 +50,8 @@ export interface RequestOptions<T> {
   auth?: boolean;
   /** 멱등 표시가 있는 변경 요청이면 true */
   idempotent?: boolean;
+  /** 같은 변경 요청을 재시도할 때 재사용할 키. 생략하면 호출마다 새 키를 만든다. */
+  idempotencyKey?: IdempotencyKey;
   /** 오류 상태여도 schema 모양의 본문이면 성공으로 받을 상태(예: health 503) */
   allowStatus?: readonly number[];
 }
@@ -56,6 +64,7 @@ export async function request<T>(options: RequestOptions<T>): Promise<T> {
     token: auth ? useSessionStore.getState().token : null,
     hasBody: body !== undefined,
     idempotent,
+    idempotencyKey: options.idempotencyKey,
   });
 
   // 앱을 연 뒤 첫 요청이 느리면 "서버를 깨우는 중" 띠를 띄운다(S-05).

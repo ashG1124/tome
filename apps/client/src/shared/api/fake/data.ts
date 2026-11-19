@@ -1,9 +1,4 @@
-import type {
-  CreatorSummary,
-  HealthResponse,
-  ProjectSummary,
-  WorkspaceResponse,
-} from '@tome/shared';
+import type { CreatorSummary, HealthResponse, ProjectSummary } from '@tome/shared';
 
 export const FAKE_TOKEN = 'fake-token';
 export const FAKE_NOTICE_VERSION = 'fake-notice-1';
@@ -41,27 +36,14 @@ export const FAKE_PROJECTS: readonly ProjectSummary[] = [
   },
 ];
 
-/** 프로젝트별 페이지 id. 첫 항목이 마지막으로 연 페이지다. */
-const FAKE_PAGE_IDS: Record<string, readonly string[]> = {
+/** 프로젝트별 처음 페이지 id(index 순서). 워크스페이스는 pageId 가 없으면 마지막 페이지를 연다. */
+export const FAKE_PAGE_IDS: Record<string, readonly string[]> = {
   '0b8c1f5e-3c1d-4f6a-8a9b-1d2e3f4a5b6c': ['c4a1e7d2-8b5f-4e39-a6c0-2f1d3b4a5c6e'],
   '7d2a9e44-6b3f-4c10-b5d8-9e0f1a2b3c4d': [
     'e9f3b1a7-5d2c-4b86-8f0a-3c4d5e6f7a8b',
     'a2c4e6f8-1b3d-4f57-9a8c-0e1f2a3b4c5d',
   ],
 };
-
-export function fakeWorkspace(projectId: string): WorkspaceResponse | null {
-  const project = FAKE_PROJECTS.find((p) => p.id === projectId);
-  const pageIds = FAKE_PAGE_IDS[projectId];
-  const first = pageIds?.[0];
-  if (!project || !pageIds || first === undefined) return null;
-  return {
-    project,
-    pages: pageIds.map((id, index) => ({ id, index, setCount: 0 })),
-    currentPageId: first,
-    sets: [],
-  };
-}
 
 export function fakeHealth(): HealthResponse {
   return { status: 'ok', db: 'up', time: new Date().toISOString(), version: 'fake' };

@@ -157,15 +157,16 @@ export class EditService {
         // 같은 프로젝트의 확정을 한 줄로 세운다(번호 부여가 겹치지 않게).
         await this.repo.lockProject(tx, answer.set.projectId);
         const number = (await this.repo.maxAcceptedNumber(tx, answer.setId)) + 1;
+        const now = new Date();
         let changed: number;
         try {
-          changed = await this.repo.acceptDraft(tx, answerId, number);
+          changed = await this.repo.acceptDraft(tx, answerId, number, now);
         } catch (error) {
           if (isUniqueViolation(error)) throw new AppError('NOT_DRAFT');
           throw error;
         }
         if (changed === 0) throw new AppError('NOT_DRAFT');
-        await this.repo.touchProject(tx, answer.set.projectId, new Date());
+        await this.repo.touchProject(tx, answer.set.projectId, now);
         await this.remix.applyOnAccept(tx, auth, {
           id: answerId,
           jobId: answer.jobId,

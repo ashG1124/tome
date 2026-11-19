@@ -89,7 +89,8 @@ function snapshotOf(id: string, identityCase: FakeIdentityCase): IdentitySnapsho
       metrics: {
         sessions: 0,
         nodeEdits: 0,
-        reasonedRatio: 0,
+        // 이유를 남길 수 있는 편집이 5개 미만이면 서버도 null 을 준다(#36). 화면은 Depth 를 "—" 로 보여 준다.
+        reasonedRatio: null,
         firstRecordedAt: null,
         lastActiveAt: null,
         originBreakdown: { own: 0, remix: 0, derived: 0 },

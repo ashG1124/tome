@@ -8,10 +8,16 @@
 #   R2_BUCKET           이미지 버킷 이름(공개 접근 끔)
 #   R2_ACCESS_KEY_ID    그 버킷 하나에만 Object Read & Write 인 R2 API 토큰의 키 ID
 #   R2_SECRET_ACCESS_KEY  같은 토큰의 비밀 키
+#   WAKE_WINDOWS        운영 시간표(KST, JSON). 이 시간 안에만 cron 이 서버를 깨운다(#45, 형식은 worker/wake.ts).
+#                       없거나 형식이 틀리면 깨우지 않는다. Worker 에서만 쓰고 컨테이너로는 넘기지 않는다.
+#   AI_PROVIDER         실제 AI 스위치(#62). 'workers-ai' 면 켜고, 없거나 'mock' 이면 가짜 AI. 끌 때는 mock 으로 바꾼다.
+#   WORKERS_AI_ACCOUNT_ID  Workers AI 를 부를 계정 ID(리드 계정)
+#   WORKERS_AI_API_TOKEN   Workers AI 권한만 있는 API 토큰
+#                       스위치가 켜졌는데 키가 하나라도 없으면 mock 으로 돌고 경고만 남긴다(worker/ai-env.ts).
 # R2_* 넷은 배포 전에 먼저 등록한다(STORAGE_DRIVER=r2 라서 없으면 서버가 켜지지 않는다).
 # 새 비밀값은 worker/index.ts 의 envVars 에도 추가해야 컨테이너에 전달된다.
-# 배포 순서: (direct 주소로) prisma migrate deploy → wrangler deploy --var APP_VERSION:<커밋 해시>
-# 자세한 방법은 PR #67 본문 "배포 방법".
+# 배포: main 에 병합되면 .github/workflows/deploy.yml 이 자동으로 한다(#45).
+# 손으로 할 때 순서: (direct 주소로) prisma migrate deploy → wrangler deploy --var APP_VERSION:<커밋 해시>
 
 name = "tome-api"
 main = "worker/index.ts"
@@ -20,6 +26,11 @@ compatibility_date = "2026-11-02"
 # workers.dev 주소 하나만 쓴다. 버전별 미리보기 주소는 쓰지 않는다.
 workers_dev = true
 preview_urls = false
+
+# 5분마다 worker/index.ts 의 scheduled 가 돈다. 서버를 깨우는 건 WAKE_WINDOWS 시간 안일 때뿐이다(#45).
+# 서버는 요청이 없으면 10분 뒤 잠드므로, 5분 간격이면 운영 시간 내내 깨어 있다.
+[triggers]
+crons = ["*/5 * * * *"]
 
 [[containers]]
 class_name = "TomeServer"
