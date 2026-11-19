@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { JobStageSchema } from '@tome/shared';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, clearSession, setSession } from '../../shared/api';
@@ -7,6 +8,14 @@ import { FAKE_NOTICE_VERSION, FAKE_TOKEN } from '../../shared/api/fake/data';
 import { fakeState, resetFake } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
 import { WorkspacePage } from './WorkspacePage';
+
+// Radix 스위치는 form 안에서 크기를 재려고 ResizeObserver 를 쓴다. jsdom 에는 없어서 빈 대역을 둔다.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObserver;
 
 // 가짜 응답 모드에서 페이지 열기·추가, 프롬프트 보내기가 공용 API 로 이어지는지 본다.
 
@@ -95,5 +104,28 @@ describe('WorkspacePage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(COPY['E-02']);
     expect(screen.queryByText(COPY['S-03'])).toBeNull();
     expect((input as HTMLTextAreaElement).value).toBe('A lighthouse');
+  });
+
+  it('답변이 있으면 끝내기로 완료 모달을 열고, 완료하면 done 플래시와 함께 홈으로 간다', async () => {
+    const { project } = await api.createProject({});
+    const { currentPageId } = await api.getWorkspace(project.id);
+    const { job } = await api.createSet(project.id, {
+      pageId: currentPageId,
+      prompt: 'A lighthouse',
+    });
+    for (const stage of JobStageSchema.options) await api.advanceJob(job.id, stage);
+    const finish = vi.spyOn(api, 'finishProject');
+    const router = renderWorkspace(`/projects/${project.id}`);
+
+    fireEvent.click(await screen.findByRole('button', { name: COPY['W-04'] }));
+    const title = await screen.findByRole('textbox', { name: COPY['D-03a'] });
+    fireEvent.change(title, { target: { value: 'Lighthouse' } });
+    await screen.findByRole('radio', { name: `${COPY['D-12']} 1` });
+    fireEvent.click(screen.getByRole('button', { name: COPY['D-07b'] }));
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-09b'] }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(router.state.location.state).toEqual({ flash: 'done' });
+    expect(finish.mock.calls[0]?.[1]).toMatchObject({ title: 'Lighthouse' });
   });
 });
