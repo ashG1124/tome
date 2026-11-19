@@ -155,6 +155,16 @@ export const COPY = {
   'CV-18':
     'Use Left and Right to move between steps, Up and Down within a step, and Home or End to move to the first or last node.',
   'CV-19': 'Generation started.',
+  // ---- 리믹스 패널(#41): 임시 ID. RX-01~04 는 Figma 원문(Control bar 1720:80619, 제목 2513:226457),
+  // RX-05~08 은 Figma에 없는 낭독용 이름
+  'RX-01': 'Remix with',
+  'RX-02': 'Rising',
+  'RX-03': 'Favorite',
+  'RX-04': 'remix with',
+  'RX-05': 'Remix',
+  'RX-06': 'Refresh the list',
+  'RX-07': 'Add to favorites',
+  'RX-08': 'Remove from favorites',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
 } as const;

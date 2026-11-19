@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { JobStageSchema } from '@tome/shared';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, clearSession, setSession } from '../../shared/api';
+import { api, ApiRequestError, clearSession, setSession } from '../../shared/api';
 import { FAKE_NOTICE_VERSION, FAKE_TOKEN } from '../../shared/api/fake/data';
 import { fakeState, resetFake } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
@@ -127,5 +127,50 @@ describe('WorkspacePage', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(router.state.location.state).toEqual({ flash: 'done' });
     expect(finish.mock.calls[0]?.[1]).toMatchObject({ title: 'Lighthouse' });
+  });
+});
+
+describe('WorkspacePage 리믹스(#41)', () => {
+  it('리믹스 버튼 → 후보 고르기 → 제목에 상대가 붙고, 패널이 닫히며 "Remix with 이름" 알약이 남는다', async () => {
+    const spy = vi.spyOn(api, 'setRemixPartner');
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Lind/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toContain(
+        `${COPY['RX-04']} Lind`,
+      ),
+    );
+    expect(spy).toHaveBeenCalledWith(PROJECT, expect.any(String));
+    expect(screen.getByRole('button', { name: COPY['RX-05'] }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) })).toBeTruthy();
+  });
+
+  it('후보가 0명이면(S-04) 리믹스 없이도 프롬프트로 일반 생성을 할 수 있다', async () => {
+    resetFake('?fakeIdentity=private');
+    fakeState.consented = true;
+    const create = vi.spyOn(api, 'createSet');
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    expect((await screen.findByRole('status', { name: '' })).textContent).toBe(COPY['S-04']);
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'A lighthouse' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+  });
+
+  it('상대 저장이 실패하면 패널 안에 오류를 보이고 제목은 그대로다', async () => {
+    vi.spyOn(api, 'setRemixPartner').mockRejectedValueOnce(
+      new ApiRequestError(403, { code: 'IDENTITY_PRIVATE', message: 'x', retryable: false }),
+    );
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Mara/ }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(COPY['RX-04']);
   });
 });

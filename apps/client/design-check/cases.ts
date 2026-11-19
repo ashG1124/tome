@@ -190,3 +190,30 @@ for (const [index, angle] of [270, 237.53, 180, 122.47, 90, 57.53, 0, 302.47].en
     gradientAngle: angle,
   });
 }
+// ---- 리믹스 알약(#41): Control 1720:80418. 그림에 그림자 여백 20px 이 둘러져 있다.
+// 'Remix with' 글자·알약 크기는 시안과 같게 맞췄고, 아바타 자리(시안은 사진·체크 무늬)는 이름 머리글자 동그라미다.
+const CONTROL_DIR = 'design-ref/components/control';
+// 실측: selected diffRatio 14.90%·blob 1310, done 10.88%·blob 901 → 각 +0.5%p. 알약 크기·위치·글자 자리는 시안과 같다.
+// 차이는 서체(시안은 Pretendard, 구현은 Open Sans)와 사진 자리(시안은 사진·체크 무늬, 구현은 이름 머리글자 동그라미).
+const remixPillDiff = (max: number, maxBlob: number): AllowedDiff => ({
+  max,
+  maxBlob,
+  reason:
+    '서체(시안 Pretendard, 구현 Open Sans)와 아바타 자리(시안은 사진·체크 무늬, 구현은 이름 머리글자)',
+});
+cases.push(
+  {
+    id: 'control/remix-selected',
+    ref: `${CONTROL_DIR}/type-remix-status-selected__1720-80489.png`,
+    width: 352,
+    height: 88,
+    allowedDiff: remixPillDiff(0.154, 1400),
+  },
+  {
+    id: 'control/remix-done',
+    ref: `${CONTROL_DIR}/type-remix-status-done__1720-80415.png`,
+    width: 287,
+    height: 88,
+    allowedDiff: remixPillDiff(0.114, 1000),
+  },
+);

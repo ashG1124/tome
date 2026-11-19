@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { api, clearSession, setSession } from '../../shared/api';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { api, ApiRequestError, clearSession, setSession } from '../../shared/api';
 import { FAKE_CREATOR } from '../../shared/api/fake/data';
 import { FAKE_OTHER_CREATORS } from '../../shared/api/fake/identity';
 import { resetFake } from '../../shared/api/fake/state';
@@ -24,6 +24,7 @@ function renderAt(path: string) {
     [
       { path: '/creators/:id', element: <ProfilePage /> },
       { path: '/enter', element: <p>enter</p> },
+      { path: '/projects/:id', element: <p>workspace</p> },
     ],
     { initialEntries: [path] },
   );
@@ -39,6 +40,10 @@ function renderAt(path: string) {
 beforeEach(() => {
   localStorage.clear();
   clearSession();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('프로필 화면 /creators/:id', () => {
@@ -87,5 +92,46 @@ describe('프로필 화면 /creators/:id', () => {
     const router = renderAt(`/creators/${FAKE_CREATOR.id}`);
     expect(await screen.findByText('enter')).toBeTruthy();
     expect(router.state.location.pathname).toBe('/enter');
+  });
+});
+
+describe('Compare 탭에서 리믹스로 들어가기(#41)', () => {
+  async function openCompare() {
+    await signIn();
+    const router = renderAt(`/creators/${FAKE_CREATOR.id}`);
+    const tab = await screen.findByRole('tab', { name: COPY['P-01c'] });
+    fireEvent.mouseDown(tab);
+    fireEvent.click(tab);
+    return router;
+  }
+
+  it('다른 창작자를 누르면 그 사람을 리믹스 상대로 새 프로젝트를 만들고 워크스페이스로 간다', async () => {
+    const create = vi.spyOn(api, 'createProject');
+    const router = await openCompare();
+    fireEvent.click((await screen.findAllByRole('button', { name: OTHER?.displayName }))[0]!);
+
+    expect(await screen.findByText('workspace')).toBeTruthy();
+    expect(create).toHaveBeenCalledWith({ remixPartnerId: OTHER?.id });
+    expect(router.state.location.pathname).toMatch(/^\/projects\//);
+  });
+
+  it('연달아 눌러도 프로젝트는 한 번만 만든다', async () => {
+    const create = vi.spyOn(api, 'createProject');
+    await openCompare();
+    const partner = (await screen.findAllByRole('button', { name: OTHER?.displayName }))[0]!;
+    fireEvent.click(partner);
+    fireEvent.click(partner);
+    await screen.findByText('workspace');
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('만들기가 실패하면 오류 안내를 보이고 프로필에 남는다', async () => {
+    vi.spyOn(api, 'createProject').mockRejectedValueOnce(
+      new ApiRequestError(500, { code: 'INTERNAL', message: 'x', retryable: true }),
+    );
+    const router = await openCompare();
+    fireEvent.click((await screen.findAllByRole('button', { name: OTHER?.displayName }))[0]!);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(router.state.location.pathname).toBe(`/creators/${FAKE_CREATOR.id}`);
   });
 });

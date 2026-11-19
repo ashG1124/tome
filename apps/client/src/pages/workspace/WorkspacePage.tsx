@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
@@ -9,6 +9,7 @@ import { IconMenu } from './IconMenu';
 import { pageIdFromSearch, pageMenu } from './pageMenu';
 import { PromptBar, type PromptSubmit } from './PromptBar';
 import { promptBarInfo } from './prompt';
+import { RemixPanel } from './remix/RemixPanel';
 import { WorkspaceHeader } from './WorkspaceHeader';
 
 export function WorkspacePage() {
@@ -36,6 +37,17 @@ export function WorkspacePage() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['workspace', id] });
   // 입력 중인 글은 페이지마다 화면에만 보존한다(새로고침 전까지).
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // 리믹스 패널(#41): 열림 · 상대 저장 중(연타 막기) · 저장 실패
+  const remixPanelId = useId();
+  const [remixOpen, setRemixOpen] = useState(false);
+  const choosingPartner = useRef(false);
+  const [choosing, setChoosing] = useState(false);
+  const [chooseError, setChooseError] = useState<unknown>(null);
+  const openRemix = useCallback(() => {
+    setChooseError(null);
+    setRemixOpen(true);
+  }, []);
+  const closeRemix = useCallback(() => setRemixOpen(false), []);
 
   const redirectTo = authRedirectTarget(workspace.error);
   if (redirectTo) return <Navigate to={redirectTo} replace />;
@@ -68,6 +80,25 @@ export function WorkspacePage() {
     }
   };
 
+  // 리믹스 상대를 고른다. 저장되면 제목에 상대가 붙도록 화면을 다시 받고 패널을 닫는다.
+  // 실패하면 패널 안에 오류를 보여 주고, 원래 상대(또는 상대 없음)를 그대로 둔다.
+  const choosePartner = async (partnerId: string) => {
+    if (choosingPartner.current) return;
+    choosingPartner.current = true;
+    setChoosing(true);
+    setChooseError(null);
+    try {
+      await api.setRemixPartner(id, partnerId);
+      await refresh();
+      setRemixOpen(false);
+    } catch (error) {
+      setChooseError(error);
+    } finally {
+      choosingPartner.current = false;
+      setChoosing(false);
+    }
+  };
+
   // 프롬프트로 세트를 만든다. 성공하면 이 페이지의 입력 글을 비우고 화면을 다시 받는다.
   // 단계 진행(advanceJob)은 캔버스(#26)가 응답의 job 으로 이어 간다.
   const sendPrompt = async (request: PromptSubmit) => {
@@ -87,7 +118,10 @@ export function WorkspacePage() {
       aria-busy={workspace.isPending || undefined}
       className="relative -m-[var(--space-padding-8)] min-h-screen bg-[color:var(--color-background-weak)]"
     >
-      <WorkspaceHeader title={workspace.data?.project.title} />
+      <WorkspaceHeader
+        title={workspace.data?.project.title}
+        partnerName={workspace.data?.project.remixPartner?.displayName}
+      />
       {workspace.isError ? (
         <div className="px-[var(--space-padding-8)]">
           <ErrorNotice
@@ -119,6 +153,22 @@ export function WorkspacePage() {
                   }
                 : undefined
             }
+            remix={{
+              open: remixOpen,
+              partnerName: workspace.data?.project.remixPartner?.displayName,
+              panelId: remixPanelId,
+              onOpen: openRemix,
+              onClose: closeRemix,
+              panel: (
+                <RemixPanel
+                  id={remixPanelId}
+                  partner={workspace.data?.project.remixPartner}
+                  choosing={choosing}
+                  chooseError={chooseError}
+                  onChoose={(partnerId) => void choosePartner(partnerId)}
+                />
+              ),
+            }}
           />
         </div>
       ) : null}
