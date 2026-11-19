@@ -6,6 +6,7 @@ import { canvasDesignFixtures } from '../../src/features/canvas';
 import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
+import { RemixLabel } from '../../src/pages/workspace/remix/RemixPanel';
 import { Flash, Tabs, TitleInput } from '../../src/shared/ui';
 
 // 시범 비교용 안내 글자. 앱 copy 에는 넣지 않는다.
@@ -89,3 +90,15 @@ renders['canvas/keyword'] = canvasDesignFixtures.keyword;
 for (let index = 1; index <= 8; index++)
   renders[`canvas/preview-generating-${String(index).padStart(2, '0')}`] =
     canvasDesignFixtures.gradient;
+// ---- 리믹스 알약(#41): 그림자 여백 20px 안에 알약(열림 312px, 상대 있음 247px)을 둔다.
+const pill = (width: number, partner: string | undefined, open: boolean) => () => (
+  <div style={{ padding: 20 }}>
+    <div style={{ width }}>
+      <RemixLabel partner={partner} open={open} />
+    </div>
+  </div>
+);
+Object.assign(renders, {
+  'control/remix-selected': pill(312, undefined, true),
+  'control/remix-done': pill(247, 'Paul', false),
+});
