@@ -6,11 +6,13 @@ import {
   AgoraProjectResponseSchema,
   CommentListResponseSchema,
   CreateAgoraCommentRequestSchema,
+  CreateAgoraCommentResponseSchema,
+  DeriveProjectResponseSchema,
   TopicResponseSchema,
   TopicSchema,
 } from './agora.js';
 import { LIMITS } from './common.js';
-import { ID_A, ID_B, NOW, creator } from './testing/fixtures.js';
+import { ID_A, ID_B, NOW, creator, project } from './testing/fixtures.js';
 
 const card = {
   id: ID_A,
@@ -73,5 +75,18 @@ describe('agora schemas', () => {
     const comment = { id: ID_A, author: creator, body: 'nice', createdAt: NOW, mine: false };
     expect(AgoraCommentSchema.safeParse(comment).success).toBe(true);
     expect(CommentListResponseSchema.safeParse({ comments: [comment] }).success).toBe(true);
+  });
+
+  it('parses a create-comment response and rejects a missing comment', () => {
+    const comment = { id: ID_A, author: creator, body: 'nice', createdAt: NOW, mine: true };
+    expect(CreateAgoraCommentResponseSchema.safeParse({ comment }).success).toBe(true);
+    expect(CreateAgoraCommentResponseSchema.safeParse({}).success).toBe(false);
+    expect(CreateAgoraCommentResponseSchema.safeParse({ comment: {} }).success).toBe(false);
+  });
+
+  it('parses a derive response and rejects a missing project', () => {
+    expect(DeriveProjectResponseSchema.safeParse({ project }).success).toBe(true);
+    expect(DeriveProjectResponseSchema.safeParse({}).success).toBe(false);
+    expect(DeriveProjectResponseSchema.safeParse({ project: { id: ID_A } }).success).toBe(false);
   });
 });

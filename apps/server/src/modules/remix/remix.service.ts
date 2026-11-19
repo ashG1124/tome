@@ -4,6 +4,7 @@ import {
   type ConnectionListResponse,
   type ConnectionStatus,
   type CreatorSummary,
+  type DismissConnectionResponse,
   NodeSnapshotSchema,
   type RemixCandidate,
   type RemixCandidatesResponse,
@@ -247,7 +248,7 @@ export class RemixService {
     return fresh?.remixPartnerId === partnerId ? fresh.remixPartnerSnapshotId : null;
   }
 
-  async dismiss(auth: AuthContext, id: string): Promise<{ status: ConnectionStatus }> {
+  async dismiss(auth: AuthContext, id: string): Promise<DismissConnectionResponse> {
     const found = await this.repo.findConnectionWithProject(id);
     if (!found) throw new AppError('NOT_FOUND');
     requireOwnedProject(found.project, auth);

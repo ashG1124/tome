@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ConnectionListResponseSchema,
   ConnectionSchema,
+  DismissConnectionResponseSchema,
   RemixCandidatesResponseSchema,
   RemixStateSchema,
   SetRemixPartnerResponseSchema,
@@ -58,5 +59,11 @@ describe('remix schemas', () => {
       true,
     );
     expect(ConnectionSchema.safeParse({ ...connection, status: 'hidden' }).success).toBe(false);
+  });
+
+  it('parses a dismiss response and rejects bad or missing status', () => {
+    expect(DismissConnectionResponseSchema.safeParse({ status: 'dismissed' }).success).toBe(true);
+    expect(DismissConnectionResponseSchema.safeParse({ status: 'hidden' }).success).toBe(false);
+    expect(DismissConnectionResponseSchema.safeParse({}).success).toBe(false);
   });
 });
