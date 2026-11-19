@@ -47,7 +47,7 @@ export const COPY = {
   'S-11e-prompt':
     'A sustainable eco-friendly library with wooden structures, green plants, and soft natural light',
   'S-12': 'Reference image',
-  // ---- 홈 서가(#23): 임시 ID. 문장은 Figma 원문(1185:57987, 1185:58199, 1226:78464)
+  // ---- 홈 서가(#23): 확정 ID(#128). 문장은 Figma 원문(1185:57987, 1185:58199, 1226:78464)
   'H-01': 'Project',
   'H-02a': 'Posted',
   'H-02b': 'Finished',
@@ -56,7 +56,7 @@ export const COPY = {
   'H-03c': 'Derive',
   // Figma "Edited 2 hours ago" → 절대 날짜 규칙이라 "Edited {날짜}"로 붙여 쓴다
   'H-04': 'Edited',
-  // ---- 워크스페이스 틀(#25): 임시 ID. W-05 는 Figma 원문(1187:62709), 나머지는 버튼 이름.
+  // ---- 워크스페이스 틀(#25): 확정 ID(#128). W-05 는 Figma 원문(1187:62709), 나머지는 버튼 이름.
   'W-01': 'Page',
   'W-02': 'Pages',
   'W-03': 'Add page',
@@ -65,7 +65,7 @@ export const COPY = {
   'W-06': 'TÓME',
   // 플래시 stack(1187:62707) 원문. 노드 새 버전 확정 때 뜬다
   'W-07': 'This version will be updated as the accepted answer',
-  // ---- 완료 모달(#34): 임시 ID. 문장은 Figma 영어 원문 그대로(3182:176717, 3182:176864, 1187:62709).
+  // ---- 완료 모달(#34): 확정 ID(#128). 문장은 Figma 영어 원문 그대로(3182:176717, 3182:176864, 1187:62709).
   'D-01': "If you're done, select the final version",
   'D-02': 'Complete the project by selecting a final version and explaining why you chose it.',
   'D-03a': 'Title',
@@ -86,7 +86,7 @@ export const COPY = {
   'D-12': 'Version',
   // 결과 크게 보기(Done-03 3313:32167)의 버튼 이름. Figma에는 아이콘만 있음
   'D-13': 'Download',
-  // ---- 프로필(#37): 임시 ID. Figma 원문(1897:63700, 3252:21812, 3475:29083 등), P-07·P-17·P-19 는 Figma에 없는 문구
+  // ---- 프로필(#37): 확정 ID(#128). Figma 원문(1897:63700, 3252:21812, 3475:29083 등), P-07·P-17·P-19 는 Figma에 없는 문구
   'P-01a': 'Work',
   'P-01b': 'Identity',
   'P-01c': 'Compare',
@@ -131,10 +131,10 @@ export const COPY = {
   'P-19c': 'Score',
   // 프로필: 남의 비공개 아이덴티티(IDENTITY_PRIVATE). 리드 확정 2026-11-18
   'P-20': 'This creator keeps their identity private.',
-  // ---- 공통 헤더(AppHeader 1226:80887): 임시 ID. HD-01 은 Figma 글자 로고 원문, HD-02 는 Figma에 없는 낭독용 이름
+  // ---- 공통 헤더(AppHeader 1226:80887): 확정 ID(#128). HD-01 은 Figma 글자 로고 원문, HD-02 는 Figma에 없는 낭독용 이름
   'HD-01': 'AGORA',
   'HD-02': 'My profile',
-  // Canvas: provisional copy IDs pending review.
+  // ---- 생성 캔버스(#26): 확정 ID(#128).
   'CV-01': 'Generation canvas',
   'CV-02': 'Prompt',
   'CV-03': 'Question analysis',
@@ -155,17 +155,18 @@ export const COPY = {
   'CV-18':
     'Use Left and Right to move between steps, Up and Down within a step, and Home or End to move to the first or last node.',
   'CV-19': 'Generation started.',
-  // ---- 리믹스 패널(#41): 임시 ID. RX-01~04 는 Figma 원문(Control bar 1720:80619, 제목 2513:226457),
+  // ---- 리믹스 패널(#41): 확정 ID(#128). RX-01~04 는 Figma 원문(Control bar 1720:80619, 제목 2513:226457),
   // RX-05~08 은 Figma에 없는 낭독용 이름
   'RX-01': 'Remix with',
   'RX-02': 'Rising',
   'RX-03': 'Favorite',
   'RX-04': 'remix with',
+  // RX-05 는 H-03b 와 글자가 같지만 리믹스 버튼 낭독용 이름이라 따로 둔다(#128).
   'RX-05': 'Remix',
   'RX-06': 'Refresh the list',
   'RX-07': 'Add to favorites',
   'RX-08': 'Remove from favorites',
-  // ---- 아고라(#39): 임시 ID. 문장은 Figma 원문(3099:130540, 3099:130760, 1720:101534). A-08 은 Figma에 없는 버튼 이름
+  // ---- 아고라(#39): 확정 ID(#128). 문장은 Figma 원문(3099:130540, 3099:130760, 1720:101534). A-08 은 Figma에 없는 버튼 이름
   'A-01': 'Hot Topic',
   'A-02': 'Comments',
   'A-03': 'See more',
