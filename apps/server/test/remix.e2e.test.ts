@@ -12,6 +12,7 @@ import {
   CreateProjectResponseSchema,
   CreateRevisionResponseSchema,
   CreateSessionResponseSchema,
+  DismissConnectionResponseSchema,
   GetAnswerResponseSchema,
   RemixCandidatesResponseSchema,
   SetRemixPartnerResponseSchema,
@@ -419,7 +420,9 @@ describe.skipIf(!url)('remix API (real Postgres)', () => {
     for (let i = 0; i < 2; i += 1) {
       const res = await call('POST', `/connections/${target!.id}/dismiss`, me.token);
       expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({ status: 'dismissed' });
+      const body: unknown = await res.json();
+      expect(DismissConnectionResponseSchema.parse(body)).toEqual({ status: 'dismissed' });
+      expect(body).toEqual({ status: 'dismissed' });
     }
     expect(
       await prisma.event.count({ where: { type: 'connection_dismiss', answerId: f.answerId } }),

@@ -7,9 +7,10 @@ import type {
   AgoraProjectResponse,
   CommentListResponse,
   CreateAgoraCommentRequest,
+  CreateAgoraCommentResponse,
   CreatorSummary,
   DerivedFrom,
-  ProjectSummary,
+  DeriveProjectResponse,
   PromptSet,
   Topic,
   TopicResponse,
@@ -252,7 +253,7 @@ export class AgoraService {
   async derive(auth: AuthContext, key: string | undefined, id: string) {
     let pending: string[] = [];
     try {
-      return await this.idempotency.run<{ project: ProjectSummary }>(
+      return await this.idempotency.run<DeriveProjectResponse>(
         {
           sessionId: auth.sessionId,
           key,
@@ -283,7 +284,7 @@ export class AgoraService {
     auth: AuthContext,
     id: string,
     uploaded: string[],
-  ): Promise<{ project: ProjectSummary }> {
+  ): Promise<DeriveProjectResponse> {
     const source = await this.repo.findDetail(tx, id);
     if (!source) throw new AppError('NOT_FOUND');
     if (!isPublicProject(source) || !source.coverAnswerId) {
@@ -394,7 +395,7 @@ export class AgoraService {
     projectId: string,
     body: CreateAgoraCommentRequest,
   ) {
-    return this.idempotency.run<{ comment: AgoraComment }>(
+    return this.idempotency.run<CreateAgoraCommentResponse>(
       {
         sessionId: auth.sessionId,
         key,
