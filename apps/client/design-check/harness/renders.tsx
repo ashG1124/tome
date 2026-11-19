@@ -7,6 +7,7 @@ import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
 import { RemixLabel } from '../../src/pages/workspace/remix/RemixPanel';
+import { CreatorPill } from '../../src/pages/agora/AgoraHomePage';
 import { Flash, Tabs, TitleInput } from '../../src/shared/ui';
 
 // 시범 비교용 안내 글자. 앱 copy 에는 넣지 않는다.
@@ -101,4 +102,15 @@ const pill = (width: number, partner: string | undefined, open: boolean) => () =
 Object.assign(renders, {
   'control/remix-selected': pill(312, undefined, true),
   'control/remix-done': pill(247, 'Paul', false),
+});
+// ---- 아고라 카드(#39): 시안의 이름·소개 글자를 그대로 쓴다(앱 copy 에는 넣지 않는다).
+const AGORA_PERSON = {
+  id: '5b1d6c0e-2f43-4a8e-9c1b-7a3e5d2f8b40',
+  kind: 'seed',
+  displayName: 'Lind',
+  bio: 'Global Implementation Manager',
+  avatarUrl: null,
+} as const;
+Object.assign(renders, {
+  'agora-cards/creator': () => withAppContext(<CreatorPill creator={AGORA_PERSON} />),
 });

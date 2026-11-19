@@ -50,7 +50,7 @@ function RecommendedCard({ card }: { card: AgoraProjectCard }) {
 }
 
 /** 라이징 크리에이터(Creater 3188:178010): 사진·이름·한 줄 소개 알약. 누르면 그 사람 프로필로 간다. */
-function CreatorPill({ creator }: { creator: CreatorSummary }) {
+export function CreatorPill({ creator }: { creator: CreatorSummary }) {
   return (
     <Link
       to={`/creators/${encodeURIComponent(creator.id)}`}
