@@ -22,7 +22,7 @@ export function WorkspaceHeader({ title, partnerName }: WorkspaceHeaderProps) {
         to="/"
         state={{ flash: 'update' }}
         aria-label={COPY['W-06']}
-        className="inline-flex justify-self-start rounded-[var(--radius-1)]"
+        className="pointer-events-auto inline-flex justify-self-start rounded-[var(--radius-1)]"
       >
         {logo !== undefined ? (
           <img src={logo} alt="" className={logoBox} />
