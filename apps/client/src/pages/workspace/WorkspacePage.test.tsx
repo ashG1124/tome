@@ -9,6 +9,14 @@ import { fakeState, resetFake } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
 import { WorkspacePage } from './WorkspacePage';
 
+// 캔버스(#26)는 그림 라이브러리가 jsdom 에 없는 ResizeObserver 를 써서, 이 화면 테스트에서는 자리 표시로 바꾼다.
+// 캔버스 자체는 features/canvas 테스트와 e2e/canvas.spec.ts(실제 페이지 연결 상태)에서 본다.
+vi.mock('../../features/canvas', () => ({
+  WorkspaceCanvas: ({ projectId, pageId }: { projectId: string; pageId: string }) => (
+    <div data-testid="canvas" data-project={projectId} data-page={pageId} />
+  ),
+}));
+
 // Radix 스위치는 form 안에서 크기를 재려고 ResizeObserver 를 쓴다. jsdom 에는 없어서 빈 대역을 둔다.
 class NoopResizeObserver {
   observe() {}
@@ -52,6 +60,25 @@ afterEach(() => {
 });
 
 describe('WorkspacePage', () => {
+  it('가운데에 캔버스를 놓고, 지금 프로젝트·페이지를 넘긴다', async () => {
+    renderWorkspace(`/projects/${PROJECT}?page=${FIRST_PAGE}`);
+    const canvas = await screen.findByTestId('canvas');
+    expect(canvas.getAttribute('data-project')).toBe(PROJECT);
+    expect(canvas.getAttribute('data-page')).toBe(FIRST_PAGE);
+  });
+
+  it('페이지를 바꾸면 캔버스에도 그 페이지를 넘긴다', async () => {
+    renderWorkspace(`/projects/${PROJECT}?page=${FIRST_PAGE}`);
+    fireEvent.click(await screen.findByRole('button', { name: `${COPY['W-02']} 2` }));
+    const pages = screen.getAllByRole('button', { name: new RegExp(`^${COPY['W-01']} `) });
+    const other = pages.find((button) => button.getAttribute('aria-current') !== 'page');
+    if (other === undefined) throw new Error('다른 페이지 버튼이 없다');
+    fireEvent.click(other);
+    await waitFor(() =>
+      expect(screen.getByTestId('canvas').getAttribute('data-page')).not.toBe(FIRST_PAGE),
+    );
+  });
+
   it('?page= 가 있으면 그 페이지를, 없으면 마지막 페이지를 연다', async () => {
     const spy = vi.spyOn(api, 'getWorkspace');
     renderWorkspace(`/projects/${PROJECT}?page=${FIRST_PAGE}`);

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useId, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import { WorkspaceCanvas } from '../../features/canvas';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
 import { ErrorNotice, Icon } from '../../shared/ui';
@@ -118,12 +119,15 @@ export function WorkspacePage() {
       aria-busy={workspace.isPending || undefined}
       className="relative -m-[var(--space-padding-8)] min-h-screen bg-[color:var(--color-background-weak)]"
     >
-      <WorkspaceHeader
-        title={workspace.data?.project.title}
-        partnerName={workspace.data?.project.remixPartner?.displayName}
-      />
+      {/* 캔버스(absolute, 화면 전체) 위에 헤더를 올린다. 헤더 빈 곳은 캔버스 끌기를 막지 않게 로고만 누를 수 있다 */}
+      <div className="pointer-events-none relative z-10">
+        <WorkspaceHeader
+          title={workspace.data?.project.title}
+          partnerName={workspace.data?.project.remixPartner?.displayName}
+        />
+      </div>
       {workspace.isError ? (
-        <div className="px-[var(--space-padding-8)]">
+        <div className="relative z-10 px-[var(--space-padding-8)]">
           <ErrorNotice
             message={COPY[errorCopyKey(workspace.error)]}
             onRetry={() => void workspace.refetch()}
@@ -131,9 +135,14 @@ export function WorkspacePage() {
         </div>
       ) : null}
       {actionError !== null ? (
-        <div className="px-[var(--space-padding-8)]">
+        <div className="relative z-10 px-[var(--space-padding-8)]">
           <ErrorNotice message={COPY[errorCopyKey(actionError)]} />
         </div>
+      ) : null}
+      {/* 가운데 생성 캔버스(#26, 프런트 B). 세트·단계 진행·답변 카드는 캔버스가 그리고, 이 화면은 자리와 데이터만 넘긴다.
+          페이지를 바꾸면(?page=) 캔버스는 그 페이지 세트로 새로 그린다. */}
+      {workspace.data ? (
+        <WorkspaceCanvas projectId={id} pageId={pageId} workspace={workspace.data} />
       ) : null}
       {menu ? (
         <div className="fixed top-[var(--space-padding-8)] right-[var(--space-padding-8)]">
