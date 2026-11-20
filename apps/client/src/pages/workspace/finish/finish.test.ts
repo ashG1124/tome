@@ -15,6 +15,7 @@ import {
   pickCover,
   scrollThumb,
   tryPost,
+  resultImagePath,
 } from './finish';
 
 const PAGE_1 = 'c4a1e7d2-8b5f-4e39-a6c0-2f1d3b4a5c6e';
@@ -276,5 +277,20 @@ describe('scrollThumb', () => {
   it('범위를 벗어난 스크롤 값은 끝에 맞춘다', () => {
     expect(scrollThumb({ scrollLeft: -20, scrollWidth: 1000, clientWidth: 500 }).offset).toBe(0);
     expect(scrollThumb({ scrollLeft: 900, scrollWidth: 1000, clientWidth: 500 }).offset).toBe(0.5);
+  });
+});
+
+describe('resultImagePath', () => {
+  it('작은 그림(thumb) 경로는 같은 답변의 큰 그림(full)으로 바꾼다', () => {
+    expect(resultImagePath('a1', '/assets/answers/a1/thumb')).toBe('/assets/answers/a1/full');
+  });
+
+  it('그림 데이터 주소(가짜 응답 모드)·완성된 주소는 그대로 쓴다', () => {
+    expect(resultImagePath('a1', 'data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
+    expect(resultImagePath('a1', 'https://example.com/a.png')).toBe('https://example.com/a.png');
+  });
+
+  it('작은 그림 주소를 모르면 /full 경로를 만든다', () => {
+    expect(resultImagePath('a1', undefined)).toBe('/assets/answers/a1/full');
   });
 });

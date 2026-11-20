@@ -32,8 +32,8 @@ interface FinishModalProps {
   candidatesError?: unknown;
   onRetryCandidates?: () => void;
   steps: FinishSteps;
-  /** 완료가 끝난 뒤(홈으로 이동·플래시 등은 부모가 한다) */
-  onFinished: (result: 'finished' | 'posted') => void;
+  /** 완료가 끝난 뒤(결과 크게 보기·홈으로 이동·플래시 등은 부모가 한다). coverAnswerId 는 완료한 대표 버전 */
+  onFinished: (result: 'finished' | 'posted', coverAnswerId: Id) => void;
   /** 모달이 닫힐 때 포커스를 돌려줄 곳(워크스페이스의 끝내기 버튼 등) */
   onCloseAutoFocus?: (event: Event) => void;
 }
@@ -74,9 +74,9 @@ export function FinishModal({
   const confirming = request !== null;
 
   const confirm = useFinishRequest(steps, {
-    onFinished: (result) => {
+    onFinished: (result, coverAnswerId) => {
       setRequest(null);
-      onFinished(result);
+      onFinished(result, coverAnswerId);
     },
     onTitleRejected: () => {
       focusAfterSwitch.current = 'title';
@@ -116,8 +116,10 @@ export function FinishModal({
   };
 
   const leaveFinished = () => {
+    // 게시만 실패한 뒤 Done: 완료한 것으로 넘어간다. 대표 버전은 확인 화면에서 보낸 값이다.
+    const finishedCover = request?.coverAnswerId ?? coverId;
     setRequest(null);
-    onFinished('finished');
+    if (finishedCover !== null) onFinished('finished', finishedCover);
   };
 
   // X·Esc·바깥 클릭: 입력 화면이면 닫기, 확인 화면이면 입력 화면으로, 게시만 실패한 뒤면 완료로 넘어가기.
@@ -150,7 +152,7 @@ export function FinishModal({
           onCancel={backToForm}
           onDone={() => void confirm.finish(request, post)}
           onRetryFinish={() => void confirm.finish(request, post)}
-          onRetryPost={() => void confirm.retryPost()}
+          onRetryPost={() => void confirm.retryPost(request.coverAnswerId)}
           onLeave={leaveFinished}
         />
       ) : (

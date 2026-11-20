@@ -7,6 +7,7 @@ import { api, ApiRequestError, clearSession, setSession } from '../../shared/api
 import { FAKE_NOTICE_VERSION, FAKE_TOKEN } from '../../shared/api/fake/data';
 import { fakeState, resetFake } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
+import * as downloadModule from './finish/download';
 import { WorkspacePage } from './WorkspacePage';
 
 // 캔버스(#26)는 그림 라이브러리가 jsdom 에 없는 ResizeObserver 를 써서, 이 화면 테스트에서는 자리 표시로 바꾼다.
@@ -133,7 +134,8 @@ describe('WorkspacePage', () => {
     expect((input as HTMLTextAreaElement).value).toBe('A lighthouse');
   });
 
-  it('답변이 있으면 끝내기로 완료 모달을 열고, 완료하면 done 플래시와 함께 홈으로 간다', async () => {
+  /** 답변이 하나 있는 프로젝트를 열고, 완료 모달에서 제목을 적고 Done 까지 누른다. */
+  async function finishWithAnswer() {
     const { project } = await api.createProject({});
     const { currentPageId } = await api.getWorkspace(project.id);
     const { job } = await api.createSet(project.id, {
@@ -150,10 +152,62 @@ describe('WorkspacePage', () => {
     await screen.findByRole('radio', { name: `${COPY['D-12']} 1` });
     fireEvent.click(screen.getByRole('button', { name: COPY['D-07b'] }));
     fireEvent.click(await screen.findByRole('button', { name: COPY['D-09b'] }));
+    return { project, router, finish };
+  }
 
+  it('Done 이 성공하면 대표 버전을 크게 보여 주고, 닫으면 done 플래시와 함께 홈으로 간다(#124)', async () => {
+    const { project, router, finish } = await finishWithAnswer();
+
+    // 결과 크게 보기: 완료 모달은 닫히고 Download·닫기 버튼만 보인다. 아직 홈으로 가지 않는다.
+    const download = await screen.findByRole('button', { name: COPY['D-13'] });
+    expect(download).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: COPY['D-03a'] })).toBeNull();
+    expect(router.state.location.pathname).toBe(`/projects/${project.id}`);
+    expect(finish.mock.calls[0]?.[1]).toMatchObject({ title: 'Lighthouse' });
+
+    fireEvent.click(screen.getByRole('button', { name: COPY['D-11'] }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(router.state.location.state).toEqual({ flash: 'done' });
-    expect(finish.mock.calls[0]?.[1]).toMatchObject({ title: 'Lighthouse' });
+  });
+
+  it('결과 크게 보기에서 Esc 로 닫아도 홈으로 간다', async () => {
+    const { router } = await finishWithAnswer();
+    await screen.findByRole('button', { name: COPY['D-13'] });
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(router.state.location.state).toEqual({ flash: 'done' });
+  });
+
+  it('Download 를 누르면 대표 버전 그림을 받고, 받는 동안 버튼이 잠긴다', async () => {
+    let finishDownload: () => void = () => {};
+    const spy = vi.spyOn(downloadModule, 'downloadImage').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDownload = resolve;
+        }),
+    );
+    await finishWithAnswer();
+
+    const button = (await screen.findByRole('button', { name: COPY['D-13'] })) as HTMLButtonElement;
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(button.disabled).toBe(true));
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0]?.[0]).toMatch(/^data:image|\/assets\/answers\/.+\/full$/);
+
+    finishDownload();
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('Download 가 실패하면 오류 안내를 보이고, 크게 보기는 그대로 열려 있다', async () => {
+    vi.spyOn(downloadModule, 'downloadImage').mockRejectedValue(new Error('network'));
+    await finishWithAnswer();
+
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
+    expect((await screen.findByRole('alert')).textContent).toBe(COPY['E-01a']);
+    expect(screen.getByRole('button', { name: COPY['D-13'] })).toBeTruthy();
   });
 });
 

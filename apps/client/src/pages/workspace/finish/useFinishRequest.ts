@@ -1,4 +1,4 @@
-import type { FinishProjectRequest } from '@tome/shared';
+import type { FinishProjectRequest, Id } from '@tome/shared';
 import { useCallback, useRef, useState } from 'react';
 import {
   finishFailure,
@@ -15,8 +15,8 @@ export type ConfirmPhase = 'idle' | 'sending' | 'post-failed';
 export type FormFailure = Extract<FinishFailure, { place: 'form' }>;
 
 interface FinishHandlers {
-  /** 완료가 끝난 뒤. 게시까지 됐으면 'posted', 게시를 안 했으면 'finished' */
-  onFinished: (result: 'finished' | 'posted') => void;
+  /** 완료가 끝난 뒤. 게시까지 됐으면 'posted', 게시를 안 했으면 'finished'. coverAnswerId 는 완료한 대표 버전 */
+  onFinished: (result: 'finished' | 'posted', coverAnswerId: Id) => void;
   /** 서버가 제목을 거절했을 때(E-04) */
   onTitleRejected: () => void;
 }
@@ -51,7 +51,7 @@ export function useFinishRequest(
         return;
       }
       setPhase('idle');
-      onFinished(result);
+      onFinished(result, request.coverAnswerId);
     } catch (error) {
       setPhase('idle');
       const next = finishFailure(error);
@@ -62,14 +62,14 @@ export function useFinishRequest(
     }
   };
 
-  const retryPost = async () => {
+  const retryPost = async (coverAnswerId: Id) => {
     if (sending.current) return;
     sending.current = true;
     setPhase('sending');
     try {
       if (await tryPost(steps.post)) {
         setPhase('idle');
-        onFinished('posted');
+        onFinished('posted', coverAnswerId);
       } else {
         setPhase('post-failed');
       }

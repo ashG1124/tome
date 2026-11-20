@@ -141,3 +141,12 @@ export function scrollThumb({ scrollLeft, scrollWidth, clientWidth }: ScrollBox)
   const left = Math.min(Math.max(scrollLeft, 0), maxLeft);
   return { visible: true, offset: left / scrollWidth, size: clientWidth / scrollWidth };
 }
+
+/**
+ * 결과 크게 보기에 쓸 큰 그림 경로. 서버가 주는 작은 그림(thumbUrl, /assets/answers/:id/thumb)과 같은 답변의
+ * /full 이다. 가짜 응답 모드의 thumbUrl 은 그림 데이터 주소라 그대로 쓴다. 작은 그림 주소를 모르면 /full 경로를 만든다.
+ */
+export function resultImagePath(answerId: string, thumbUrl: string | undefined): string {
+  if (thumbUrl === undefined) return `/assets/answers/${answerId}/full`;
+  return thumbUrl.replace(/^(\/assets\/answers\/[^/]+)\/thumb$/, '$1/full');
+}

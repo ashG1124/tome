@@ -15,6 +15,8 @@ interface ResultViewProps {
   onDownload: () => void;
   /** 받는 중이면 true(버튼을 잠근다) */
   downloading?: boolean;
+  /** 받기에 실패했을 때 보여 줄 안내 문구. 없으면 아무것도 그리지 않는다 */
+  errorMessage?: string;
 }
 
 const CIRCLE = [
@@ -34,6 +36,7 @@ export function ResultView({
   alt,
   onDownload,
   downloading = false,
+  errorMessage,
 }: ResultViewProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const { directSrc } = useApiImage(imagePath, imageRef);
@@ -63,6 +66,14 @@ export function ResultView({
                 </button>
               </RadixDialog.Close>
             </div>
+            {errorMessage !== undefined ? (
+              <p
+                role="alert"
+                className="m-0 rounded-[var(--radius-max)] bg-[color:var(--color-background-default)] px-[var(--space-padding-6)] py-[var(--space-padding-3)] [font:var(--text-body-b2-r)] text-[color:var(--color-font-main-text)] shadow-[var(--shadow-03)]"
+              >
+                {errorMessage}
+              </p>
+            ) : null}
             <img
               ref={imageRef}
               src={directSrc}
