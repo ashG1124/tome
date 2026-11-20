@@ -21,12 +21,14 @@ export function costUsdFromNeurons(neurons: number): number {
 /**
  * 응답 헤더에 neurons 가 없을 때 쓰는 호출 1회당 추정값(공식 가격표 기준).
  * - 텍스트: 입력 약 2,000토큰·출력 약 1,500토큰(JSON 노드 한 단계)을 가정한다.
- *   qwen3-30b: 2000×4625/1e6 + 1500×30475/1e6 ≈ 55 / gemma-4: 2000×9091/1e6 + 1500×27273/1e6 ≈ 59(→60)
+ *   gemma-4: 2000×9091/1e6 + 1500×27273/1e6 ≈ 59(→60)
+ *   glm-4.7-flash: 2000×5500/1e6 + 1500×36364/1e6 ≈ 66
+ *   (가격 근거: 100만 토큰당 USD 입력 0.0605·출력 0.4 → neurons 5500·36364, USD 0.011/1000 neurons)
  * - 이미지(1024×1024 = 512 타일 4개): klein 출력 4×26.05 = 104.2 / schnell 4×4.8 + 4스텝×9.6 = 57.6
  */
 export const NEURON_ESTIMATES: Readonly<Record<string, number>> = {
-  [MODELS.textPrimary]: 55,
-  [MODELS.textFallback]: 60,
+  [MODELS.textPrimary]: 60,
+  [MODELS.textFallback]: 66,
   [MODELS.imagePrimary]: 104.2,
   [MODELS.imageFallback]: 57.6,
 };

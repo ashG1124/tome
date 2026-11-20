@@ -1,7 +1,7 @@
 /** Workers AI 모델 ID. 바꾸려면 여기만 고친다. */
 export const MODELS = {
-  textPrimary: '@cf/qwen/qwen3-30b-a3b-fp8',
-  textFallback: '@cf/google/gemma-4-26b-a4b-it',
+  textPrimary: '@cf/google/gemma-4-26b-a4b-it',
+  textFallback: '@cf/zai-org/glm-4.7-flash',
   imagePrimary: '@cf/black-forest-labs/flux-2-klein-4b',
   imageFallback: '@cf/black-forest-labs/flux-1-schnell',
   inputGuard: '@cf/meta/llama-guard-3-8b',
