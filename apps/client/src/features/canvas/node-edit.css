@@ -430,11 +430,7 @@
 }
 
 .node-edit-keyword-weight .node-edit-description {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   min-height: calc(var(--font-size-c2) * var(--line-height-default) * 2);
-  overflow: hidden;
 }
 
 .node-preview-image.canvas-gradient {

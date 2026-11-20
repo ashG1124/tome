@@ -177,7 +177,7 @@ export const COPY = {
   'A-08': 'Post',
   'A-09': 'Recommended Project',
   'A-10': 'Rising Creator',
-  // Node editor: provisional IDs pending lead confirmation.
+  // ---- 노드 편집(#31): 확정 ID(#128).
   'NE-01': 'Edit node',
   'NE-02': 'Weighting',
   'NE-03': 'Meaning',
