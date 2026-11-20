@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { ObjectStorage } from '../storage/object-storage';
 import { answerKeysOf, buildSeedPlan } from './plan';
 
-/** 자리표시(placeholder) 이미지 폴더(서버를 켠 위치 apps/server 기준). 프로젝트 키별 한 장을 그 버전들이 같이 쓴다. */
+/** 실제 생성 이미지 폴더(#112, `db:seed:generate`로 한 번 만들어 커밋)(서버를 켠 위치 apps/server 기준). 프로젝트 키별 한 장을 그 버전들이 같이 쓴다. */
 export const PROJECT_IMAGES_DIR = join('prisma', 'seed', 'project-images');
 
 /**

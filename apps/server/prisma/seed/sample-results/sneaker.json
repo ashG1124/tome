@@ -1,5 +1,4 @@
 {
-  "placeholder": true,
   "scenarioKey": "sneaker",
   "title": "Sneaker redesign",
   "promptVariants": [
@@ -7,24 +6,27 @@
   ],
   "nodes": {
     "schemaVersion": 1,
-    "subjectTemplate": "A pair of {k1} in a neon style, side view on a {k2}",
+    "subjectTemplate": "{k1} in {k2}, {k3}, {k4}",
     "nodes": [
       {
         "id": "k1",
         "stage": "analyze",
         "kind": "keyword",
-        "text": "cyberpunk sneakers",
+        "text": "cyberpunk neon redesigned sneakers",
         "enabled": true,
-        "weight": 7,
+        "weight": 9,
         "pad": {
           "x": 0,
           "y": 0,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "xAxis": ["minimalist", "complex"],
+          "yAxis": ["natural", "synthetic"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 7,
+          "weight": 9,
           "pad": {
             "x": 0,
             "y": 0
@@ -36,21 +38,76 @@
         "id": "k2",
         "stage": "analyze",
         "kind": "keyword",
+        "text": "side view",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["front view", "side view"],
+          "yAxis": ["horizontal", "vertical"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k3",
+        "stage": "analyze",
+        "kind": "keyword",
         "text": "clean background",
         "enabled": true,
-        "weight": 5,
+        "weight": 8,
         "pad": {
-          "x": -2,
-          "y": 1,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "x": 4,
+          "y": 0,
+          "xAxis": ["cluttered", "minimalist"],
+          "yAxis": ["dark", "bright"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
           "pad": {
-            "x": -2,
-            "y": 1
+            "x": 4,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k4",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "glowing neon colors",
+        "enabled": true,
+        "weight": 6,
+        "pad": {
+          "x": 0,
+          "y": 4,
+          "xAxis": ["dull", "vibrant"],
+          "yAxis": ["matte", "luminous"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 6,
+          "pad": {
+            "x": 0,
+            "y": 4
           },
           "enabled": true
         }
@@ -59,44 +116,131 @@
         "id": "d1",
         "stage": "research",
         "kind": "dataType",
-        "text": "Footwear concept art",
+        "text": "product photography",
         "enabled": true,
-        "parentIds": ["k1"]
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d2",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "concept art",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d3",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "digital illustration",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
       },
       {
         "id": "s1",
         "stage": "research",
         "kind": "priority",
-        "text": "Silhouette over texture",
+        "text": "futuristic footwear design with neon accents",
         "enabled": true,
         "order": 0,
-        "parentIds": ["d1"],
+        "parentIds": ["k1"],
+        "domain": "evidence",
+        "level": "micro",
         "aiInitial": {
           "order": 0
+        }
+      },
+      {
+        "id": "s2",
+        "stage": "research",
+        "kind": "priority",
+        "text": "vibrant glowing cybernetic color palettes",
+        "enabled": true,
+        "order": 1,
+        "parentIds": ["k4"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 1
+        }
+      },
+      {
+        "id": "s3",
+        "stage": "research",
+        "kind": "priority",
+        "text": "minimalist studio lighting for profile view",
+        "enabled": true,
+        "order": 2,
+        "parentIds": ["k2", "k3"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 2
         }
       },
       {
         "id": "e1",
         "stage": "evidence",
         "kind": "evidence",
-        "text": "Side views make the sole and silhouette of a shoe easy to read.",
+        "text": "High-tech sneakers feature intricate mechanical patterns and glowing light strips along the soles and seams.",
         "enabled": true,
+        "parentIds": ["k1", "s1"],
         "sourceType": "model_knowledge",
         "domain": "evidence",
-        "level": "macro",
-        "parentIds": ["s1"]
+        "level": "micro"
+      },
+      {
+        "id": "e2",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "The footwear profile showcases a sleek, aerodynamic silhouette with cyberpunk-inspired hardware.",
+        "enabled": true,
+        "parentIds": ["k2", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e3",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Electric hues of cyan, magenta, and acid green emit a soft luminescence against the materials.",
+        "enabled": true,
+        "parentIds": ["k4", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e4",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "A neutral, minimalist studio background emphasizes the sharp details and vibrant glow of the product.",
+        "enabled": true,
+        "parentIds": ["k3", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
       },
       {
         "id": "a1",
         "stage": "draft",
         "kind": "attribute",
-        "text": "neon accents",
+        "text": "high-tech sneakers with intricate mechanical patterns",
         "enabled": true,
-        "weight": 6,
-        "category": "color",
+        "weight": 9,
+        "category": "subject",
         "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 6,
+          "weight": 9,
           "enabled": true
         }
       },
@@ -104,13 +248,79 @@
         "id": "a2",
         "stage": "draft",
         "kind": "attribute",
-        "text": "glossy sole",
+        "text": "sleek aerodynamic silhouette with cybernetic hardware",
         "enabled": true,
-        "weight": 5,
-        "category": "material",
-        "parentIds": ["e1"],
+        "weight": 8,
+        "category": "subject",
+        "parentIds": ["e2"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a3",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "glowing light strips along soles and seams",
+        "enabled": true,
+        "weight": 8,
+        "category": "lighting",
+        "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a4",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "luminescent cyan, magenta, and acid green hues",
+        "enabled": true,
+        "weight": 7,
+        "category": "color",
+        "parentIds": ["e3"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a5",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "side view profile shot",
+        "enabled": true,
+        "weight": 7,
+        "category": "composition",
+        "parentIds": ["e2"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a6",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "neutral minimalist studio background",
+        "enabled": true,
+        "weight": 8,
+        "category": "setting",
+        "parentIds": ["e4"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 8,
           "enabled": true
         }
       }
@@ -123,7 +333,7 @@
         "id": "v1",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows neon accents.",
+        "text": "The image shows high-tech sneakers with intricate mechanical patterns.",
         "enabled": true,
         "parentIds": ["a1"]
       },
@@ -131,9 +341,41 @@
         "id": "v2",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows glossy sole.",
+        "text": "The image shows sleek aerodynamic silhouette with cybernetic hardware.",
         "enabled": true,
         "parentIds": ["a2"]
+      },
+      {
+        "id": "v3",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows glowing light strips along soles and seams.",
+        "enabled": true,
+        "parentIds": ["a3"]
+      },
+      {
+        "id": "v4",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows luminescent cyan, magenta, and acid green hues.",
+        "enabled": true,
+        "parentIds": ["a4"]
+      },
+      {
+        "id": "v5",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows side view profile shot.",
+        "enabled": true,
+        "parentIds": ["a5"]
+      },
+      {
+        "id": "v6",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows neutral minimalist studio background.",
+        "enabled": true,
+        "parentIds": ["a6"]
       }
     ],
     "mismatches": []

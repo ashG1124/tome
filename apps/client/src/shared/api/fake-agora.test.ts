@@ -45,10 +45,20 @@ describe('아고라 홈·토픽', () => {
     expect(home.hotTopics.map((entry) => entry.topic.title)).toEqual([
       'Urban Trail',
       'Warm Task Lighting',
+      'Quiet Harbor',
     ]);
     // 표지가 없는 공개작은 썸네일이 없다
     const noCover = home.recommended.find((card) => card.id === FAKE_AGORA_IDS.noCover);
     expect(noCover?.coverThumbUrl).toBeNull();
+  });
+
+  it('핫토픽 주제마다 프로젝트 4개 이상(그림 칸 4개가 다 찬다)', async () => {
+    const home = await api.getAgoraHome();
+    expect(home.hotTopics.map((entry) => entry.topic.id)).toEqual(FAKE_TOPICS.map((t) => t.id));
+    for (const entry of home.hotTopics) {
+      expect(entry.projects.length, entry.topic.title).toBeGreaterThanOrEqual(4);
+      expect(entry.projects.every((card) => card.coverThumbUrl !== null)).toBe(true);
+    }
   });
 
   it('토픽은 그 토픽의 공개작만 주고, 없는 토픽이면 NOT_FOUND 다', async () => {
@@ -56,10 +66,17 @@ describe('아고라 홈·토픽', () => {
     if (topic === undefined) throw new Error('토픽이 없다');
     const response = await api.getTopic(topic.id);
     expect(response.topic).toEqual(topic);
-    expect(response.projects.map((card) => card.id)).toEqual([
+    const ids = response.projects.map((card) => card.id);
+    expect(ids.slice(0, 2)).toEqual([FAKE_AGORA_IDS.original, FAKE_AGORA_IDS.derived]);
+    // fake/agora.ts 의 Urban Trail 공개작 4개(원작·파생작·덧붙인 공개작 2개)와 정확히 같다
+    const urbanTrailIds = [
       FAKE_AGORA_IDS.original,
       FAKE_AGORA_IDS.derived,
-    ]);
+      'b3e9d2c1-0000-4000-8000-000000000006',
+      'b3e9d2c1-0000-4000-8000-000000000007',
+    ];
+    expect(ids).toHaveLength(4);
+    expect([...ids].sort()).toEqual([...urbanTrailIds].sort());
     const error = await rejection(api.getTopic(crypto.randomUUID()));
     expect(error.status).toBe(404);
     expect(error.code).toBe('NOT_FOUND');

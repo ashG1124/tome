@@ -49,7 +49,7 @@ const WARM_LIGHTING: Topic = {
   id: 'a7f1c2d3-0000-4000-8000-000000000002',
   title: 'Warm Task Lighting',
 };
-/** 공개 프로젝트가 없는 토픽. 핫 토픽에 나오지 않는다(서버와 같다) */
+/** 핫 토픽 묶음의 그림 칸 4개를 채우도록 공개 프로젝트를 4개 둔 토픽 */
 const QUIET_HARBOR: Topic = { id: 'a7f1c2d3-0000-4000-8000-000000000003', title: 'Quiet Harbor' };
 
 export const FAKE_TOPICS: readonly Topic[] = [URBAN_TRAIL, WARM_LIGHTING, QUIET_HARBOR];
@@ -83,6 +83,35 @@ interface PublicProject {
   reason?: string;
   /** 파생작이면 원작 id */
   derivedFromId?: string;
+}
+
+/**
+ * 핫 토픽 묶음이 그림 칸 4개를 채우도록 토픽마다 덧붙인 공개작.
+ * 점수 0 + 오래된 게시일이라 추천 12개 자리에서 기존 공개작보다 뒤에 서고, 라이징 순위도 바꾸지 않는다.
+ */
+function fillerProject(
+  n: number,
+  title: string,
+  author: CreatorSummary,
+  topicId: string,
+  prompt: string,
+): PublicProject {
+  const tail = String(n).padStart(12, '0');
+  return {
+    id: `b3e9d2c1-0000-4000-8000-${tail}`,
+    title,
+    kind: 'original',
+    author,
+    topicId,
+    postedAt: `2026-10-${String(30 - (n % 10)).padStart(2, '0')}T08:00:00.000Z`,
+    score: 0,
+    likeCount: n % 4,
+    cover: {
+      setId: `c5d4e3f2-0000-4000-8000-${tail}`,
+      answerId: `d6e5f4a3-0000-4000-8000-${tail}`,
+      prompt,
+    },
+  };
 }
 
 const PUBLIC_PROJECTS: readonly PublicProject[] = [
@@ -138,7 +167,7 @@ const PUBLIC_PROJECTS: readonly PublicProject[] = [
     title: 'Harbor at dusk',
     kind: 'derive',
     author: LIND,
-    topicId: null,
+    topicId: QUIET_HARBOR.id,
     postedAt: '2026-10-31T18:00:00.000Z',
     score: 6,
     likeCount: 2,
@@ -160,6 +189,62 @@ const PUBLIC_PROJECTS: readonly PublicProject[] = [
     likeCount: 0,
     cover: null,
   },
+  fillerProject(
+    6,
+    'Rain-ready trail runner',
+    LIND,
+    URBAN_TRAIL.id,
+    'A trail runner with a grippy sole on a wet city staircase',
+  ),
+  fillerProject(
+    7,
+    'Crosswalk stripe sneaker',
+    MARA,
+    URBAN_TRAIL.id,
+    'A white sneaker with bold black stripes on a crosswalk',
+  ),
+  fillerProject(
+    8,
+    'Reading lamp with linen shade',
+    LIND,
+    WARM_LIGHTING.id,
+    'A reading lamp with a linen shade glowing beside a notebook',
+  ),
+  fillerProject(
+    9,
+    'Amber task light on a shelf',
+    MARA,
+    WARM_LIGHTING.id,
+    'A small amber task light clipped to a wooden shelf',
+  ),
+  fillerProject(
+    10,
+    'Bedside lamp, soft glow',
+    LIND,
+    WARM_LIGHTING.id,
+    'A round bedside lamp with a soft glow on a bedside table',
+  ),
+  fillerProject(
+    11,
+    'Morning ferry dock',
+    MARA,
+    QUIET_HARBOR.id,
+    'A wooden ferry dock in pale morning light with calm water',
+  ),
+  fillerProject(
+    12,
+    'Lighthouse in fog',
+    LIND,
+    QUIET_HARBOR.id,
+    'A white lighthouse half hidden in soft sea fog',
+  ),
+  fillerProject(
+    13,
+    'Rowboats at low tide',
+    MARA,
+    QUIET_HARBOR.id,
+    'Three small rowboats resting on wet sand at low tide',
+  ),
 ];
 
 const FAKE_COMMENT_IDS = [

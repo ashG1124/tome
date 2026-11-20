@@ -1,5 +1,5 @@
-// 시드 콘텐츠 정의(이름·프롬프트·토픽 제목·목표 프로필). 이미지는 자리표시(placeholder)다:
-// 실제 AI 생성 이미지·대체 결과 교체는 #62(AI 키) 뒤 후속 Issue 에서 한다.
+// 시드 콘텐츠 정의(이름·프롬프트·토픽 제목·목표 프로필). 이미지는 실제 AI 생성 결과다:
+// #112 에서 db:seed:generate 로 한 번 만들어 prisma/seed/project-images 에 커밋했다.
 import type { PresetKey } from '@tome/shared';
 
 export interface ProfileTarget {
@@ -35,7 +35,7 @@ export interface ProjectSpec {
   keywords: [string, string, string, string];
   attributes: [string, string, string, string];
   sets: SetSpec[];
-  /** 자리표시 이미지의 색 번호(0~359) */
+  /** 예전 자리표시 이미지의 색 번호(0~359). 지금은 안 쓴다(실제 이미지로 교체됨) */
   hue: number;
 }
 
@@ -81,6 +81,7 @@ export const CREATOR_SPECS: CreatorSpec[] = [
         prompt:
           'A neon-lit music video scene of a singer walking through rainy Seoul streets at night, cinematic wide shot',
         presetKey: 'music-video',
+        topic: 'urban-shoes',
         subject: 'A {k1} of a {k2} walking through {k3}, {k4}, cinematic wide shot',
         keywords: [
           'neon-lit music video scene',
@@ -343,6 +344,7 @@ export const CREATOR_SPECS: CreatorSpec[] = [
         key: 'teo-3',
         title: 'Precise grid',
         prompt: 'A precise black grid of thin lines on warm paper, flat graphic, square framing',
+        topic: 'calm-workspace',
         subject: 'A {k1} of {k2} on {k3}, {k4}',
         keywords: ['precise black grid', 'thin lines', 'warm paper', 'flat graphic'],
         attributes: ['fine line weight', 'paper grain', 'square framing', 'exact mood'],
@@ -430,6 +432,7 @@ export const CREATOR_SPECS: CreatorSpec[] = [
         title: 'Tidal chart',
         prompt:
           'A neatly drawn tidal chart with clear gridlines and coastal landmarks, flat illustration',
+        topic: 'eco-library',
         subject: 'A neatly drawn {k1} with {k2} and {k3}, {k4}',
         keywords: ['tidal chart', 'clear gridlines', 'coastal landmarks', 'flat illustration'],
         attributes: ['muted blues', 'ink lines', 'top-down view', 'precise mood'],
