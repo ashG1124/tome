@@ -1,5 +1,5 @@
-// 시드 콘텐츠 정의(이름·프롬프트·토픽 제목·목표 프로필). 이미지는 자리표시(placeholder)다:
-// 실제 AI 생성 이미지·대체 결과 교체는 #62(AI 키) 뒤 후속 Issue 에서 한다.
+// 시드 콘텐츠 정의(이름·프롬프트·토픽 제목·목표 프로필). 이미지는 실제 AI 생성 결과다:
+// #112 에서 db:seed:generate 로 한 번 만들어 prisma/seed/project-images 에 커밋했다.
 import type { PresetKey } from '@tome/shared';
 
 export interface ProfileTarget {
@@ -35,7 +35,7 @@ export interface ProjectSpec {
   keywords: [string, string, string, string];
   attributes: [string, string, string, string];
   sets: SetSpec[];
-  /** 자리표시 이미지의 색 번호(0~359) */
+  /** 예전 자리표시 이미지의 색 번호(0~359). 지금은 안 쓴다(실제 이미지로 교체됨) */
   hue: number;
 }
 

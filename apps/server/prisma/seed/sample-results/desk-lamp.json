@@ -1,5 +1,4 @@
 {
-  "placeholder": true,
   "scenarioKey": "desk-lamp",
   "title": "Studio desk lamp",
   "promptVariants": [
@@ -7,24 +6,27 @@
   ],
   "nodes": {
     "schemaVersion": 1,
-    "subjectTemplate": "A {k1} glowing warmly on a {k2}, soft product photo",
+    "subjectTemplate": "{k1} on a {k2}, {k3} {k4}",
     "nodes": [
       {
         "id": "k1",
         "stage": "analyze",
         "kind": "keyword",
-        "text": "minimalist desk lamp",
+        "text": "minimalist studio desk lamp with warm glow",
         "enabled": true,
-        "weight": 7,
+        "weight": 9,
         "pad": {
           "x": 0,
           "y": 0,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "xAxis": ["complex", "minimalist"],
+          "yAxis": ["dim", "bright"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 7,
+          "weight": 9,
           "pad": {
             "x": 0,
             "y": 0
@@ -38,19 +40,74 @@
         "kind": "keyword",
         "text": "wooden desk",
         "enabled": true,
-        "weight": 5,
+        "weight": 7,
         "pad": {
-          "x": -2,
-          "y": 1,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "x": 0,
+          "y": 0,
+          "xAxis": ["plastic", "wood"],
+          "yAxis": ["rough", "smooth"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 7,
           "pad": {
-            "x": -2,
-            "y": 1
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k3",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "soft product photography style",
+        "enabled": true,
+        "weight": 8,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["candid", "staged"],
+          "yAxis": ["harsh", "soft"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 8,
+          "pad": {
+            "x": 0,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k4",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "warm lighting",
+        "enabled": true,
+        "weight": 6,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["cool", "warm"],
+          "yAxis": ["dark", "light"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 6,
+          "pad": {
+            "x": 0,
+            "y": 0
           },
           "enabled": true
         }
@@ -59,44 +116,142 @@
         "id": "d1",
         "stage": "research",
         "kind": "dataType",
-        "text": "Studio product photography",
+        "text": "product photography",
         "enabled": true,
-        "parentIds": ["k1"]
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d2",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "still life photography",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d3",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "interior design photography",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
       },
       {
         "id": "s1",
         "stage": "research",
         "kind": "priority",
-        "text": "Soft light over contrast",
+        "text": "minimalist desk lamp design and lighting effects",
         "enabled": true,
         "order": 0,
-        "parentIds": ["d1"],
+        "parentIds": ["k1"],
+        "domain": "evidence",
+        "level": "micro",
         "aiInitial": {
           "order": 0
+        }
+      },
+      {
+        "id": "s2",
+        "stage": "research",
+        "kind": "priority",
+        "text": "soft studio lighting and bokeh quality",
+        "enabled": true,
+        "order": 1,
+        "parentIds": ["k3", "k4"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 1
+        }
+      },
+      {
+        "id": "s3",
+        "stage": "research",
+        "kind": "priority",
+        "text": "natural wood grain textures and desk setups",
+        "enabled": true,
+        "order": 2,
+        "parentIds": ["k2"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 2
         }
       },
       {
         "id": "e1",
         "stage": "evidence",
         "kind": "evidence",
-        "text": "Product photos usually use a diffused warm light to keep shadows gentle.",
+        "text": "A sleek, modern desk lamp with clean lines and a matte finish.",
         "enabled": true,
+        "parentIds": ["k1", "s1"],
         "sourceType": "model_knowledge",
         "domain": "evidence",
-        "level": "macro",
-        "parentIds": ["s1"]
+        "level": "micro"
+      },
+      {
+        "id": "e2",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Golden, warm light emanating from the lamp bulb creating a soft circular glow.",
+        "enabled": true,
+        "parentIds": ["k1", "k4", "s1"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e3",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "A smooth wooden tabletop featuring visible natural grain patterns and textures.",
+        "enabled": true,
+        "parentIds": ["k2", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e4",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Shallow depth of field with a softly blurred background and gentle bokeh.",
+        "enabled": true,
+        "parentIds": ["k3", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e5",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "High-end product photography with soft shadows and diffused studio lighting.",
+        "enabled": true,
+        "parentIds": ["k3", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
       },
       {
         "id": "a1",
         "stage": "draft",
         "kind": "attribute",
-        "text": "warm glow",
+        "text": "sleek modern desk lamp with matte finish and clean lines",
         "enabled": true,
-        "weight": 6,
-        "category": "lighting",
+        "weight": 9,
+        "category": "subject",
         "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 6,
+          "weight": 9,
           "enabled": true
         }
       },
@@ -104,13 +259,63 @@
         "id": "a2",
         "stage": "draft",
         "kind": "attribute",
-        "text": "wood grain",
+        "text": "warm golden light creating a soft circular glow",
         "enabled": true,
-        "weight": 5,
-        "category": "material",
-        "parentIds": ["e1"],
+        "weight": 8,
+        "category": "lighting",
+        "parentIds": ["e2"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a3",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "smooth wooden tabletop with natural grain textures",
+        "enabled": true,
+        "weight": 7,
+        "category": "material",
+        "parentIds": ["e3"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a4",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "shallow depth of field with soft bokeh background",
+        "enabled": true,
+        "weight": 7,
+        "category": "composition",
+        "parentIds": ["e4"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a5",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "high-end product photography with diffused studio lighting",
+        "enabled": true,
+        "weight": 8,
+        "category": "style",
+        "parentIds": ["e5"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 8,
           "enabled": true
         }
       }
@@ -123,7 +328,7 @@
         "id": "v1",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows warm glow.",
+        "text": "The image shows sleek modern desk lamp with matte finish and clean lines.",
         "enabled": true,
         "parentIds": ["a1"]
       },
@@ -131,9 +336,33 @@
         "id": "v2",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows wood grain.",
+        "text": "The image shows warm golden light creating a soft circular glow.",
         "enabled": true,
         "parentIds": ["a2"]
+      },
+      {
+        "id": "v3",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows smooth wooden tabletop with natural grain textures.",
+        "enabled": true,
+        "parentIds": ["a3"]
+      },
+      {
+        "id": "v4",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows shallow depth of field with soft bokeh background.",
+        "enabled": true,
+        "parentIds": ["a4"]
+      },
+      {
+        "id": "v5",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows high-end product photography with diffused studio lighting.",
+        "enabled": true,
+        "parentIds": ["a5"]
       }
     ],
     "mismatches": []

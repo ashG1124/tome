@@ -1,5 +1,4 @@
 {
-  "placeholder": true,
   "scenarioKey": "eco-library",
   "title": "Eco-friendly library",
   "promptVariants": [
@@ -7,24 +6,27 @@
   ],
   "nodes": {
     "schemaVersion": 1,
-    "subjectTemplate": "A sustainable {k1} with {k2}, green plants, and soft natural light",
+    "subjectTemplate": "{k1} featuring {k2}, {k3}, and {k4}",
     "nodes": [
       {
         "id": "k1",
         "stage": "analyze",
         "kind": "keyword",
-        "text": "eco-friendly library",
+        "text": "sustainable eco-friendly library",
         "enabled": true,
-        "weight": 7,
+        "weight": 9,
         "pad": {
           "x": 0,
           "y": 0,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "xAxis": ["modern city", "nature integrated"],
+          "yAxis": ["indoor", "outdoor"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 7,
+          "weight": 9,
           "pad": {
             "x": 0,
             "y": 0
@@ -38,19 +40,74 @@
         "kind": "keyword",
         "text": "wooden structures",
         "enabled": true,
-        "weight": 5,
+        "weight": 8,
         "pad": {
-          "x": -2,
-          "y": 1,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "x": 4,
+          "y": 0,
+          "xAxis": ["steel", "wood"],
+          "yAxis": ["cold", "warm"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
           "pad": {
-            "x": -2,
-            "y": 1
+            "x": 4,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k3",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "lush green plants",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 5,
+          "y": 0,
+          "xAxis": ["sterile", "botanical"],
+          "yAxis": ["low light", "vibrant"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 5,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k4",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "soft natural light",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 4,
+          "xAxis": ["artificial", "natural"],
+          "yAxis": ["dim", "bright"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 4
           },
           "enabled": true
         }
@@ -59,44 +116,142 @@
         "id": "d1",
         "stage": "research",
         "kind": "dataType",
-        "text": "Sustainable architecture",
+        "text": "architectural photography",
         "enabled": true,
-        "parentIds": ["k1"]
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d2",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "biophilic interior design",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d3",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "cinematic film stills",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
       },
       {
         "id": "s1",
         "stage": "research",
         "kind": "priority",
-        "text": "Nature over ornament",
+        "text": "modern sustainable library architecture with wood",
         "enabled": true,
         "order": 0,
-        "parentIds": ["d1"],
+        "parentIds": ["k1", "k2"],
+        "domain": "evidence",
+        "level": "micro",
         "aiInitial": {
           "order": 0
+        }
+      },
+      {
+        "id": "s2",
+        "stage": "research",
+        "kind": "priority",
+        "text": "biophilic interior design with indoor plants",
+        "enabled": true,
+        "order": 1,
+        "parentIds": ["k1", "k3"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 1
+        }
+      },
+      {
+        "id": "s3",
+        "stage": "research",
+        "kind": "priority",
+        "text": "soft sunlight streaming through large windows",
+        "enabled": true,
+        "order": 2,
+        "parentIds": ["k4"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 2
         }
       },
       {
         "id": "e1",
         "stage": "evidence",
         "kind": "evidence",
-        "text": "Daylight and plants are common ways to make a reading space feel sustainable.",
+        "text": "Polished light wood bookshelves and structural beams create a warm and organic atmosphere.",
         "enabled": true,
+        "parentIds": ["k2", "s1"],
         "sourceType": "model_knowledge",
         "domain": "evidence",
-        "level": "macro",
-        "parentIds": ["s1"]
+        "level": "micro"
+      },
+      {
+        "id": "e2",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Abundant climbing vines and potted tropical plants are integrated into the reading areas.",
+        "enabled": true,
+        "parentIds": ["k3", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e3",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Large floor-to-ceiling glass windows allow gentle, diffused sunlight to illuminate the space.",
+        "enabled": true,
+        "parentIds": ["k4", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e4",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "The interior features biophilic design elements like living moss walls and timber textures.",
+        "enabled": true,
+        "parentIds": ["k1", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e5",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Soft shadows and golden light rays create a serene and quiet reading environment.",
+        "enabled": true,
+        "parentIds": ["k4", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
       },
       {
         "id": "a1",
         "stage": "draft",
         "kind": "attribute",
-        "text": "green plants",
+        "text": "polished light wood bookshelves and timber beams",
         "enabled": true,
-        "weight": 6,
-        "category": "environment",
+        "weight": 9,
+        "category": "material",
         "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 6,
+          "weight": 9,
           "enabled": true
         }
       },
@@ -104,13 +259,79 @@
         "id": "a2",
         "stage": "draft",
         "kind": "attribute",
-        "text": "soft natural light",
+        "text": "climbing vines, potted tropical plants, and living moss wall",
         "enabled": true,
-        "weight": 5,
-        "category": "lighting",
-        "parentIds": ["e1"],
+        "weight": 8,
+        "category": "nature",
+        "parentIds": ["e2", "e4"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a3",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "gentle diffused sunlight through floor-to-ceiling glass",
+        "enabled": true,
+        "weight": 8,
+        "category": "lighting",
+        "parentIds": ["e3"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a4",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "golden light rays and soft cinematic shadows",
+        "enabled": true,
+        "weight": 7,
+        "category": "lighting",
+        "parentIds": ["e5"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a5",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "serene, quiet, and warm organic atmosphere",
+        "enabled": true,
+        "weight": 7,
+        "category": "mood",
+        "parentIds": ["e1", "e5"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a6",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "biophilic modern sustainable interior architecture",
+        "enabled": true,
+        "weight": 9,
+        "category": "style",
+        "parentIds": ["e4"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 9,
           "enabled": true
         }
       }
@@ -123,7 +344,7 @@
         "id": "v1",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows green plants.",
+        "text": "The image shows polished light wood bookshelves and timber beams.",
         "enabled": true,
         "parentIds": ["a1"]
       },
@@ -131,9 +352,41 @@
         "id": "v2",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows soft natural light.",
+        "text": "The image shows climbing vines, potted tropical plants, and living moss wall.",
         "enabled": true,
         "parentIds": ["a2"]
+      },
+      {
+        "id": "v3",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows gentle diffused sunlight through floor-to-ceiling glass.",
+        "enabled": true,
+        "parentIds": ["a3"]
+      },
+      {
+        "id": "v4",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows golden light rays and soft cinematic shadows.",
+        "enabled": true,
+        "parentIds": ["a4"]
+      },
+      {
+        "id": "v5",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows serene, quiet, and warm organic atmosphere.",
+        "enabled": true,
+        "parentIds": ["a5"]
+      },
+      {
+        "id": "v6",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows biophilic modern sustainable interior architecture.",
+        "enabled": true,
+        "parentIds": ["a6"]
       }
     ],
     "mismatches": []

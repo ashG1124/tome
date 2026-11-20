@@ -1,6 +1,8 @@
 // !!! 경고: 이 스크립트는 실제 AI(Cloudflare Workers AI)를 부른다. 호출마다 비용(하루·월 사용 한도)이 든다. !!!
 // 실서버의 실제 AI 와 같은 계정 한도를 쓰므로 한 번만 돌리면 된다. 결과 파일을 커밋한 뒤에는 다시 돌리지 않는다.
 //
+// 2026-11-20 실행해 결과를 커밋함. 텍스트 1순위 모델(@cf/qwen/qwen3-30b-a3b-fp8)이 Cloudflare 폐기(410)라 전부 예비 모델(gemma-4-26b)로 생성됨.
+//
 // 하는 일
 //  - 대체 결과(SampleResult) 5개: 프리셋 문장으로 analyze → research → evidence → draft 를 부르고,
 //    검증 기준(buildVerification)과 이미지 1장을 붙여 prisma/seed/sample-results/<프리셋>.json·.jpg·.thumb.jpg 로 저장.

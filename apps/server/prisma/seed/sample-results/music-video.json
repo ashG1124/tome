@@ -1,5 +1,4 @@
 {
-  "placeholder": true,
   "scenarioKey": "music-video",
   "title": "Music video scene",
   "promptVariants": [
@@ -7,24 +6,27 @@
   ],
   "nodes": {
     "schemaVersion": 1,
-    "subjectTemplate": "{k1} walking through a {k2} at night, cinematic wide shot",
+    "subjectTemplate": "{k1} walking through {k2} during {k3}, {k4}",
     "nodes": [
       {
         "id": "k1",
         "stage": "analyze",
         "kind": "keyword",
-        "text": "neon-lit singer",
+        "text": "a singer",
         "enabled": true,
-        "weight": 7,
+        "weight": 9,
         "pad": {
           "x": 0,
           "y": 0,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "xAxis": ["stationary", "moving"],
+          "yAxis": ["shadowy", "illuminated"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 7,
+          "weight": 9,
           "pad": {
             "x": 0,
             "y": 0
@@ -36,21 +38,76 @@
         "id": "k2",
         "stage": "analyze",
         "kind": "keyword",
-        "text": "rainy Seoul street",
+        "text": "neon-lit Seoul streets",
         "enabled": true,
-        "weight": 5,
+        "weight": 8,
         "pad": {
-          "x": -2,
-          "y": 1,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "x": 4,
+          "y": 3,
+          "xAxis": ["rural", "urban"],
+          "yAxis": ["dim", "vibrant"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
           "pad": {
-            "x": -2,
-            "y": 1
+            "x": 4,
+            "y": 3
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k3",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "rainy night",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 0,
+          "y": 5,
+          "xAxis": ["dry", "wet"],
+          "yAxis": ["day", "night"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 0,
+            "y": 5
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k4",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "cinematic wide shot",
+        "enabled": true,
+        "weight": 6,
+        "pad": {
+          "x": 5,
+          "y": 0,
+          "xAxis": ["close up", "wide shot"],
+          "yAxis": ["flat", "dynamic"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 6,
+          "pad": {
+            "x": 5,
+            "y": 0
           },
           "enabled": true
         }
@@ -59,44 +116,156 @@
         "id": "d1",
         "stage": "research",
         "kind": "dataType",
-        "text": "Cinematic music video stills",
+        "text": "cinematic film stills",
         "enabled": true,
-        "parentIds": ["k1"]
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d2",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "cyberpunk photography",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d3",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "music video aesthetics",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
       },
       {
         "id": "s1",
         "stage": "research",
         "kind": "priority",
-        "text": "Mood over detail",
+        "text": "cinematic lighting and wide angle compositions",
         "enabled": true,
         "order": 0,
-        "parentIds": ["d1"],
+        "parentIds": ["k4"],
+        "domain": "evidence",
+        "level": "micro",
         "aiInitial": {
           "order": 0
+        }
+      },
+      {
+        "id": "s2",
+        "stage": "research",
+        "kind": "priority",
+        "text": "vibrant neon cityscapes with rain reflections",
+        "enabled": true,
+        "order": 1,
+        "parentIds": ["k2", "k3"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 1
+        }
+      },
+      {
+        "id": "s3",
+        "stage": "research",
+        "kind": "priority",
+        "text": "moody urban night atmosphere in East Asian cities",
+        "enabled": true,
+        "order": 2,
+        "parentIds": ["k2", "k3"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 2
+        }
+      },
+      {
+        "id": "s4",
+        "stage": "research",
+        "kind": "priority",
+        "text": "stylized singer movement in music video settings",
+        "enabled": true,
+        "order": 3,
+        "parentIds": ["k1"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 3
         }
       },
       {
         "id": "e1",
         "stage": "evidence",
         "kind": "evidence",
-        "text": "Wet asphalt reflects neon light, which adds depth to night street scenes.",
+        "text": "Vibrant neon signs in pink, blue, and teal reflect intensely on wet asphalt and puddles.",
         "enabled": true,
+        "parentIds": ["k2", "s2"],
         "sourceType": "model_knowledge",
         "domain": "evidence",
-        "level": "macro",
-        "parentIds": ["s1"]
+        "level": "micro"
+      },
+      {
+        "id": "e2",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "A cinematic wide-angle view captures the vast scale of urban skyscrapers and narrow city alleys.",
+        "enabled": true,
+        "parentIds": ["k4", "s1"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e3",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Fine rain droplets catch the glow of streetlights and colorful neon advertisements.",
+        "enabled": true,
+        "parentIds": ["k3", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e4",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "The singer walks with a rhythmic, stylized movement through the center of the frame.",
+        "enabled": true,
+        "parentIds": ["k1", "s4"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e5",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Deep shadows and high-contrast cinematic lighting create a moody, urban nightlife atmosphere.",
+        "enabled": true,
+        "parentIds": ["k2", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
       },
       {
         "id": "a1",
         "stage": "draft",
         "kind": "attribute",
-        "text": "neon reflections",
+        "text": "vibrant pink, blue, and teal neon lighting",
         "enabled": true,
-        "weight": 6,
+        "weight": 9,
         "category": "lighting",
-        "parentIds": ["e1"],
+        "parentIds": ["e1", "e3"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 6,
+          "weight": 9,
           "enabled": true
         }
       },
@@ -104,13 +273,79 @@
         "id": "a2",
         "stage": "draft",
         "kind": "attribute",
-        "text": "rain-slick pavement",
+        "text": "wet asphalt streets with intense rain reflections",
         "enabled": true,
-        "weight": 5,
+        "weight": 8,
         "category": "environment",
         "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a3",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "cinematic wide-angle shot of urban skyscrapers and alleys",
+        "enabled": true,
+        "weight": 7,
+        "category": "composition",
+        "parentIds": ["e2"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a4",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "moody nightlife with fine rain droplets in the air",
+        "enabled": true,
+        "weight": 7,
+        "category": "atmosphere",
+        "parentIds": ["e3", "e5"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a5",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "singer walking with stylized rhythmic movement",
+        "enabled": true,
+        "weight": 6,
+        "category": "subject",
+        "parentIds": ["e4"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 6,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a6",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "high-contrast lighting with deep cinematic shadows",
+        "enabled": true,
+        "weight": 7,
+        "category": "lighting",
+        "parentIds": ["e5"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
           "enabled": true
         }
       }
@@ -123,7 +358,7 @@
         "id": "v1",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows neon reflections.",
+        "text": "The image shows vibrant pink, blue, and teal neon lighting.",
         "enabled": true,
         "parentIds": ["a1"]
       },
@@ -131,9 +366,41 @@
         "id": "v2",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows rain-slick pavement.",
+        "text": "The image shows wet asphalt streets with intense rain reflections.",
         "enabled": true,
         "parentIds": ["a2"]
+      },
+      {
+        "id": "v3",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows cinematic wide-angle shot of urban skyscrapers and alleys.",
+        "enabled": true,
+        "parentIds": ["a3"]
+      },
+      {
+        "id": "v4",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows moody nightlife with fine rain droplets in the air.",
+        "enabled": true,
+        "parentIds": ["a4"]
+      },
+      {
+        "id": "v5",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows singer walking with stylized rhythmic movement.",
+        "enabled": true,
+        "parentIds": ["a5"]
+      },
+      {
+        "id": "v6",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows high-contrast lighting with deep cinematic shadows.",
+        "enabled": true,
+        "parentIds": ["a6"]
       }
     ],
     "mismatches": []
