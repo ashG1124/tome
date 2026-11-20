@@ -64,6 +64,8 @@ describe('estimateNeurons', () => {
     expect(estimateNeurons('workers-ai', 'x', 12)).toBe(12);
     expect(estimateNeurons('mock', 'mock')).toBe(0);
     expect(estimateNeurons('workers-ai', '@cf/black-forest-labs/flux-1-schnell')).toBe(57.6);
+    expect(estimateNeurons('workers-ai', '@cf/google/gemma-4-26b-a4b-it')).toBe(60);
+    expect(estimateNeurons('workers-ai', '@cf/zai-org/glm-4.7-flash')).toBe(66);
     expect(estimateNeurons('workers-ai', 'unknown')).toBe(0);
   });
 });

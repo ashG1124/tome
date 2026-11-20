@@ -167,7 +167,7 @@ export class WorkersAiProvider implements AiProvider {
       model,
       call: (signal) => this.callText(model, stage, user, prior, signal),
     });
-    // qwen → qwen 재시도 → gemma
+    // 1순위(gemma) → 1순위 재시도 → 예비(glm)
     return runPlan(
       [step(MODELS.textPrimary), step(MODELS.textPrimary), step(MODELS.textFallback)],
       { stage, budgetMs: this.budgetMs, log: this.logEntry },
@@ -181,7 +181,7 @@ export class WorkersAiProvider implements AiProvider {
     prior: readonly Node[],
     signal: AbortSignal,
   ): Promise<StepOutcome<ReturnType<typeof evaluateStage>>> {
-    const isQwen = model === MODELS.textPrimary;
+    const isQwen = isQwenModel(model);
     const body: Record<string, unknown> = {
       messages: [
         { role: 'system', content: SYSTEM_PROMPTS[stage] },
@@ -471,6 +471,11 @@ async function readImage(
   const mimeType = sniffImageType(bytes);
   if (!mimeType) throw bad('output');
   return { value: { mimeType, bytes }, status: res.status, ...extra };
+}
+
+/** qwen 계열만 `/no_think` 를 붙이고 chat_template_kwargs 를 빼는 방식을 쓴다. */
+export function isQwenModel(model: string): boolean {
+  return model.startsWith('@cf/qwen/');
 }
 
 /** 단계별 user 메시지: 원문 + 앞 단계 출력(JSON). */

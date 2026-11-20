@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { AppError } from '../../common';
 import { MODELS } from '../models';
 import { evaluateStage, OutputViolation } from './normalize';
-import { buildUserMessage, sniffImageType, WorkersAiProvider } from './workers-ai.provider';
+import {
+  buildUserMessage,
+  isQwenModel,
+  sniffImageType,
+  WorkersAiProvider,
+} from './workers-ai.provider';
 import type { RunLog } from './runner';
 
 const ACCOUNT = 'acct-123';
@@ -172,12 +177,13 @@ describe('WorkersAiProvider text stages', () => {
       response_format: { type: string; json_schema: { strict: boolean; name: string } };
       chat_template_kwargs?: unknown;
     };
-    expect(body.messages[1]!.content.endsWith('\n\n/no_think')).toBe(true);
+    expect(MODELS.textPrimary).toBe('@cf/google/gemma-4-26b-a4b-it');
+    expect(body.messages[1]!.content).not.toContain('/no_think');
     expect(body.messages[1]!.content).toContain('User request:\na lighthouse in a storm, no text');
     expect(body.response_format.type).toBe('json_schema');
     expect(body.response_format.json_schema).toMatchObject({ strict: true, name: 'stage1' });
     expect(body.max_tokens).toBe(2048);
-    expect(body.chat_template_kwargs).toBeUndefined();
+    expect(body.chat_template_kwargs).toEqual({ enable_thinking: false });
 
     expect(result).toMatchObject({
       provider: 'workers-ai',
@@ -209,7 +215,7 @@ describe('WorkersAiProvider text stages', () => {
     }
   });
 
-  it('(b) retries the primary once, then falls back to gemma', async () => {
+  it('(b) retries the primary once, then falls back to glm', async () => {
     const { instance, calls } = provider([
       httpError(500),
       httpError(500),
@@ -220,13 +226,22 @@ describe('WorkersAiProvider text stages', () => {
     expect(calls[0]!.url).toContain(MODELS.textPrimary);
     expect(calls[1]!.url).toContain(MODELS.textPrimary);
     expect(calls[2]!.url).toContain(MODELS.textFallback);
-    const gemma = calls[2]!.body as {
-      messages: Array<{ content: string }>;
-      chat_template_kwargs: unknown;
-    };
-    expect(gemma.chat_template_kwargs).toEqual({ enable_thinking: false });
-    expect(gemma.messages[1]!.content).not.toContain('/no_think');
+    expect(MODELS.textFallback).toBe('@cf/zai-org/glm-4.7-flash');
+    for (const i of [1, 2]) {
+      const sent = calls[i]!.body as {
+        messages: Array<{ content: string }>;
+        chat_template_kwargs: unknown;
+      };
+      expect(sent.chat_template_kwargs).toEqual({ enable_thinking: false });
+      expect(sent.messages[1]!.content).not.toContain('/no_think');
+    }
     expect(result).toMatchObject({ model: MODELS.textFallback, fallbackUsed: true, neurons: 1.25 });
+  });
+
+  it('isQwenModel only matches qwen model ids', () => {
+    expect(isQwenModel('@cf/qwen/some-qwen-model')).toBe(true);
+    expect(isQwenModel(MODELS.textPrimary)).toBe(false);
+    expect(isQwenModel(MODELS.textFallback)).toBe(false);
   });
 
   it('(b2) a retry that succeeds is not a fallback', async () => {
