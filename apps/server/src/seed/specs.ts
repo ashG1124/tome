@@ -81,6 +81,7 @@ export const CREATOR_SPECS: CreatorSpec[] = [
         prompt:
           'A neon-lit music video scene of a singer walking through rainy Seoul streets at night, cinematic wide shot',
         presetKey: 'music-video',
+        topic: 'urban-shoes',
         subject: 'A {k1} of a {k2} walking through {k3}, {k4}, cinematic wide shot',
         keywords: [
           'neon-lit music video scene',
@@ -343,6 +344,7 @@ export const CREATOR_SPECS: CreatorSpec[] = [
         key: 'teo-3',
         title: 'Precise grid',
         prompt: 'A precise black grid of thin lines on warm paper, flat graphic, square framing',
+        topic: 'calm-workspace',
         subject: 'A {k1} of {k2} on {k3}, {k4}',
         keywords: ['precise black grid', 'thin lines', 'warm paper', 'flat graphic'],
         attributes: ['fine line weight', 'paper grain', 'square framing', 'exact mood'],
@@ -430,6 +432,7 @@ export const CREATOR_SPECS: CreatorSpec[] = [
         title: 'Tidal chart',
         prompt:
           'A neatly drawn tidal chart with clear gridlines and coastal landmarks, flat illustration',
+        topic: 'eco-library',
         subject: 'A neatly drawn {k1} with {k2} and {k3}, {k4}',
         keywords: ['tidal chart', 'clear gridlines', 'coastal landmarks', 'flat illustration'],
         attributes: ['muted blues', 'ink lines', 'top-down view', 'precise mood'],
