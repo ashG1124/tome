@@ -172,7 +172,7 @@ describe('FinishModal', () => {
     fireEvent.click(done);
     fireEvent.click(done);
 
-    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('posted'));
+    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('posted', A2));
     expect(steps.finish).toHaveBeenCalledTimes(1);
     expect(steps.finish).toHaveBeenCalledWith({
       title: 'Neon street',
@@ -225,7 +225,7 @@ describe('FinishModal', () => {
     expect(confirm.getByRole('status').textContent).toBe(SKELETON_COPY.loading);
 
     release();
-    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('finished'));
+    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('finished', A1));
   });
 
   it('게시를 끄면 완료만 보낸다', async () => {
@@ -234,7 +234,7 @@ describe('FinishModal', () => {
     const confirm = fillAndConfirm();
     fireEvent.click(confirm.getByRole('button', { name: COPY['D-09b'] }));
 
-    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('finished'));
+    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('finished', A1));
     expect(steps.post).not.toHaveBeenCalled();
   });
 
@@ -267,7 +267,7 @@ describe('FinishModal', () => {
 
     fireEvent.click(confirm.getByRole('button', { name: COPY['E-01b'] }));
 
-    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('posted'));
+    await waitFor(() => expect(onFinished).toHaveBeenCalledWith('posted', A1));
     expect(steps.finish).toHaveBeenCalledTimes(1);
     expect(steps.post).toHaveBeenCalledTimes(2);
   });
@@ -285,7 +285,7 @@ describe('FinishModal', () => {
     await confirm.findByRole('alert');
 
     fireEvent.click(confirm.getByRole('button', { name: COPY['D-09b'] }));
-    expect(onFinished).toHaveBeenCalledWith('finished');
+    expect(onFinished).toHaveBeenCalledWith('finished', A1);
   });
 
   it('서버가 완료를 거절하면(G1) 확인 창에 문구를 보이고 Retry 는 없다', async () => {

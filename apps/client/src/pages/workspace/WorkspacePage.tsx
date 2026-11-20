@@ -1,10 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Id } from '@tome/shared';
 import { useCallback, useId, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
 import { ErrorNotice, Icon } from '../../shared/ui';
-import { finishAvailability, FinishModal } from './finish';
+import {
+  downloadImage,
+  finishAvailability,
+  FinishModal,
+  resultImagePath,
+  ResultView,
+} from './finish';
 import { IconMenu } from './IconMenu';
 import { pageIdFromSearch, pageMenu } from './pageMenu';
 import { PromptBar, type PromptSubmit } from './PromptBar';
@@ -28,6 +35,11 @@ export function WorkspacePage() {
   const [adding, setAdding] = useState(false);
   const navigate = useNavigate();
   const [finishOpen, setFinishOpen] = useState(false);
+  // 완료가 끝나면 대표 버전을 결과 크게 보기로 보여 주고, 닫으면 홈으로 간다(#124).
+  const [resultCover, setResultCover] = useState<Id | null>(null);
+  const downloadingNow = useRef(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<unknown>(null);
   const finishButton = useRef<HTMLElement | null>(null);
   const candidates = useQuery({
     queryKey: ['finish-candidates', id],
@@ -56,10 +68,43 @@ export function WorkspacePage() {
   const bar = workspace.data ? promptBarInfo(workspace.data) : null;
   const menu = workspace.data ? pageMenu(workspace.data) : null;
 
-  // 완료 모달을 끝내면 서가를 다시 받고 홈으로 간다. 홈은 done 플래시를 띄운다.
-  const finished = () => {
+  // 완료가 끝나면(게시까지 끝났거나, 게시만 실패한 뒤 Done) 완료 모달을 닫고 대표 버전을 크게 보여 준다.
+  const finished = (_result: 'finished' | 'posted', coverAnswerId: Id) => {
+    setFinishOpen(false);
+    setDownloadError(null);
+    setResultCover(coverAnswerId);
+    void refresh();
+  };
+
+  // 결과 크게 보기를 닫으면(닫기·Esc) 서가를 다시 받고 홈으로 간다. 홈은 done 플래시를 띄운다.
+  const closeResult = () => {
+    setResultCover(null);
     void queryClient.invalidateQueries({ queryKey: ['projects'] });
     void navigate('/', { state: { flash: 'done' } });
+  };
+
+  const resultPath =
+    resultCover === null
+      ? null
+      : resultImagePath(
+          resultCover,
+          candidates.data?.answers.find((answer) => answer.id === resultCover)?.thumbUrl,
+        );
+
+  // Download: 대표 버전 그림을 파일로 받는다. 받는 동안 버튼을 잠그고, 연달아 눌러도 한 번만 받는다.
+  const download = async () => {
+    if (downloadingNow.current || resultPath === null) return;
+    downloadingNow.current = true;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadImage(resultPath, workspace.data?.project.title ?? '');
+    } catch (error) {
+      setDownloadError(error);
+    } finally {
+      downloadingNow.current = false;
+      setDownloading(false);
+    }
   };
 
   // 새 페이지를 만들고 그 페이지로 옮긴다. 연달아 눌러도 한 번만 만든다.
@@ -206,12 +251,30 @@ export function WorkspacePage() {
         }}
         onFinished={finished}
         onCloseAutoFocus={(event) => {
+          // 완료 직후에는 결과 크게 보기가 이어서 열려서, 끝내기 버튼으로 포커스를 돌려주지 않는다.
+          if (resultCover !== null) {
+            event.preventDefault();
+            return;
+          }
           // 모달을 닫으면 끝내기 버튼으로 포커스를 돌려준다.
           if (finishButton.current === null) return;
           event.preventDefault();
           finishButton.current.focus();
         }}
       />
+      {resultPath !== null ? (
+        <ResultView
+          open
+          onOpenChange={(open) => {
+            if (!open) closeResult();
+          }}
+          imagePath={resultPath}
+          alt={workspace.data?.project.title ?? ''}
+          onDownload={() => void download()}
+          downloading={downloading}
+          {...(downloadError === null ? {} : { errorMessage: COPY[errorCopyKey(downloadError)] })}
+        />
+      ) : null}
     </section>
   );
 }
