@@ -1,4 +1,4 @@
-// 디자인 자산 저장소(.tome-assets)를 최신으로 받고, 정해진 세 경로만 저장소 안으로 복사한다.
+// 디자인 자산 저장소(.tome-assets)를 최신으로 받고, 정해진 경로만 저장소 안으로 복사한다.
 // 외부 패키지 없이 node 내장 모듈만 쓴다.
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -9,11 +9,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const ASSETS_DIR = join(ROOT, '.tome-assets');
 
-// 복사 대상은 이 세 경로로만 한정한다.
+// 복사 대상은 이 네 경로로만 한정한다.
 export const COPY_PATHS = [
   'design-ref',
   'apps/client/src/assets/icons',
   'apps/client/src/assets/brand',
+  'apps/client/src/assets/onboarding',
 ];
 
 export const MESSAGES = {

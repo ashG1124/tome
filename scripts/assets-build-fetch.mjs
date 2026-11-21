@@ -9,8 +9,12 @@ import { fileURLToPath } from 'node:url';
 // 스크립트 위치 기준으로 저장소 루트를 계산한다(실행 위치 cwd 에 의존하지 않는다).
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// 복사 대상은 이 두 경로로만 한정한다(design-ref 는 배포에 필요 없어 받지 않는다).
-export const COPY_PATHS = ['apps/client/src/assets/icons', 'apps/client/src/assets/brand'];
+// 복사 대상은 이 세 경로로만 한정한다(design-ref 는 배포에 필요 없어 받지 않는다).
+export const COPY_PATHS = [
+  'apps/client/src/assets/icons',
+  'apps/client/src/assets/brand',
+  'apps/client/src/assets/onboarding',
+];
 
 // clone 이 이 시간(ms) 안에 끝나지 않으면 강제로 끊고 실패로 처리한다.
 export const CLONE_TIMEOUT_MS = 120000;

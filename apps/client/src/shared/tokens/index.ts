@@ -3,6 +3,8 @@ export const TOKENS = {
   colorPeachText: '--color-peach-text',
   colorFontHelperText: '--color-font-helper-text',
   colorFontSubText: '--color-font-sub-text',
+  colorLandingDark: '--color-landing-dark',
+  sizeLandingDesignWidth: '--size-landing-design-width',
 } as const;
 
 export type TokenName = (typeof TOKENS)[keyof typeof TOKENS];
