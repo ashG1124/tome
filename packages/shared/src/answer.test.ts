@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  UpdateVerificationResponseSchema,
+  PinAnswerResponseSchema,
+  NodeCommentListResponseSchema,
+  CreateNodeCommentResponseSchema,
   AnswerSchema,
   CreateNodeCommentRequestSchema,
   GetAnswerResponseSchema,
@@ -82,5 +86,46 @@ describe('GetAnswerResponseSchema', () => {
   it('wraps an answer', () => {
     expect(GetAnswerResponseSchema.safeParse({ answer }).success).toBe(true);
     expect(GetAnswerResponseSchema.safeParse({ answer: { id: 'x' } }).success).toBe(false);
+  });
+});
+
+describe('answer history responses', () => {
+  const comment = {
+    id: ID_A,
+    nodeId: 'k1',
+    author: creator,
+    body: 'hi',
+    createdAt: NOW,
+    mine: true,
+  };
+  it('validates the pin response', () => {
+    expect(PinAnswerResponseSchema.parse({ pinned: false })).toEqual({ pinned: false });
+    expect(PinAnswerResponseSchema.safeParse({ pinned: 'false' }).success).toBe(false);
+  });
+  it('validates comment list and create wrappers', () => {
+    expect(NodeCommentListResponseSchema.parse({ comments: [] })).toEqual({ comments: [] });
+    expect(NodeCommentListResponseSchema.parse({ comments: [comment] })).toEqual({
+      comments: [comment],
+    });
+    expect(CreateNodeCommentResponseSchema.parse({ comment })).toEqual({ comment });
+    expect(
+      NodeCommentListResponseSchema.safeParse({ comments: [{ ...comment, mine: 'yes' }] }).success,
+    ).toBe(false);
+    expect(
+      CreateNodeCommentResponseSchema.safeParse({ comment: { ...comment, body: '' } }).success,
+    ).toBe(false);
+  });
+});
+
+describe('UpdateVerificationResponseSchema', () => {
+  it('requires a verification result with valid nodes', () => {
+    const verification = { status: 'skipped', criteria: [], mismatches: [] };
+    expect(UpdateVerificationResponseSchema.parse({ verification })).toEqual({ verification });
+    expect(UpdateVerificationResponseSchema.safeParse({ verification: null }).success).toBe(false);
+    expect(
+      UpdateVerificationResponseSchema.safeParse({
+        verification: { ...verification, criteria: [{ id: 'v1' }] },
+      }).success,
+    ).toBe(false);
   });
 });

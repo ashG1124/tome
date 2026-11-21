@@ -1,4 +1,12 @@
 import {
+  type UpdateVerificationRequest,
+  type UpdateVerificationResponse,
+  type GetAnswerResponse,
+  type PinAnswerResponse,
+  type NodeComment,
+  type NodeCommentListResponse,
+  type CreateNodeCommentRequest,
+  type CreateNodeCommentResponse,
   LIMITS,
   type AcceptAnswerResponse,
   type CreateRevisionRequest,
@@ -30,7 +38,7 @@ import {
   type UpdateProjectResponse,
   type WorkspaceResponse,
 } from '@tome/shared';
-import { FAKE_PAGE_IDS, FAKE_PROJECTS } from './data';
+import { FAKE_CREATOR, FAKE_PAGE_IDS, FAKE_PROJECTS } from './data';
 import { FakeFailure } from './errors';
 import { FAKE_OTHER_CREATORS } from './identity';
 import {
@@ -122,6 +130,7 @@ export interface FakeStore {
   connections?: ConnectionRecord[];
   /** 아고라 댓글. 이 칸이 생기기 전에 저장한 데이터에는 없어서 처음 쓸 때 채운다(fake/agora.ts). */
   agoraComments?: AgoraCommentRecord[];
+  nodeComments?: (NodeComment & { answerId: string; deleted?: boolean })[];
 }
 
 /** 가짜 Connection 한 줄(서버 Connection 표와 같은 뜻). */
@@ -805,4 +814,99 @@ export function answerOwnerOf(
     }
   }
   return null;
+}
+
+/** 내 답변만 찾는다. 공개 답변 fixture 조회는 가짜 라우트에서 처리한다. */
+export function getAnswer(s: FakeStore, answerId: string): GetAnswerResponse {
+  for (const project of s.projects) {
+    if (project.deleted === true) continue;
+    for (const set of project.sets) {
+      const answer = set.answers.find((entry) => entry.id === answerId);
+      if (answer) return { answer };
+    }
+  }
+  throw new FakeFailure('NOT_FOUND');
+}
+
+export function pinAnswer(s: FakeStore, answerId: string, pinned: boolean): PinAnswerResponse {
+  const { answer } = getAnswer(s, answerId);
+  if (answer.status !== 'accepted') throw new FakeFailure('VALIDATION_FAILED');
+  answer.pinned = pinned;
+  for (const job of s.jobs) {
+    for (const step of job.steps) {
+      if (step.answer?.id === answerId) step.answer.pinned = pinned;
+    }
+  }
+  return { pinned };
+}
+
+function toNodeComment(record: NodeComment): NodeComment {
+  const { id, nodeId, author, body, createdAt } = record;
+  return { id, nodeId, author, body, createdAt, mine: author.id === FAKE_CREATOR.id };
+}
+
+export function listNodeComments(s: FakeStore, answer: Answer): NodeCommentListResponse {
+  return {
+    comments: (s.nodeComments ?? [])
+      .filter((entry) => entry.answerId === answer.id && entry.deleted !== true)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      .map(toNodeComment),
+  };
+}
+
+export function createNodeComment(
+  s: FakeStore,
+  answer: Answer,
+  body: CreateNodeCommentRequest,
+): CreateNodeCommentResponse {
+  const ids = answer.nodes.nodes.map((node) => node.id);
+  if (!ids.includes(body.nodeId)) throw new FakeFailure('VALIDATION_FAILED');
+  const record = {
+    id: newId(),
+    answerId: answer.id,
+    nodeId: body.nodeId,
+    author: { ...FAKE_CREATOR },
+    body: body.body,
+    createdAt: now(),
+    mine: true,
+  };
+  (s.nodeComments ??= []).push(record);
+  return { comment: toNodeComment(record) };
+}
+
+export function deleteNodeComment(
+  s: FakeStore,
+  commentId: string,
+  requireReadable: (answerId: string) => void,
+): void {
+  const record = s.nodeComments?.find((entry) => entry.id === commentId);
+  if (!record || record.deleted === true) throw new FakeFailure('NOT_FOUND');
+  if (record.author.id !== FAKE_CREATOR.id) {
+    requireReadable(record.answerId);
+    throw new FakeFailure('FORBIDDEN');
+  }
+  record.deleted = true;
+}
+
+export function updateVerification(
+  s: FakeStore,
+  answerId: string,
+  body: UpdateVerificationRequest,
+): UpdateVerificationResponse {
+  const { answer } = getAnswer(s, answerId);
+  if (answer.verification === null) throw new FakeFailure('VALIDATION_FAILED');
+  const verification = structuredClone(answer.verification);
+  const targets = [...verification.criteria, ...verification.mismatches];
+  for (const change of body.nodes) {
+    const node = targets.find((entry) => entry.id === change.id);
+    if (!node) throw new FakeFailure('VALIDATION_FAILED');
+    node.enabled = change.enabled ?? change.decision === 'kept';
+  }
+  answer.verification = verification;
+  for (const job of s.jobs) {
+    for (const step of job.steps) {
+      if (step.answer?.id === answerId) step.answer.verification = structuredClone(verification);
+    }
+  }
+  return { verification };
 }
