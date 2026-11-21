@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentPropsWithoutRef } from 'react';
+import { useRef, useState, type ReactNode, type ComponentPropsWithoutRef } from 'react';
 import type { CardData } from '../model';
 import { CANVAS_COPY, COPY } from '../../../shared/copy';
 import { useApiImage } from '../../../shared/api';
@@ -39,8 +39,10 @@ export function GenerationImage({ generating = true }: { generating?: boolean })
 
 export function CanvasSurface({
   data,
+  children,
+  answerFooter,
   ...rest
-}: { data: CardData } & ComponentPropsWithoutRef<'article'>) {
+}: { data: CardData; answerFooter?: ReactNode } & ComponentPropsWithoutRef<'article'>) {
   const lock = useRef(false);
   const [retrying, setRetrying] = useState(false);
   const retry = async () => {
@@ -98,7 +100,7 @@ export function CanvasSurface({
             ) : null}
           </div>
           <div className="canvas-answer-footer">
-            <strong>{data.label}</strong>
+            {answerFooter ?? <strong>{data.label}</strong>}
             {data.state === 'running' ? <span>{data.labels.generating}</span> : null}
           </div>
           {data.answer?.isSample ? (
@@ -128,6 +130,7 @@ export function CanvasSurface({
       {data.state === 'skipped' && data.kind === 'output' ? (
         <small>{data.labels.skipped}</small>
       ) : null}
+      {children}
     </article>
   );
 }

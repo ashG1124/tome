@@ -8,9 +8,9 @@ import type {
   WorkspaceResponse,
 } from '@tome/shared';
 import { Navigate } from 'react-router';
-import { CANVAS_COPY, COPY, NODE_EDITOR_COPY } from '../../shared/copy';
+import { CANVAS_COPY, COPY, NODE_EDITOR_COPY, CANVAS_HISTORY_COPY } from '../../shared/copy';
 import { CANVAS_GEOMETRY_TOKENS } from '../../shared/tokens';
-import { ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
+import { api, ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { ErrorNotice, Flash } from '../../shared/ui';
 import { useGeneration } from './hooks/useGeneration';
 import { VISIBLE_STAGES, visibleStage, type CanvasGeometry } from './model';
@@ -19,6 +19,26 @@ import { NodeEditPanel, type NodeEditorLabels } from './components/NodeEditPanel
 import { PreviewPanel } from './components/PreviewPanel';
 import { createEditorRequests, useNodeEditor } from './hooks/useNodeEditor';
 import { canEditNode } from './edit-model';
+import { NodeComments, type NodeCommentLabels } from './components/NodeComments';
+import type { AnswerVersionLabels } from './components/AnswerVersions';
+import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistory';
+import type { NodeCommentsApi } from './hooks/useNodeComments';
+import './history.css';
+
+const HISTORY_API: AnswerHistoryApi & NodeCommentsApi = {
+  getAnswer: api.getAnswer,
+  setPinned: async (id, pinned) => {
+    await api.pinAnswer(id, pinned);
+  },
+  listComments: async (id) => (await api.listNodeComments(id)).comments,
+  addComment: async (id, body, key) => (await api.createNodeComment(id, body, key)).comment,
+  deleteComment: api.deleteNodeComment,
+};
+
+export interface CanvasHistoryOptions {
+  api?: AnswerHistoryApi & NodeCommentsApi;
+  labels?: { versions: AnswerVersionLabels; comments: NodeCommentLabels };
+}
 
 export interface CanvasEditorOptions {
   labels?: Partial<
@@ -41,6 +61,7 @@ export interface WorkspaceCanvasProps {
   workspace: WorkspaceResponse;
   onOpenResult?: (answerId: string) => void;
   editor?: CanvasEditorOptions | false;
+  history?: CanvasHistoryOptions | false;
 }
 
 function EditorSession({
@@ -135,13 +156,30 @@ function EditorSession({
   );
 }
 
-function PageCanvas({ projectId, pageId, workspace, editor = {} }: WorkspaceCanvasProps) {
+function PageCanvas({
+  projectId,
+  pageId,
+  workspace,
+  editor = {},
+  history = {},
+}: WorkspaceCanvasProps) {
+  const historyApi = history ? (history.api ?? HISTORY_API) : undefined;
+  const historyLabels = history ? (history.labels ?? CANVAS_HISTORY_COPY) : CANVAS_HISTORY_COPY;
+  const versions = useAnswerHistory(projectId, workspace.sets, historyApi);
+  const sets = versions.sets;
+  const [commentTarget, setCommentTarget] = useState<{
+    setId: string;
+    answerId: string;
+    nodeId: string;
+  }>();
+  const commentOpener = useRef<HTMLElement | null>(null);
+  const displayedCommentAnswer = sets.find((set) => set.id === commentTarget?.setId)?.latestAnswer;
   const client = useQueryClient();
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
   const [selected, setSelected] = useState<{ setId: string; nodeId: string }>();
   const opener = useRef<HTMLElement | null>(null);
-  const selectedBase = workspace.sets.find((set) => set.id === selected?.setId)?.latestAnswer;
+  const selectedBase = sets.find((set) => set.id === selected?.setId)?.latestAnswer;
   const [geometry, setGeometry] = useState<CanvasGeometry | null>(null);
   useLayoutEffect(() => {
     let active = true;
@@ -170,14 +208,17 @@ function PageCanvas({ projectId, pageId, workspace, editor = {} }: WorkspaceCanv
     pageId,
     generationWorkspace,
   );
-  const redirect = authRedirectTarget(error ?? loadError);
+  const redirect = authRedirectTarget(error ?? loadError ?? versions.error);
   const generatedAnswer = generation?.steps.find((step) => step.answer)?.answer;
-  const latestAnswer = workspace.sets.find((set) => set.id === generation?.setId)?.latestAnswer;
+  const latestAnswer = sets.find((set) => set.id === generation?.setId)?.latestAnswer;
   const displayedGeneration =
-    generation?.job.status === 'succeeded' &&
-    generatedAnswer &&
-    latestAnswer &&
-    generatedAnswer.id !== latestAnswer.id
+    (latestAnswer &&
+      workspace.sets.find((set) => set.id === generation?.setId)?.latestAnswer?.id !==
+        latestAnswer.id) ||
+    (generation?.job.status === 'succeeded' &&
+      generatedAnswer &&
+      latestAnswer &&
+      generatedAnswer.id !== latestAnswer.id)
       ? undefined
       : generation;
   if (redirect) return <Navigate to={redirect} replace />;
@@ -188,6 +229,27 @@ function PageCanvas({ projectId, pageId, workspace, editor = {} }: WorkspaceCanv
           <Flash kind={stacked ? 'stack' : null} />
         </div>
       ) : null}
+      {versions.error ? (
+        <div className="canvas-load-error">
+          <ErrorNotice message={COPY[errorCopyKey(versions.error)]} />
+        </div>
+      ) : null}
+      {history &&
+      historyApi &&
+      commentTarget &&
+      displayedCommentAnswer?.id === commentTarget.answerId ? (
+        <NodeComments
+          key={`${commentTarget.answerId}:${commentTarget.nodeId}`}
+          answerId={commentTarget.answerId}
+          nodeId={commentTarget.nodeId}
+          api={historyApi}
+          labels={historyLabels.comments}
+          onClose={() => {
+            setCommentTarget(undefined);
+            commentOpener.current?.focus({ preventScroll: true });
+          }}
+        />
+      ) : null}
       {loadError ? (
         <div className="canvas-load-error">
           <ErrorNotice message={COPY[errorCopyKey(loadError)]} onRetry={reload} />
@@ -195,18 +257,54 @@ function PageCanvas({ projectId, pageId, workspace, editor = {} }: WorkspaceCanv
       ) : null}
       {geometry ? (
         <GenerationCanvas
-          sets={workspace.sets}
+          sets={sets}
           generation={displayedGeneration}
           labels={CANVAS_COPY}
           geometry={geometry}
           announcement={announcement}
+          history={
+            history
+              ? {
+                  answersBySet: Object.fromEntries(
+                    workspace.sets.map((set) => [set.id, set.answers]),
+                  ),
+                  labels: historyLabels.versions,
+                  selectedComment: commentTarget,
+                  selectingSet: versions.selectingSet,
+                  pinning: versions.pinning,
+                  disabled: busy || editingBusy,
+                  select: (setId, answerId) => {
+                    setCommentTarget(undefined);
+                    setSelected(undefined);
+                    versions.select(setId, answerId);
+                  },
+                  pin: versions.togglePin,
+                  canComment: (setId, answerId, nodeId) => {
+                    const answer = sets.find((set) => set.id === setId)?.latestAnswer;
+                    return (
+                      !busy &&
+                      !editingBusy &&
+                      answer?.id === answerId &&
+                      answer.status === 'accepted' &&
+                      answer.nodes.nodes.some((node) => node.id === nodeId)
+                    );
+                  },
+                  comment: (setId, answerId, nodeId) => {
+                    commentOpener.current =
+                      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    setSelected(undefined);
+                    setCommentTarget({ setId, answerId, nodeId });
+                  },
+                }
+              : undefined
+          }
           editor={
             editor
               ? {
                   label: editor.labels?.title ?? NODE_EDITOR_COPY.title,
                   selected,
                   canOpen: (setId, nodeId) => {
-                    const base = workspace.sets.find((set) => set.id === setId)?.latestAnswer;
+                    const base = sets.find((set) => set.id === setId)?.latestAnswer;
                     const node = base?.nodes.nodes.find((entry) => entry.id === nodeId);
                     return (
                       !busy &&
@@ -219,6 +317,7 @@ function PageCanvas({ projectId, pageId, workspace, editor = {} }: WorkspaceCanv
                   open: (setId, nodeId) => {
                     opener.current =
                       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    setCommentTarget(undefined);
                     setStacked(false);
                     setSelected({ setId, nodeId });
                   },
@@ -261,6 +360,7 @@ function PageCanvas({ projectId, pageId, workspace, editor = {} }: WorkspaceCanv
                       }
                     : previous,
               );
+              versions.resetSelection(answer.setId);
               setStacked(true);
               setSelected(undefined);
               editor.onAccepted?.(answer);

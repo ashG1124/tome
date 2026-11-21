@@ -2,8 +2,10 @@ import type { Answer, Node } from '@tome/shared';
 import { KeywordEditor } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
 import { CanvasSurface, GenerationImage } from './components/CanvasSurface';
-import { CANVAS_COPY, NODE_EDITOR_COPY } from '../../shared/copy';
+import { CANVAS_HISTORY_COPY, COPY, CANVAS_COPY, NODE_EDITOR_COPY } from '../../shared/copy';
+import { AnswerVersions } from './components/AnswerVersions';
 import './canvas.css';
+import './history.css';
 
 export const canvasDesignFixtures = {
   keyword: () => (
@@ -94,4 +96,29 @@ export const nodeEditorDesignFixtures = {
   meaning: () => keywordEditor('meaning'),
   generating: (image?: string) => previewEditor(true, image),
   ready: (image?: string) => previewEditor(false, image),
+};
+
+export const canvasHistoryDesignFixtures = {
+  corner: () => (
+    <div
+      style={{
+        position: 'relative',
+        width: 'calc(var(--size-icon-empty) + var(--space-gap-4))',
+        height: 'calc(var(--size-icon-empty) + var(--space-gap-4))',
+      }}
+    >
+      <button type="button" className="canvas-comment-corner" aria-label={COPY['S-07a']} />
+    </div>
+  ),
+  pin: (pinned: boolean) => (
+    <div className="canvas-history-pin-fixture">
+      <AnswerVersions
+        answer={{ ...previewAnswer, number: 1, status: 'accepted', pinned }}
+        answers={[]}
+        labels={CANVAS_HISTORY_COPY.versions}
+        onSelect={() => {}}
+        onPin={async () => {}}
+      />
+    </div>
+  ),
 };
