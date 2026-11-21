@@ -1,4 +1,12 @@
 import {
+  UpdateVerificationRequestSchema,
+  UpdateVerificationResponseSchema,
+  GetAnswerResponseSchema,
+  PinAnswerRequestSchema,
+  PinAnswerResponseSchema,
+  NodeCommentListResponseSchema,
+  CreateNodeCommentRequestSchema,
+  CreateNodeCommentResponseSchema,
   AcceptAnswerResponseSchema,
   CreateRevisionRequestSchema,
   CreateRevisionResponseSchema,
@@ -67,6 +75,12 @@ import {
 } from './remix';
 import { fakeState, setFakeConsented } from './state';
 import {
+  updateVerification,
+  getAnswer,
+  pinAnswer,
+  listNodeComments,
+  createNodeComment,
+  deleteNodeComment,
   acceptAnswer,
   createRevision,
   advanceJob,
@@ -87,6 +101,32 @@ import {
 
 /** 지금 가짜 서버의 데이터(?fakeProjects=empty 면 빈 서가로 시작). */
 const store = () => fakeStore(fakeState.emptyProjects);
+// 아고라 상세가 공개하는 답변만 재사용한다. 비공개 답변을 새로 만들어 노출하지 않는다.
+function readableAnswer(id: string) {
+  try {
+    return getAnswer(store(), id);
+  } catch (error) {
+    if (!(error instanceof FakeFailure) || error.code !== 'NOT_FOUND') throw error;
+  }
+  for (const project of agoraHome(store()).recommended) {
+    const answer = agoraProject(store(), project.id)
+      .sets.flatMap((set) => (set.latestAnswer ? [set.latestAnswer] : []))
+      .find((entry) => entry.id === id);
+    if (answer) return { answer };
+  }
+  throw new FakeFailure('NOT_FOUND');
+}
+
+function requireOwnedAnswer(id: string): void {
+  try {
+    getAnswer(store(), id);
+  } catch (error) {
+    if (!(error instanceof FakeFailure) || error.code !== 'NOT_FOUND') throw error;
+    readableAnswer(id);
+    throw new FakeFailure('FORBIDDEN');
+  }
+}
+
 /** 주소 옵션 ?fakeLimit= · ?fakeSample= */
 const generation = () => ({ limit: fakeState.limit, sample: fakeState.sample });
 
@@ -150,6 +190,64 @@ function route(definition: RouteDefinition): FakeRoute {
 }
 
 export const FAKE_ROUTES: readonly FakeRoute[] = [
+  route({
+    method: 'GET',
+    pattern: '/answers/:id',
+    response: GetAnswerResponseSchema,
+    handle: ({ params }) => readableAnswer(params.id ?? ''),
+  }),
+  route({
+    method: 'PUT',
+    pattern: '/answers/:id/pin',
+    response: PinAnswerResponseSchema,
+    handle: ({ params, body }) => {
+      const id = params.id ?? '';
+      const parsed = parseBody(PinAnswerRequestSchema, body);
+      requireOwnedAnswer(id);
+      return pinAnswer(store(), id, parsed.pinned);
+    },
+  }),
+  route({
+    method: 'PATCH',
+    pattern: '/answers/:id/verification',
+    response: UpdateVerificationResponseSchema,
+    handle: ({ params, body }) => {
+      const id = params.id ?? '';
+      const parsed = parseBody(UpdateVerificationRequestSchema, body);
+      requireOwnedAnswer(id);
+      return updateVerification(store(), id, parsed);
+    },
+  }),
+  route({
+    method: 'GET',
+    pattern: '/answers/:id/comments',
+    response: NodeCommentListResponseSchema,
+    handle: ({ params }) => listNodeComments(store(), readableAnswer(params.id ?? '').answer),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/answers/:id/comments',
+    response: CreateNodeCommentResponseSchema,
+    status: 201,
+    idempotent: true,
+    handle: ({ params, body }) =>
+      createNodeComment(
+        store(),
+        readableAnswer(params.id ?? '').answer,
+        parseBody(CreateNodeCommentRequestSchema, body),
+      ),
+  }),
+  route({
+    method: 'DELETE',
+    pattern: '/node-comments/:id',
+    response: NoContentParser,
+    status: 204,
+    handle: ({ params }) =>
+      deleteNodeComment(store(), params.id ?? '', (id) => {
+        readableAnswer(id);
+      }),
+  }),
+
   route({
     method: 'GET',
     pattern: '/health',

@@ -1,4 +1,14 @@
 import {
+  UpdateVerificationRequestSchema,
+  UpdateVerificationResponseSchema,
+  type UpdateVerificationRequest,
+  GetAnswerResponseSchema,
+  PinAnswerRequestSchema,
+  PinAnswerResponseSchema,
+  NodeCommentListResponseSchema,
+  CreateNodeCommentRequestSchema,
+  CreateNodeCommentResponseSchema,
+  type CreateNodeCommentRequest,
   AcceptAnswerResponseSchema,
   CreateRevisionRequestSchema,
   CreateRevisionResponseSchema,
@@ -218,6 +228,57 @@ export const api = {
       schema: AcceptAnswerResponseSchema,
       idempotent: true,
       idempotencyKey,
+    }),
+
+  getAnswer: (answerId: Id) =>
+    request({
+      method: 'GET',
+      path: `/answers/${segment(answerId)}`,
+      schema: GetAnswerResponseSchema,
+    }),
+
+  pinAnswer: (answerId: Id, pinned: boolean) =>
+    request({
+      method: 'PUT',
+      path: `/answers/${segment(answerId)}/pin`,
+      body: PinAnswerRequestSchema.parse({ pinned }),
+      schema: PinAnswerResponseSchema,
+    }),
+
+  updateVerification: (answerId: Id, body: UpdateVerificationRequest) =>
+    request({
+      method: 'PATCH',
+      path: `/answers/${segment(answerId)}/verification`,
+      body: UpdateVerificationRequestSchema.parse(body),
+      schema: UpdateVerificationResponseSchema,
+    }),
+
+  listNodeComments: (answerId: Id) =>
+    request({
+      method: 'GET',
+      path: `/answers/${segment(answerId)}/comments`,
+      schema: NodeCommentListResponseSchema,
+    }),
+
+  createNodeComment: (
+    answerId: Id,
+    body: CreateNodeCommentRequest,
+    idempotencyKey?: IdempotencyKey,
+  ) =>
+    request({
+      method: 'POST',
+      path: `/answers/${segment(answerId)}/comments`,
+      body: CreateNodeCommentRequestSchema.parse(body),
+      schema: CreateNodeCommentResponseSchema,
+      idempotent: true,
+      idempotencyKey,
+    }),
+
+  deleteNodeComment: (commentId: Id) =>
+    request({
+      method: 'DELETE',
+      path: `/node-comments/${segment(commentId)}`,
+      schema: NoContentParser,
     }),
 
   // ---- 단계 진행(job)
