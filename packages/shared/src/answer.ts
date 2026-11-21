@@ -83,3 +83,15 @@ export const CreateNodeCommentRequestSchema = z.object({
   body: z.string().trim().min(1).max(LIMITS.COMMENT_MAX),
 });
 export type CreateNodeCommentRequest = z.infer<typeof CreateNodeCommentRequestSchema>;
+
+export const PinAnswerResponseSchema = z.object({ pinned: z.boolean() });
+export type PinAnswerResponse = z.infer<typeof PinAnswerResponseSchema>;
+
+export const NodeCommentListResponseSchema = z.object({ comments: z.array(NodeCommentSchema) });
+export type NodeCommentListResponse = z.infer<typeof NodeCommentListResponseSchema>;
+
+export const CreateNodeCommentResponseSchema = z.object({ comment: NodeCommentSchema });
+export type CreateNodeCommentResponse = z.infer<typeof CreateNodeCommentResponseSchema>;
+
+export const UpdateVerificationResponseSchema = z.object({ verification: VerificationSchema });
+export type UpdateVerificationResponse = z.infer<typeof UpdateVerificationResponseSchema>;
