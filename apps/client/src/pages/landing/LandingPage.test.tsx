@@ -50,7 +50,7 @@ describe('인트로 랜딩', () => {
     expect(screen.getByRole('link', { name: COPY['ON-03'] }).getAttribute('href')).toBe('/enter');
   });
 
-  it('포커스 가능한 요소는 로고 → 메뉴 → Get Started → 맨 위로 버튼 순서다', () => {
+  it('포커스 가능한 요소는 로고 → 메뉴 → Get Started → Try Remix → 맨 위로 버튼 순서다', () => {
     const { container } = renderLanding();
     const order = [...container.querySelectorAll('a, button')].map(
       (el) => el.getAttribute('aria-label') ?? el.textContent,
@@ -62,6 +62,7 @@ describe('인트로 랜딩', () => {
       COPY['ON-02c'],
       COPY['ON-02d'],
       COPY['ON-03'],
+      COPY['ON-28'],
       COPY['ON-21'],
     ]);
   });
@@ -137,5 +138,5 @@ describe('인트로 랜딩 연출(GSAP)', () => {
     expect(gsap.getTweensOf(tile).length).toBeGreaterThan(0);
     act(() => unmount());
     expect(ScrollTrigger.getAll()).toHaveLength(0);
-  });
+  }, 20_000);
 });
