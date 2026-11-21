@@ -232,3 +232,31 @@ cases.push({
     reason: '서체(시안 Pretendard, 구현 Open Sans)와 사진 자리(시안은 사진, 구현은 이름 머리글자)',
   },
 });
+
+cases.push(
+  {
+    id: 'node-editor/weighting',
+    ref: 'design-ref/components/keyword/select-weighting__1226-68293.png',
+    width: 300,
+    height: 300,
+  },
+  {
+    id: 'node-editor/meaning',
+    ref: 'design-ref/components/keyword/select-meaning__1226-68294.png',
+    width: 251,
+    height: 307,
+  },
+  {
+    id: 'node-editor/preview-generating',
+    ref: 'design-ref/components/preview/status-generating-open-on__1311-122067.png',
+    width: 480,
+    height: 385,
+    gradientAngle: 270,
+  },
+  {
+    id: 'node-editor/preview-ready',
+    ref: 'design-ref/components/preview/status-done-open-on__1311-122244.png',
+    width: 480,
+    height: 385,
+  },
+);

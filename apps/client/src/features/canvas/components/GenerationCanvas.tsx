@@ -19,7 +19,7 @@ import {
   type GenerationView,
 } from '../model';
 import { CanvasCard } from './CanvasCard';
-import { CanvasNavigation } from '../navigation';
+import { CanvasNavigation, type CanvasEditorConnection } from '../navigation';
 import '@xyflow/react/dist/style.css';
 import '../canvas.css';
 
@@ -32,6 +32,7 @@ export interface GenerationCanvasProps {
   labels: CanvasLabels;
   geometry: CanvasGeometry;
   announcement?: string;
+  editor?: CanvasEditorConnection;
 }
 
 function CanvasContent({
@@ -40,6 +41,7 @@ function CanvasContent({
   labels,
   geometry,
   announcement,
+  editor,
 }: GenerationCanvasProps) {
   const graph = useMemo(
     () => buildCanvas(sets, generation, labels, geometry),
@@ -144,7 +146,10 @@ function CanvasContent({
     },
     [flow, focus, geometry.nodeWidth, geometry.nodeHeight],
   );
-  const navigation = useMemo(() => ({ active: activeIds, focus, move }), [activeIds, focus, move]);
+  const navigation = useMemo(
+    () => ({ active: activeIds, focus, move, editor }),
+    [activeIds, focus, move, editor],
+  );
 
   return (
     <CanvasNavigation.Provider value={navigation}>

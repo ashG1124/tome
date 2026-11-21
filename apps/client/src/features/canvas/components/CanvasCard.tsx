@@ -23,6 +23,15 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         data-canvas-card={id}
         tabIndex={navigation.active[data.setId] === id ? 0 : -1}
         onFocus={() => navigation.focus(id)}
+        onClick={(event) => {
+          if (
+            event.target instanceof Element &&
+            event.target.closest('button, input, [role="slider"]')
+          )
+            return;
+          if (data.output && navigation.editor?.canOpen(data.setId, data.output.id))
+            navigation.editor.open(data.setId, data.output.id);
+        }}
         onKeyDown={(event) => {
           if (
             event.target !== event.currentTarget ||
@@ -34,6 +43,19 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           navigation.move(id, event.key);
         }}
       />
+      {data.output && navigation.editor?.canOpen(data.setId, data.output.id) ? (
+        <button
+          type="button"
+          className="canvas-retry nodrag nopan nowheel"
+          aria-expanded={
+            navigation.editor.selected?.setId === data.setId &&
+            navigation.editor.selected.nodeId === data.output.id
+          }
+          onClick={() => navigation.editor?.open(data.setId, data.output!.id)}
+        >
+          {navigation.editor.label}
+        </button>
+      ) : null}
       {data.kind !== 'answer' ? (
         <Handle type="source" position={Position.Right} isConnectable={false} />
       ) : null}

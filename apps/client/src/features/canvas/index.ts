@@ -1,3 +1,3 @@
 export { WorkspaceCanvas } from './WorkspaceCanvas';
-export type { WorkspaceCanvasProps } from './WorkspaceCanvas';
-export { canvasDesignFixtures } from './design-fixtures';
+export type { WorkspaceCanvasProps, CanvasEditorOptions } from './WorkspaceCanvas';
+export { canvasDesignFixtures, nodeEditorDesignFixtures } from './design-fixtures';

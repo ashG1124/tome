@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ProjectSummary } from '@tome/shared';
 import type { ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { canvasDesignFixtures } from '../../src/features/canvas';
+import { canvasDesignFixtures, nodeEditorDesignFixtures } from '../../src/features/canvas';
 import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
@@ -113,4 +113,17 @@ const AGORA_PERSON = {
 } as const;
 Object.assign(renders, {
   'agora-cards/creator': () => withAppContext(<CreatorPill creator={AGORA_PERSON} />),
+});
+
+const previewImages = import.meta.glob<string>(
+  '../../../../design-ref/components/done-modal/assets/raw-image-01__3182-176717.png',
+  { eager: true, import: 'default', query: '?url' },
+);
+const previewImage = Object.values(previewImages)[0];
+
+Object.assign(renders, {
+  'node-editor/weighting': nodeEditorDesignFixtures.weighting,
+  'node-editor/meaning': nodeEditorDesignFixtures.meaning,
+  'node-editor/preview-generating': () => nodeEditorDesignFixtures.generating(previewImage),
+  'node-editor/preview-ready': () => nodeEditorDesignFixtures.ready(previewImage),
 });

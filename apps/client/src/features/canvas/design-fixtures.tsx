@@ -1,5 +1,8 @@
+import type { Answer, Node } from '@tome/shared';
+import { KeywordEditor } from './components/NodeEditPanel';
+import { PreviewPanel } from './components/PreviewPanel';
 import { CanvasSurface, GenerationImage } from './components/CanvasSurface';
-import { CANVAS_COPY } from '../../shared/copy';
+import { CANVAS_COPY, NODE_EDITOR_COPY } from '../../shared/copy';
 import './canvas.css';
 
 export const canvasDesignFixtures = {
@@ -20,4 +23,75 @@ export const canvasDesignFixtures = {
     </div>
   ),
   gradient: () => <GenerationImage />,
+};
+
+const editorNode: Node = {
+  id: 'design-keyword',
+  kind: 'keyword',
+  stage: 'analyze',
+  enabled: true,
+  parentIds: [],
+  weight: 1,
+  text: 'Relieve the complex structure of the city center, Reflects a refined, relaxing mood',
+  pad: { x: -2, y: 3, xAxis: ['Textured', 'Smooth'], yAxis: ['Horizon', 'Surrounding'] },
+};
+const previewAnswer = { id: 'design-answer', imageUrl: '' } as Answer;
+function keywordEditor(tab: 'weight' | 'meaning') {
+  return (
+    <div style={{ width: 'calc(var(--space-padding-8) * 10)', marginInline: 'auto' }}>
+      <KeywordEditor
+        node={
+          tab === 'meaning'
+            ? {
+                ...editorNode,
+                pad: {
+                  ...editorNode.pad!,
+                  xAxis: ['Keywords', 'Keywords'],
+                  yAxis: ['Keywords', 'Keywords'],
+                },
+              }
+            : editorNode
+        }
+        labels={NODE_EDITOR_COPY}
+        initialTab={tab}
+        onChange={() => {}}
+      />
+    </div>
+  );
+}
+function previewEditor(generating: boolean, image?: string) {
+  return (
+    <div style={{ padding: 'var(--space-padding-6) var(--space-padding-7)' }}>
+      <PreviewPanel
+        title={NODE_EDITOR_COPY.preview}
+        applyLabel={NODE_EDITOR_COPY.apply}
+        statusLabel={generating ? CANVAS_COPY.generating : NODE_EDITOR_COPY.ready}
+        generating={generating}
+        applying={false}
+        canApply={!generating}
+        stacked={false}
+        answer={previewAnswer}
+        onApply={async () => {}}
+        renderImage={() =>
+          image ? (
+            <img src={image} alt="" />
+          ) : (
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                background: 'var(--color-background-default)',
+              }}
+            />
+          )
+        }
+      />
+    </div>
+  );
+}
+export const nodeEditorDesignFixtures = {
+  weighting: () => keywordEditor('weight'),
+  meaning: () => keywordEditor('meaning'),
+  generating: (image?: string) => previewEditor(true, image),
+  ready: (image?: string) => previewEditor(false, image),
 };
