@@ -33,3 +33,6 @@ apps/server/src/generated/
 
 # local image storage (STORAGE_DRIVER=local)
 apps/server/.storage/
+
+# 시드 결과 일회용 생성 스크립트의 진행 기록(db:seed:generate)
+apps/server/prisma/seed/.generate-manifest.json

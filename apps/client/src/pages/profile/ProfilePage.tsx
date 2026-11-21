@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { IdentityResponse } from '@tome/shared';
+import { useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { api, ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
@@ -29,6 +30,23 @@ export function ProfilePage() {
     queryFn: () => identityOrPrivate(id),
   });
   const compare = useQuery({ queryKey: ['identity-compare'], queryFn: api.getCompare });
+  // Compare 탭에서 다른 창작자를 누르면 그 사람과 리믹스한 새 프로젝트를 만들어 워크스페이스로 간다(#41, F-007).
+  // 연달아 눌러도 한 번만 만든다. 실패하면 오류 안내만 보이고 프로필에 남는다.
+  const startingRemix = useRef(false);
+  const [remixError, setRemixError] = useState<unknown>(null);
+  const startRemix = async (partnerId: string) => {
+    if (startingRemix.current) return;
+    startingRemix.current = true;
+    setRemixError(null);
+    try {
+      const { project } = await api.createProject({ remixPartnerId: partnerId });
+      void navigate(`/projects/${encodeURIComponent(project.id)}`);
+    } catch (failure) {
+      setRemixError(failure);
+    } finally {
+      startingRemix.current = false;
+    }
+  };
 
   const error = profile.error ?? identity.error ?? compare.error;
   const redirectTo = authRedirectTarget(error);
@@ -45,6 +63,7 @@ export function ProfilePage() {
     <section aria-busy={busy || undefined} className="flex flex-col gap-[var(--space-gap-5)]">
       {profile.data ? <h1 className="sr-only">{profile.data.creator.displayName}</h1> : null}
       {error ? <ErrorNotice message={COPY[errorCopyKey(error)]} onRetry={retry} /> : null}
+      {remixError !== null ? <ErrorNotice message={COPY[errorCopyKey(remixError)]} /> : null}
       {profile.data && identity.isSuccess ? (
         <ProfileView
           // 다른 사람 프로필로 옮겨 가면 탭을 처음(Work)부터 다시 보여 준다
@@ -54,9 +73,7 @@ export function ProfilePage() {
           identity={identity.data === 'private' ? null : identity.data}
           identityPrivate={identity.data === 'private'}
           compare={compare.data ?? null}
-          onSelectPartner={(creatorId) =>
-            void navigate(`/creators/${encodeURIComponent(creatorId)}`)
-          }
+          onSelectPartner={(creatorId) => void startRemix(creatorId)}
         />
       ) : null}
     </section>

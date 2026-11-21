@@ -233,4 +233,45 @@
   --text-header-nav: var(--font-weight-regular) var(--font-size-header-nav) /
     var(--line-height-default) var(--font-family-contents); /* 헤더 AGORA 글자 */
   --size-header-avatar: 40px; /* 디자인 변수 없음, 원값 40px — 헤더 오른쪽 프로필 (1226:80942) */
+
+  /* ===== 리믹스 패널(#41) — Control bar 1720:80619, Control 1720:80418 ===== */
+  --size-remix-panel-width: 312px; /* 디자인 변수 없음, 원값 312px — Remix with 알약·목록 카드 폭 */
+  --size-remix-tab-width: 69px; /* 디자인 변수 없음, 원값 69px — Rising·Favorite 탭 한 칸 폭 */
+  --size-avatar-remix: 32px; /* 디자인 변수 없음, 원값 32px — 목록 창작자 사진 */
+  --size-remix-list-max-height: 216px; /* 디자인 변수 없음 — 목록 3명(32px + 간격 20px) 보이는 높이, 넘치면 칸 안 스크롤 */
+  /* ===== 아고라(#39) — 핫토픽 3099:130540, 프로젝트 상세 3099:130760 (화면 그림 1728px 기준 실측) ===== */
+  --space-agora-section: 64px; /* 디자인 변수 없음, 실측 약 64px — 헤더와 제목, 제목과 목록 사이 */
+  --size-agora-tile-height: 358px; /* 디자인 변수 없음, 실측 358px — 핫토픽 목록 카드 높이(3열) */
+  --size-agora-side: 560px; /* 디자인 변수 없음, 실측 560px — 상세 오른쪽 파생작 열 폭 */
+  --space-agora-columns: 36px; /* 디자인 변수 없음, 실측 37px — 상세 왼쪽·오른쪽 열 사이 */
+  --size-agora-hero-height: 640px; /* 디자인 변수 없음, 실측 약 640px — 상세 큰 그림 높이 */
+  --size-agora-derivative-height: 213px; /* 디자인 변수 없음, 실측 213px — 파생작 카드 높이 */
+  --radius-agora-card: 4px; /* 디자인 변수 없음, 실측 약 4px — 아고라 카드 모서리 */
+  --size-avatar-card: 36px; /* 디자인 변수 없음, 실측 36px — 파생작 카드 위 작성자 사진 */
+  --size-avatar-comment: 32px; /* 디자인 변수 없음, 실측 32px — 댓글 작성자 사진 */
+  --size-agora-recommended-width: 364px; /* 디자인 변수 없음, 실측 364px — 홈 추천 카드 폭 (1720:101534) */
+  --size-agora-recommended-height: 284px; /* 디자인 변수 없음, 실측 284px — 홈 추천 카드 높이 */
+  --size-agora-topic-width: 393px; /* 디자인 변수 없음, 실측 393px — 홈 핫토픽 묶음 폭 */
+  --size-agora-topic-height: 269px; /* 디자인 변수 없음, 실측 269px — 홈 핫토픽 묶음 높이(2×2) */
+  --space-agora-tile-gap: 2px; /* 디자인 변수 없음, 실측 2px — 핫토픽 묶음 안 표지 사이 */
+  --size-avatar-creator: 48px; /* Profile 48*48 (3188:178008) — 라이징 크리에이터 사진 */
+  --size-derive-button-height: 48px; /* 디자인 변수 없음, 실측 48px — Go to derive 버튼 높이 */
+}
+
+:root {
+  --canvas-node-width: 300px;
+  --canvas-node-height: 62px;
+  --canvas-prompt-width: 400px;
+  --canvas-answer-width: 440px;
+  --canvas-answer-height: 280px;
+  --canvas-column-gap: 80px;
+  --canvas-row-gap: 48px;
+  --canvas-set-gap: 120px;
+  --canvas-header-height: 64px;
+  --canvas-preview-radius: 16px;
+  --color-canvas-node: #f0f4f8;
+}
+
+:root {
+  --canvas-node-surface-height: 60px;
 }

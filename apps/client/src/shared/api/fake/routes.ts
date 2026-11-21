@@ -4,10 +4,16 @@ import {
   CreateRevisionResponseSchema,
   AdvanceJobRequestSchema,
   AdvanceJobResponseSchema,
+  AgoraHomeResponseSchema,
+  AgoraProjectResponseSchema,
   CancelJobResponseSchema,
+  CommentListResponseSchema,
   CompareResponseSchema,
+  ConnectionListResponseSchema,
   ConsentRequestSchema,
   ConsentResponseSchema,
+  CreateAgoraCommentRequestSchema,
+  CreateAgoraCommentResponseSchema,
   CreatePageResponseSchema,
   CreateProjectRequestSchema,
   CreateProjectResponseSchema,
@@ -16,6 +22,8 @@ import {
   CreateSetRequestSchema,
   CreateSetResponseSchema,
   CreatorProfileResponseSchema,
+  DismissConnectionResponseSchema,
+  DeriveProjectResponseSchema,
   FinishCandidatesResponseSchema,
   FinishProjectRequestSchema,
   FinishProjectResponseSchema,
@@ -26,14 +34,37 @@ import {
   PostProjectRequestSchema,
   PostProjectResponseSchema,
   ProjectListResponseSchema,
+  RemixCandidatesResponseSchema,
+  SetRemixPartnerRequestSchema,
+  SetRemixPartnerResponseSchema,
+  TopicResponseSchema,
   UpdateProjectRequestSchema,
   UpdateProjectResponseSchema,
   WorkspaceResponseSchema,
 } from '@tome/shared';
+import { NoContentParser } from '../responses';
 import type { HttpMethod } from '../transport';
+import {
+  agoraHome,
+  agoraProject,
+  agoraTopic,
+  createAgoraComment,
+  deleteAgoraComment,
+  deriveFromAgora,
+  listAgoraComments,
+  recordAgoraView,
+} from './agora';
 import { FAKE_AGREED_AT, FAKE_CREATOR, FAKE_NOTICE_VERSION, FAKE_TOKEN, fakeHealth } from './data';
 import { FakeFailure } from './errors';
 import { fakeCompare, fakeCreatorProfile, fakeIdentity } from './identity';
+import {
+  addFavorite,
+  dismissConnection,
+  listConnections,
+  remixCandidates,
+  removeFavorite,
+  setRemixPartner,
+} from './remix';
 import { fakeState, setFakeConsented } from './state';
 import {
   acceptAnswer,
@@ -308,6 +339,114 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     pattern: '/identity/compare',
     response: CompareResponseSchema,
     handle: () => fakeCompare(fakeState.identityCase),
+  }),
+  // ---- 리믹스(서버 PR #102). ?fakeIdentity=private 면 후보 0명·상대 지정 IDENTITY_PRIVATE(fake/remix.ts)
+  route({
+    method: 'GET',
+    pattern: '/remix/candidates',
+    response: RemixCandidatesResponseSchema,
+    handle: ({ query }) => remixCandidates(store(), query.get('tab'), fakeState.identityCase),
+  }),
+  route({
+    method: 'PUT',
+    pattern: '/me/favorites/:creatorId',
+    // 204: 본문이 없다
+    response: { parse: () => undefined },
+    status: 204,
+    handle: ({ params }) => addFavorite(store(), params.creatorId ?? ''),
+  }),
+  route({
+    method: 'DELETE',
+    pattern: '/me/favorites/:creatorId',
+    response: { parse: () => undefined },
+    status: 204,
+    handle: ({ params }) => removeFavorite(store(), params.creatorId ?? ''),
+  }),
+  route({
+    method: 'PUT',
+    pattern: '/projects/:id/remix-partner',
+    response: SetRemixPartnerResponseSchema,
+    handle: ({ params, body }) =>
+      setRemixPartner(
+        store(),
+        params.id ?? '',
+        parseBody(SetRemixPartnerRequestSchema, body).partnerId,
+        fakeState.identityCase,
+      ),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/answers/:id/connections',
+    response: ConnectionListResponseSchema,
+    handle: ({ params, query }) =>
+      listConnections(store(), params.id ?? '', query.get('partnerId')),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/connections/:id/dismiss',
+    response: DismissConnectionResponseSchema,
+    handle: ({ params }) => dismissConnection(store(), params.id ?? ''),
+  }),
+
+  // ---- 아고라(서버 PR #100): 남의 공개작은 고정 데이터, 댓글·파생만 저장소에 남는다(fake/agora.ts)
+  route({
+    method: 'GET',
+    pattern: '/agora',
+    response: AgoraHomeResponseSchema,
+    handle: () => agoraHome(store()),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/agora/topics/:id',
+    response: TopicResponseSchema,
+    handle: ({ params }) => agoraTopic(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/agora/projects/:id',
+    response: AgoraProjectResponseSchema,
+    handle: ({ params }) => agoraProject(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/agora/projects/:id/views',
+    response: NoContentParser,
+    status: 204,
+    handle: ({ params }) => recordAgoraView(params.id ?? ''),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/agora/projects/:id/derive',
+    response: DeriveProjectResponseSchema,
+    idempotent: true,
+    status: 201,
+    handle: ({ params }) => deriveFromAgora(store(), params.id ?? ''),
+  }),
+  route({
+    method: 'GET',
+    pattern: '/projects/:id/comments',
+    response: CommentListResponseSchema,
+    handle: ({ params, query }) => listAgoraComments(store(), params.id ?? '', query),
+  }),
+  route({
+    method: 'POST',
+    pattern: '/projects/:id/comments',
+    response: CreateAgoraCommentResponseSchema,
+    idempotent: true,
+    status: 201,
+    handle: ({ params, body }) =>
+      createAgoraComment(
+        store(),
+        params.id ?? '',
+        parseBody(CreateAgoraCommentRequestSchema, body),
+      ),
+  }),
+  route({
+    method: 'DELETE',
+    pattern: '/comments/:id',
+    response: NoContentParser,
+    status: 204,
+    handle: ({ params }) => deleteAgoraComment(store(), params.id ?? ''),
   }),
 ];
 

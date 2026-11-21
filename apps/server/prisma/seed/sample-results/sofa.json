@@ -1,5 +1,4 @@
 {
-  "placeholder": true,
   "scenarioKey": "sofa",
   "title": "Cozy sofa",
   "promptVariants": [
@@ -7,24 +6,27 @@
   ],
   "nodes": {
     "schemaVersion": 1,
-    "subjectTemplate": "A cozy {k1} in a {k2}, warm natural tones, interior photo",
+    "subjectTemplate": "{k1} in a {k2}, {k3}, {k4}",
     "nodes": [
       {
         "id": "k1",
         "stage": "analyze",
         "kind": "keyword",
-        "text": "mid-century sofa",
+        "text": "cozy mid-century sofa",
         "enabled": true,
-        "weight": 7,
+        "weight": 9,
         "pad": {
           "x": 0,
           "y": 0,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "xAxis": ["modern", "retro"],
+          "yAxis": ["stiff", "comfortable"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 7,
+          "weight": 9,
           "pad": {
             "x": 0,
             "y": 0
@@ -38,19 +40,74 @@
         "kind": "keyword",
         "text": "sunlit living room",
         "enabled": true,
-        "weight": 5,
+        "weight": 8,
         "pad": {
-          "x": -2,
-          "y": 1,
-          "xAxis": ["Textured", "Smooth"],
-          "yAxis": ["Horizon", "Surrounding"]
+          "x": 0,
+          "y": 4,
+          "xAxis": ["dim", "bright"],
+          "yAxis": ["dark", "sunny"]
         },
+        "negative": false,
         "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 8,
           "pad": {
-            "x": -2,
-            "y": 1
+            "x": 0,
+            "y": 4
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k3",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "warm natural tones",
+        "enabled": true,
+        "weight": 7,
+        "pad": {
+          "x": 4,
+          "y": 0,
+          "xAxis": ["cool", "warm"],
+          "yAxis": ["artificial", "natural"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 7,
+          "pad": {
+            "x": 4,
+            "y": 0
+          },
+          "enabled": true
+        }
+      },
+      {
+        "id": "k4",
+        "stage": "analyze",
+        "kind": "keyword",
+        "text": "interior photo",
+        "enabled": true,
+        "weight": 6,
+        "pad": {
+          "x": 0,
+          "y": 0,
+          "xAxis": ["painting", "photography"],
+          "yAxis": ["sketch", "realistic"]
+        },
+        "negative": false,
+        "parentIds": [],
+        "domain": "intuitive",
+        "level": "macro",
+        "aiInitial": {
+          "weight": 6,
+          "pad": {
+            "x": 0,
+            "y": 0
           },
           "enabled": true
         }
@@ -59,44 +116,145 @@
         "id": "d1",
         "stage": "research",
         "kind": "dataType",
-        "text": "Interior photography",
+        "text": "interior photography",
         "enabled": true,
-        "parentIds": ["k1"]
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d2",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "architectural digest style",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
+      },
+      {
+        "id": "d3",
+        "stage": "research",
+        "kind": "dataType",
+        "text": "mid-century modern design",
+        "enabled": true,
+        "parentIds": [],
+        "domain": "evidence",
+        "level": "macro"
       },
       {
         "id": "s1",
         "stage": "research",
         "kind": "priority",
-        "text": "Warmth over minimalism",
+        "text": "Mid-century modern sofa textures and wooden leg details",
         "enabled": true,
         "order": 0,
-        "parentIds": ["d1"],
+        "parentIds": ["k1"],
+        "domain": "evidence",
+        "level": "micro",
         "aiInitial": {
           "order": 0
+        }
+      },
+      {
+        "id": "s2",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Sunlight streaming through windows in a living room setting",
+        "enabled": true,
+        "order": 1,
+        "parentIds": ["k2"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 1
+        }
+      },
+      {
+        "id": "s3",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Warm color palettes with natural earth tones and wood",
+        "enabled": true,
+        "order": 2,
+        "parentIds": ["k3"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 2
+        }
+      },
+      {
+        "id": "s4",
+        "stage": "research",
+        "kind": "priority",
+        "text": "Professional interior design photography composition",
+        "enabled": true,
+        "order": 3,
+        "parentIds": ["k4"],
+        "domain": "evidence",
+        "level": "micro",
+        "aiInitial": {
+          "order": 3
         }
       },
       {
         "id": "e1",
         "stage": "evidence",
         "kind": "evidence",
-        "text": "Interior photos often rely on window light to show texture and warmth.",
+        "text": "A mid-century modern sofa features tapered wooden legs and textured fabric upholstery like linen or velvet.",
         "enabled": true,
+        "parentIds": ["k1", "s1"],
         "sourceType": "model_knowledge",
         "domain": "evidence",
-        "level": "macro",
-        "parentIds": ["s1"]
+        "level": "micro"
+      },
+      {
+        "id": "e2",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "Soft, bright sunlight streams through large windows creating long shadows and a warm atmosphere.",
+        "enabled": true,
+        "parentIds": ["k2", "s2"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e3",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "The color palette consists of warm earthy tones like terracotta, ochre, beige, and walnut wood.",
+        "enabled": true,
+        "parentIds": ["k3", "s3"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
+      },
+      {
+        "id": "e4",
+        "stage": "evidence",
+        "kind": "evidence",
+        "text": "High-end interior photography uses a shallow depth of field and balanced composition to highlight textures.",
+        "enabled": true,
+        "parentIds": ["k4", "s4"],
+        "sourceType": "model_knowledge",
+        "domain": "evidence",
+        "level": "micro"
       },
       {
         "id": "a1",
         "stage": "draft",
         "kind": "attribute",
-        "text": "warm natural tones",
+        "text": "mid-century modern sofa with tapered wooden legs",
         "enabled": true,
-        "weight": 6,
-        "category": "color",
+        "weight": 9,
+        "category": "furniture",
         "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 6,
+          "weight": 9,
           "enabled": true
         }
       },
@@ -104,13 +262,95 @@
         "id": "a2",
         "stage": "draft",
         "kind": "attribute",
-        "text": "soft window light",
+        "text": "textured linen and velvet upholstery",
         "enabled": true,
-        "weight": 5,
-        "category": "lighting",
+        "weight": 7,
+        "category": "material",
         "parentIds": ["e1"],
+        "domain": "intuitive",
+        "level": "micro",
         "aiInitial": {
-          "weight": 5,
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a3",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "soft bright sunlight streaming through large windows",
+        "enabled": true,
+        "weight": 8,
+        "category": "lighting",
+        "parentIds": ["e2"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a4",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "warm earthy palette of terracotta, ochre, and beige",
+        "enabled": true,
+        "weight": 8,
+        "category": "color",
+        "parentIds": ["e3"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 8,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a5",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "rich walnut wood accents",
+        "enabled": true,
+        "weight": 6,
+        "category": "color",
+        "parentIds": ["e3"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 6,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a6",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "professional interior photography with shallow depth of view",
+        "enabled": true,
+        "weight": 7,
+        "category": "composition",
+        "parentIds": ["e4"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
+          "enabled": true
+        }
+      },
+      {
+        "id": "a7",
+        "stage": "draft",
+        "kind": "attribute",
+        "text": "warm and cozy sunlit atmosphere",
+        "enabled": true,
+        "weight": 7,
+        "category": "mood",
+        "parentIds": ["e2"],
+        "domain": "intuitive",
+        "level": "micro",
+        "aiInitial": {
+          "weight": 7,
           "enabled": true
         }
       }
@@ -123,7 +363,7 @@
         "id": "v1",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows warm natural tones.",
+        "text": "The image shows mid-century modern sofa with tapered wooden legs.",
         "enabled": true,
         "parentIds": ["a1"]
       },
@@ -131,9 +371,49 @@
         "id": "v2",
         "stage": "verify",
         "kind": "criterion",
-        "text": "The image shows soft window light.",
+        "text": "The image shows textured linen and velvet upholstery.",
         "enabled": true,
         "parentIds": ["a2"]
+      },
+      {
+        "id": "v3",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows soft bright sunlight streaming through large windows.",
+        "enabled": true,
+        "parentIds": ["a3"]
+      },
+      {
+        "id": "v4",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows warm earthy palette of terracotta, ochre, and beige.",
+        "enabled": true,
+        "parentIds": ["a4"]
+      },
+      {
+        "id": "v5",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows rich walnut wood accents.",
+        "enabled": true,
+        "parentIds": ["a5"]
+      },
+      {
+        "id": "v6",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows professional interior photography with shallow depth of view.",
+        "enabled": true,
+        "parentIds": ["a6"]
+      },
+      {
+        "id": "v7",
+        "stage": "verify",
+        "kind": "criterion",
+        "text": "The image shows warm and cozy sunlit atmosphere.",
+        "enabled": true,
+        "parentIds": ["a7"]
       }
     ],
     "mismatches": []

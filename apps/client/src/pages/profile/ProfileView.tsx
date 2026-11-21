@@ -44,7 +44,7 @@ interface ProfileViewProps {
   identityPrivate?: boolean;
   /** Compare 탭 데이터. 아직 없으면 null */
   compare: CompareResponse | null;
-  /** Compare 탭에서 다른 창작자 아바타를 눌렀을 때(리믹스 진입은 T10에서 연결) */
+  /** Compare 탭에서 다른 창작자 아바타를 눌렀을 때. 프로필 화면은 그 사람과 리믹스한 새 워크스페이스로 간다(#41) */
   onSelectPartner: (creatorId: Id) => void;
   initialTab?: ProfileTab;
   /** 날짜 표시용(테스트에서 고정). 기본은 기기 로케일 */

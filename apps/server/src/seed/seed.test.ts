@@ -44,6 +44,16 @@ describe('seed plan (no DB)', () => {
     expect(new Set(plan.events.map((e) => e.id)).size).toBe(plan.events.length);
   });
 
+  it('every topic has at least 4 posted projects (the hot-topic bundle fills its 4 tiles)', () => {
+    // 계획의 프로젝트는 모두 finished + postedAt 이 있는 공개작이다
+    const posted = plan.projects.filter((p) => p.postedAt instanceof Date);
+    expect(plan.topics.length).toBeGreaterThan(0);
+    for (const topic of plan.topics) {
+      const count = posted.filter((p) => p.topicId === topic.id).length;
+      expect(count, `topic ${topic.id}`).toBeGreaterThanOrEqual(4);
+    }
+  });
+
   it('every answer snapshot passes the node schema; every event passes the event schema', () => {
     for (const a of plan.answers) NodeSnapshotSchema.parse(a.nodes);
     for (const e of plan.events) {

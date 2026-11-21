@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   try {
     const storage = createObjectStorage(env);
     const objects = await uploadSeedImages(storage);
-    console.log(`Uploaded ${objects} placeholder image objects.`);
+    console.log(`Uploaded ${objects} seed image objects.`);
     const summary = await prisma.$transaction(
       async (tx) => {
         const creators = await upsertSeedCreators(tx);

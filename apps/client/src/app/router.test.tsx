@@ -25,14 +25,19 @@ beforeEach(() => {
 });
 
 describe('라우트', () => {
-  it.each(['/', '/consent', '/projects/abc', '/creators/abc'])(
-    '세션이 없으면 %s 에서 /enter 로 간다',
-    async (path) => {
-      const router = renderAt(path);
-      expect(await screen.findByRole('heading', { name: COPY['C-04'] })).toBeTruthy();
-      expect(router.state.location.pathname).toBe('/enter');
-    },
-  );
+  it.each([
+    '/',
+    '/consent',
+    '/projects/abc',
+    '/creators/abc',
+    '/agora',
+    '/agora/topics/abc',
+    '/agora/projects/abc',
+  ])('세션이 없으면 %s 에서 /enter 로 간다', async (path) => {
+    const router = renderAt(path);
+    expect(await screen.findByRole('heading', { name: COPY['C-04'] })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/enter');
+  });
 
   it('코드 입력 → 동의 → 서가 → 워크스페이스로 이어진다', async () => {
     const router = renderAt('/enter');

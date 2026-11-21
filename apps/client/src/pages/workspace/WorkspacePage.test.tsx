@@ -1,12 +1,30 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { JobStageSchema } from '@tome/shared';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, clearSession, setSession } from '../../shared/api';
+import { api, ApiRequestError, clearSession, setSession } from '../../shared/api';
 import { FAKE_NOTICE_VERSION, FAKE_TOKEN } from '../../shared/api/fake/data';
 import { fakeState, resetFake } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
+import * as downloadModule from './finish/download';
 import { WorkspacePage } from './WorkspacePage';
+
+// 캔버스(#26)는 그림 라이브러리가 jsdom 에 없는 ResizeObserver 를 써서, 이 화면 테스트에서는 자리 표시로 바꾼다.
+// 캔버스 자체는 features/canvas 테스트와 e2e/canvas.spec.ts(실제 페이지 연결 상태)에서 본다.
+vi.mock('../../features/canvas', () => ({
+  WorkspaceCanvas: ({ projectId, pageId }: { projectId: string; pageId: string }) => (
+    <div data-testid="canvas" data-project={projectId} data-page={pageId} />
+  ),
+}));
+
+// Radix 스위치는 form 안에서 크기를 재려고 ResizeObserver 를 쓴다. jsdom 에는 없어서 빈 대역을 둔다.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObserver;
 
 // 가짜 응답 모드에서 페이지 열기·추가, 프롬프트 보내기가 공용 API 로 이어지는지 본다.
 
@@ -43,6 +61,25 @@ afterEach(() => {
 });
 
 describe('WorkspacePage', () => {
+  it('가운데에 캔버스를 놓고, 지금 프로젝트·페이지를 넘긴다', async () => {
+    renderWorkspace(`/projects/${PROJECT}?page=${FIRST_PAGE}`);
+    const canvas = await screen.findByTestId('canvas');
+    expect(canvas.getAttribute('data-project')).toBe(PROJECT);
+    expect(canvas.getAttribute('data-page')).toBe(FIRST_PAGE);
+  });
+
+  it('페이지를 바꾸면 캔버스에도 그 페이지를 넘긴다', async () => {
+    renderWorkspace(`/projects/${PROJECT}?page=${FIRST_PAGE}`);
+    fireEvent.click(await screen.findByRole('button', { name: `${COPY['W-02']} 2` }));
+    const pages = screen.getAllByRole('button', { name: new RegExp(`^${COPY['W-01']} `) });
+    const other = pages.find((button) => button.getAttribute('aria-current') !== 'page');
+    if (other === undefined) throw new Error('다른 페이지 버튼이 없다');
+    fireEvent.click(other);
+    await waitFor(() =>
+      expect(screen.getByTestId('canvas').getAttribute('data-page')).not.toBe(FIRST_PAGE),
+    );
+  });
+
   it('?page= 가 있으면 그 페이지를, 없으면 마지막 페이지를 연다', async () => {
     const spy = vi.spyOn(api, 'getWorkspace');
     renderWorkspace(`/projects/${PROJECT}?page=${FIRST_PAGE}`);
@@ -95,5 +132,126 @@ describe('WorkspacePage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(COPY['E-02']);
     expect(screen.queryByText(COPY['S-03'])).toBeNull();
     expect((input as HTMLTextAreaElement).value).toBe('A lighthouse');
+  });
+
+  /** 답변이 하나 있는 프로젝트를 열고, 완료 모달에서 제목을 적고 Done 까지 누른다. */
+  async function finishWithAnswer() {
+    const { project } = await api.createProject({});
+    const { currentPageId } = await api.getWorkspace(project.id);
+    const { job } = await api.createSet(project.id, {
+      pageId: currentPageId,
+      prompt: 'A lighthouse',
+    });
+    for (const stage of JobStageSchema.options) await api.advanceJob(job.id, stage);
+    const finish = vi.spyOn(api, 'finishProject');
+    const router = renderWorkspace(`/projects/${project.id}`);
+
+    fireEvent.click(await screen.findByRole('button', { name: COPY['W-04'] }));
+    const title = await screen.findByRole('textbox', { name: COPY['D-03a'] });
+    fireEvent.change(title, { target: { value: 'Lighthouse' } });
+    await screen.findByRole('radio', { name: `${COPY['D-12']} 1` });
+    fireEvent.click(screen.getByRole('button', { name: COPY['D-07b'] }));
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-09b'] }));
+    return { project, router, finish };
+  }
+
+  it('Done 이 성공하면 대표 버전을 크게 보여 주고, 닫으면 done 플래시와 함께 홈으로 간다(#124)', async () => {
+    const { project, router, finish } = await finishWithAnswer();
+
+    // 결과 크게 보기: 완료 모달은 닫히고 Download·닫기 버튼만 보인다. 아직 홈으로 가지 않는다.
+    const download = await screen.findByRole('button', { name: COPY['D-13'] });
+    expect(download).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: COPY['D-03a'] })).toBeNull();
+    expect(router.state.location.pathname).toBe(`/projects/${project.id}`);
+    expect(finish.mock.calls[0]?.[1]).toMatchObject({ title: 'Lighthouse' });
+
+    fireEvent.click(screen.getByRole('button', { name: COPY['D-11'] }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(router.state.location.state).toEqual({ flash: 'done' });
+  });
+
+  it('결과 크게 보기에서 Esc 로 닫아도 홈으로 간다', async () => {
+    const { router } = await finishWithAnswer();
+    await screen.findByRole('button', { name: COPY['D-13'] });
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(router.state.location.state).toEqual({ flash: 'done' });
+  });
+
+  it('Download 를 누르면 대표 버전 그림을 받고, 받는 동안 버튼이 잠긴다', async () => {
+    let finishDownload: () => void = () => {};
+    const spy = vi.spyOn(downloadModule, 'downloadImage').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDownload = resolve;
+        }),
+    );
+    await finishWithAnswer();
+
+    const button = (await screen.findByRole('button', { name: COPY['D-13'] })) as HTMLButtonElement;
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(button.disabled).toBe(true));
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0]?.[0]).toMatch(/^data:image|\/assets\/answers\/.+\/full$/);
+
+    finishDownload();
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('Download 가 실패하면 오류 안내를 보이고, 크게 보기는 그대로 열려 있다', async () => {
+    vi.spyOn(downloadModule, 'downloadImage').mockRejectedValue(new Error('network'));
+    await finishWithAnswer();
+
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
+    expect((await screen.findByRole('alert')).textContent).toBe(COPY['E-01a']);
+    expect(screen.getByRole('button', { name: COPY['D-13'] })).toBeTruthy();
+  });
+});
+
+describe('WorkspacePage 리믹스(#41)', () => {
+  it('리믹스 버튼 → 후보 고르기 → 제목에 상대가 붙고, 패널이 닫히며 "Remix with 이름" 알약이 남는다', async () => {
+    const spy = vi.spyOn(api, 'setRemixPartner');
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Lind/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toContain(
+        `${COPY['RX-04']} Lind`,
+      ),
+    );
+    expect(spy).toHaveBeenCalledWith(PROJECT, expect.any(String));
+    expect(screen.getByRole('button', { name: COPY['RX-05'] }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) })).toBeTruthy();
+  });
+
+  it('후보가 0명이면(S-04) 리믹스 없이도 프롬프트로 일반 생성을 할 수 있다', async () => {
+    resetFake('?fakeIdentity=private');
+    fakeState.consented = true;
+    const create = vi.spyOn(api, 'createSet');
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    expect((await screen.findByRole('status', { name: '' })).textContent).toBe(COPY['S-04']);
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'A lighthouse' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+  });
+
+  it('상대 저장이 실패하면 패널 안에 오류를 보이고 제목은 그대로다', async () => {
+    vi.spyOn(api, 'setRemixPartner').mockRejectedValueOnce(
+      new ApiRequestError(403, { code: 'IDENTITY_PRIVATE', message: 'x', retryable: false }),
+    );
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Mara/ }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(COPY['RX-04']);
   });
 });

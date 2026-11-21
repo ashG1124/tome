@@ -10,3 +10,13 @@ export type TokenName = (typeof TOKENS)[keyof typeof TOKENS];
 export function tokenVar(name: TokenName): string {
   return `var(${name})`;
 }
+
+export const CANVAS_GEOMETRY_TOKENS = {
+  nodeWidth: '--canvas-node-width',
+  nodeHeight: '--canvas-node-height',
+  answerWidth: '--canvas-answer-width',
+  columnGap: '--canvas-column-gap',
+  rowGap: '--canvas-row-gap',
+  setGap: '--canvas-set-gap',
+  headerHeight: '--canvas-header-height',
+} as const;

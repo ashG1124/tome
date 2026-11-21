@@ -18,6 +18,7 @@ export interface DesignCase {
   height: number;
   /** true 이면 스크린샷 전에 대상 안의 입력칸에 포커스를 준다. */
   focus?: boolean;
+  gradientAngle?: number;
   allowedDiff?: AllowedDiff;
 }
 
@@ -172,3 +173,62 @@ cases.push(
     allowedDiff: tabsDiff(0.202),
   },
 );
+
+cases.push({
+  id: 'canvas/keyword',
+  ref: 'design-ref/components/step-1-keyword/open-off__1226-67936.png',
+  width: 301,
+  height: 60,
+});
+for (const [index, angle] of [270, 237.53, 180, 122.47, 90, 57.53, 0, 302.47].entries()) {
+  const number = String(index + 1).padStart(2, '0');
+  cases.push({
+    id: `canvas/preview-generating-${number}`,
+    ref: `design-ref/components/tome-generate/property-1-${number}__1192-${64320 + index}.png`,
+    width: 440,
+    height: 280,
+    gradientAngle: angle,
+  });
+}
+// ---- 리믹스 알약(#41): Control 1720:80418. 그림에 그림자 여백 20px 이 둘러져 있다.
+// 'Remix with' 글자·알약 크기는 시안과 같게 맞췄고, 아바타 자리(시안은 사진·체크 무늬)는 이름 머리글자 동그라미다.
+const CONTROL_DIR = 'design-ref/components/control';
+// 실측: selected diffRatio 14.90%·blob 1310, done 10.88%·blob 901 → 각 +0.5%p. 알약 크기·위치·글자 자리는 시안과 같다.
+// 차이는 서체(시안은 Pretendard, 구현은 Open Sans)와 사진 자리(시안은 사진·체크 무늬, 구현은 이름 머리글자 동그라미).
+const remixPillDiff = (max: number, maxBlob: number): AllowedDiff => ({
+  max,
+  maxBlob,
+  reason:
+    '서체(시안 Pretendard, 구현 Open Sans)와 아바타 자리(시안은 사진·체크 무늬, 구현은 이름 머리글자)',
+});
+cases.push(
+  {
+    id: 'control/remix-selected',
+    ref: `${CONTROL_DIR}/type-remix-status-selected__1720-80489.png`,
+    width: 352,
+    height: 88,
+    allowedDiff: remixPillDiff(0.154, 1400),
+  },
+  {
+    id: 'control/remix-done',
+    ref: `${CONTROL_DIR}/type-remix-status-done__1720-80415.png`,
+    width: 287,
+    height: 88,
+    allowedDiff: remixPillDiff(0.114, 1000),
+  },
+);
+// ---- 아고라 크리에이터 알약(#39): Creater 3188:178010(294×68)
+// 실측: diffRatio 18.90%·blob 1273 → +0.5%p. 알약 크기·글자 위치는 시안과 2px 안이다.
+// 차이는 서체(시안 Pretendard, 구현 Open Sans)와 사진 자리(시안은 사진, 구현은 이름 머리글자 동그라미).
+// (Recommended Project 카드는 시안의 사진 자리가 투명 체크무늬 빈 그림이라 픽셀 비교 의미가 없어 케이스를 넣지 않았다.)
+cases.push({
+  id: 'agora-cards/creator',
+  ref: 'design-ref/components/agora-cards/creater__3188-178010.png',
+  width: 294,
+  height: 68,
+  allowedDiff: {
+    max: 0.194,
+    maxBlob: 1400,
+    reason: '서체(시안 Pretendard, 구현 Open Sans)와 사진 자리(시안은 사진, 구현은 이름 머리글자)',
+  },
+});
