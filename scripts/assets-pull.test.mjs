@@ -93,12 +93,13 @@ test('상위 저장소 안에 있는 git 아닌 폴더도 실패한다', () => {
   });
 });
 
-test('정상이면 세 경로만 복사하고 나머지는 건드리지 않는다', () => {
+test('정상이면 네 경로만 복사하고 나머지는 건드리지 않는다', () => {
   withTmp((tmp) => {
     const { seed, root, assetsDir, publish } = setup(tmp);
     write(seed, 'design-ref/a.png', 'A');
     write(seed, 'apps/client/src/assets/icons/i.svg', 'I');
     write(seed, 'apps/client/src/assets/brand/b.svg', 'B');
+    write(seed, 'apps/client/src/assets/onboarding/landing-hero-01.webp', 'O');
     write(seed, 'README.md', 'readme');
     publish();
     write(root, 'design-ref/keep.txt', 'keep');
@@ -108,6 +109,7 @@ test('정상이면 세 경로만 복사하고 나머지는 건드리지 않는�
     assert.equal(readFileSync(join(root, 'design-ref/a.png'), 'utf8'), 'A');
     assert.ok(existsSync(join(root, 'apps/client/src/assets/icons/i.svg')));
     assert.ok(existsSync(join(root, 'apps/client/src/assets/brand/b.svg')));
+    assert.ok(existsSync(join(root, 'apps/client/src/assets/onboarding/landing-hero-01.webp')));
     assert.ok(!existsSync(join(root, 'README.md')));
     assert.ok(!existsSync(join(root, 'seed.txt')));
     assert.ok(existsSync(join(root, 'design-ref/keep.txt')));
@@ -127,5 +129,6 @@ test('소스에 brand 경로가 없어도 0 이고 나머지는 복사된다', (
     assert.ok(existsSync(join(root, 'design-ref/a.png')));
     assert.ok(existsSync(join(root, 'apps/client/src/assets/icons/i.svg')));
     assert.ok(!existsSync(join(root, 'apps/client/src/assets/brand')));
+    assert.ok(!existsSync(join(root, 'apps/client/src/assets/onboarding')));
   });
 });

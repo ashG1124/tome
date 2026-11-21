@@ -9,6 +9,7 @@ const FORBIDDEN_PREFIXES = [
   '.tome-assets/',
   'apps/client/src/assets/icons/',
   'apps/client/src/assets/brand/',
+  'apps/client/src/assets/onboarding/',
 ];
 
 export function isForbidden(file) {

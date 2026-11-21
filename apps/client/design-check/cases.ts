@@ -19,6 +19,8 @@ export interface DesignCase {
   /** true 이면 스크린샷 전에 대상 안의 입력칸에 포커스를 준다. */
   focus?: boolean;
   gradientAngle?: number;
+  /** true 이면 움직임 줄이기(prefers-reduced-motion: reduce)로 연다 — 연출이 있는 화면의 정지 상태 비교용 */
+  reducedMotion?: boolean;
   allowedDiff?: AllowedDiff;
 }
 
@@ -258,5 +260,53 @@ cases.push(
     ref: 'design-ref/components/preview/status-done-open-on__1311-122244.png',
     width: 480,
     height: 385,
+  },
+);
+
+// ---- 인트로 랜딩(#46): 온보딩 시안 폭 1920. 연출은 움직임 줄이기로 꺼서 정지 상태를 비교한다.
+// 서체 차이(Poppins → Open Sans, ADR-034·ADR-042)와 글자색 진하게(안내 글자 #A4A9B3 → #6A7281)로 글자 모양이 다르다.
+const LANDING_DIR = 'design-ref/onboarding';
+// 실측(diffRatio·largestBlob)에 +0.5%p 를 상한으로 둔다. 차이는 글자 테두리·모양뿐이고 그림·배치는 같다.
+const landingFontDiff = (max: number, maxBlob: number, extra = ''): AllowedDiff => ({
+  max,
+  maxBlob,
+  reason: `서체 Poppins → Open Sans(ADR-042), 글자 폭·모양 차이${extra}`,
+});
+cases.push(
+  {
+    id: 'landing/header',
+    ref: `${LANDING_DIR}/header__3445-27263.png`,
+    width: 1920,
+    height: 61,
+    reducedMotion: true,
+    allowedDiff: landingFontDiff(0.027, 650),
+  },
+  {
+    id: 'landing/footer',
+    ref: `${LANDING_DIR}/Footer__3445-27495.png`,
+    width: 1920,
+    height: 486,
+    reducedMotion: true,
+    allowedDiff: landingFontDiff(
+      0.027,
+      1700,
+      '. 시안의 Explore·Get Started 열은 일부러 뺐다(연결 기능 없는 링크 금지)',
+    ),
+  },
+  {
+    id: 'landing/three-ways',
+    ref: `${LANDING_DIR}/three-ways-cards__3330-206270.png`,
+    width: 1920,
+    height: 1113,
+    reducedMotion: true,
+    allowedDiff: landingFontDiff(0.027, 2200, '. 카드 설명 글자색 진하게(#A4A9B3 → #6A7281)'),
+  },
+  {
+    id: 'landing/volumes',
+    ref: `${LANDING_DIR}/volumes-graphic__3330-206106.png`,
+    width: 1920,
+    height: 850,
+    reducedMotion: true,
+    allowedDiff: landingFontDiff(0.011, 2600),
   },
 );

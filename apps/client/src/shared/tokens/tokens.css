@@ -256,6 +256,10 @@
   --space-agora-tile-gap: 2px; /* 디자인 변수 없음, 실측 2px — 핫토픽 묶음 안 표지 사이 */
   --size-avatar-creator: 48px; /* Profile 48*48 (3188:178008) — 라이징 크리에이터 사진 */
   --size-derive-button-height: 48px; /* 디자인 변수 없음, 실측 48px — Go to derive 버튼 높이 */
+
+  /* ===== 인트로 랜딩(#46) — 온보딩 3445:27232·3330:206270·3445:27495 ===== */
+  --color-landing-dark: #0a142f; /* Dark (3445:27232 변수 Dark #0A142F) — 푸터 글자 */
+  --size-landing-design-width: 1920px; /* 디자인 변수 없음, 원값 1920px — 랜딩 시안 폭. 이 폭을 기준으로 화면 폭에 비례해 줄여 그린다(3445:27232) */
 }
 
 :root {

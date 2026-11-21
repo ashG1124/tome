@@ -25,6 +25,7 @@ test('금지되는 경로', () => {
     '.tome-assets/design-ref/a.png',
     'apps/client/src/assets/icons/a.svg',
     'apps/client/src/assets/brand/logo.svg',
+    'apps/client/src/assets/onboarding/landing-hero-01.webp',
   ]) {
     assert.equal(isForbidden(file), true, file);
   }
