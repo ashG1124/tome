@@ -849,7 +849,7 @@ export function listNodeComments(s: FakeStore, answer: Answer): NodeCommentListR
   return {
     comments: (s.nodeComments ?? [])
       .filter((entry) => entry.answerId === answer.id && entry.deleted !== true)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
       .map(toNodeComment),
   };
 }

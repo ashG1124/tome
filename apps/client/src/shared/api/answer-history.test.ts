@@ -153,7 +153,7 @@ describe('answer history API', () => {
     });
   });
 
-  it('sorts newest first, includes disabled nodes and keeps comments isolated by answer', async () => {
+  it('sorts oldest first, includes disabled nodes and keeps comments isolated by answer', async () => {
     const first = await setup();
     const second = await setup();
     const node = fakeStore(false).projects.find((p) => p.summary.id === first.projectId)!.sets[0]!
@@ -165,12 +165,12 @@ describe('answer history API', () => {
     records[0]!.createdAt = '2026-11-02T00:00:00.000Z';
     records[1]!.createdAt = '2026-11-01T00:00:00.000Z';
     expect((await api.listNodeComments(first.answer.id)).comments.map((c) => c.id)).toEqual([
-      a.comment.id,
       b.comment.id,
+      a.comment.id,
     ]);
     records[1]!.createdAt = records[0]!.createdAt;
     expect((await api.listNodeComments(first.answer.id)).comments.map((c) => c.id)).toEqual(
-      [a.comment.id, b.comment.id].sort((a, b) => b.localeCompare(a)),
+      [a.comment.id, b.comment.id].sort((a, b) => a.localeCompare(b)),
     );
     expect(await api.listNodeComments(second.answer.id)).toEqual({ comments: [] });
   });
