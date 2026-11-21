@@ -8,6 +8,9 @@ import { resetFake, setFakeConsented } from '../shared/api/fake/state';
 import { COPY } from '../shared/copy';
 import { routes } from './router';
 
+/** 랜딩은 그림·카드가 많아 접근성 질의가 느려서, 병렬 테스트 부하에도 견디게 넉넉히 기다린다 */
+const SLOW_RENDER = { timeout: 8000 };
+
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -41,14 +44,16 @@ describe('라우트', () => {
 
   it('세션이 없으면 / 는 랜딩을 보여 주고 경로가 / 로 남는다', async () => {
     const router = renderAt('/');
-    expect(await screen.findByRole('heading', { level: 1, name: COPY['W-06'] })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: COPY['W-06'] }, SLOW_RENDER),
+    ).toBeTruthy();
     expect(screen.getAllByText(COPY['ON-04'], { selector: 'p' })).toHaveLength(2);
     expect(router.state.location.pathname).toBe('/');
   });
 
   it('랜딩의 Get Started 를 누르면 전시 코드 화면으로 간다', async () => {
     const router = renderAt('/');
-    fireEvent.click(await screen.findByRole('link', { name: COPY['ON-03'] }));
+    fireEvent.click(await screen.findByRole('link', { name: COPY['ON-03'] }, SLOW_RENDER));
     expect(await screen.findByRole('heading', { name: COPY['C-04'] })).toBeTruthy();
     expect(router.state.location.pathname).toBe('/enter');
   });

@@ -3,6 +3,7 @@ import { HeroSection } from './HeroSection';
 import { LandingFooter } from './LandingFooter';
 import { LandingHeader } from './LandingHeader';
 import { prefersReducedMotion } from './motion';
+import { StorySection } from './story/StorySection';
 import { ThreeWaysSection } from './ThreeWaysSection';
 import { VisionSection } from './VisionSection';
 import { VolumesBanner } from './VolumesBanner';
@@ -22,7 +23,7 @@ export function LandingScale({ children }: { children: React.ReactNode }) {
 
 /**
  * 인트로 랜딩. 앱 상태·데이터를 읽지 않는 정적 페이지다.
- * 스토리 구간(#47)은 `ThreeWaysSection` 과 푸터 사이에 새 섹션으로 끼워 넣는다.
+ * 스토리 구간(#47)은 `ThreeWaysSection` 과 푸터 사이에 있다.
  */
 export function LandingPage() {
   const logoRef = useRef<HTMLAnchorElement>(null);
@@ -49,6 +50,7 @@ export function LandingPage() {
       <VisionSection />
       <VolumesBanner />
       <ThreeWaysSection />
+      <StorySection />
       <LandingFooter onBackToTop={backToTop} />
     </LandingScale>
   );
