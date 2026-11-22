@@ -8,4 +8,7 @@ export {
   canvasDesignFixtures,
   nodeEditorDesignFixtures,
   canvasHistoryDesignFixtures,
+  remixDesignFixtures,
 } from './design-fixtures';
+
+export type { CanvasRemixOptions } from './remix-model';

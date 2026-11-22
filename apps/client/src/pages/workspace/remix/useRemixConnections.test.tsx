@@ -118,3 +118,50 @@ describe('useRemixConnections', () => {
     );
   });
 });
+
+it('retains previous-partner Connections and keeps a dismissed one hidden when switching back', async () => {
+  const [first, second] = FAKE_OTHER_CREATORS;
+  if (!first || !second) throw new Error('Missing fixtures');
+  const workspace = await workspaceWithAnswer(first.id);
+  const answerId = workspace.sets[0]!.latestAnswer!.id;
+  const { result, rerender } = renderHook(({ value }) => useRemixConnections(value), {
+    initialProps: { value: workspace },
+    wrapper,
+  });
+  await waitFor(() =>
+    expect(result.current?.connectionsByAnswer[answerId]?.length).toBeGreaterThan(0),
+  );
+  const original = result.current!.connectionsByAnswer[answerId]!;
+  const hidden = original[0]!;
+  await act(() => result.current!.onDismiss(answerId, hidden));
+  await api.setRemixPartner(workspace.project.id, second.id);
+  const updated = await api.getWorkspace(workspace.project.id);
+  rerender({ value: updated });
+  await waitFor(() =>
+    expect(result.current?.connectionsByAnswer[answerId]?.length).toBeGreaterThan(
+      original.length - 1,
+    ),
+  );
+  expect(result.current!.connectionsByAnswer[answerId]!.map((c) => c.id)).toContain(
+    original[1]!.id,
+  );
+  expect(result.current!.connectionsByAnswer[answerId]!.map((c) => c.id)).not.toContain(hidden.id);
+  await api.setRemixPartner(workspace.project.id, first.id);
+  rerender({ value: await api.getWorkspace(workspace.project.id) });
+  await waitFor(() =>
+    expect(result.current?.connectionsByAnswer[answerId]?.map((c) => c.id)).not.toContain(
+      hidden.id,
+    ),
+  );
+});
+
+it('keeps generation data usable when a connection query fails and exposes a retry', async () => {
+  const workspace = await workspaceWithAnswer(LIND.id);
+  const list = vi.spyOn(api, 'listConnections').mockRejectedValueOnce(new Error('offline'));
+  const { result } = renderHook(() => useRemixConnections(workspace), { wrapper });
+  await waitFor(() => expect(result.current?.error).toBeTruthy());
+  expect(result.current!.connectionsByAnswer[workspace.sets[0]!.latestAnswer!.id]).toEqual([]);
+  act(() => result.current!.retry());
+  await waitFor(() => expect(result.current?.error).toBeFalsy());
+  expect(list).toHaveBeenCalledTimes(2);
+});

@@ -6,6 +6,7 @@ import {
   canvasDesignFixtures,
   nodeEditorDesignFixtures,
   canvasHistoryDesignFixtures,
+  remixDesignFixtures,
 } from '../../src/features/canvas';
 import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
@@ -169,3 +170,5 @@ Object.assign(renders, {
 renders['canvas-history/corner'] = canvasHistoryDesignFixtures.corner;
 renders['canvas-history/pin-off'] = () => canvasHistoryDesignFixtures.pin(false);
 renders['canvas-history/pin-on'] = () => canvasHistoryDesignFixtures.pin(true);
+
+renders['canvas-remix/closed'] = remixDesignFixtures.closed;

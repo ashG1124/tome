@@ -1,7 +1,7 @@
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import type { Connection, Id, WorkspaceResponse } from '@tome/shared';
-import { useCallback, useMemo, useState } from 'react';
-import { api } from '../../../shared/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, useSessionStore } from '../../../shared/api';
 
 /**
  * 캔버스(#26)에 넘기는 리믹스 묶음. 혁준님과 맞춘 모양(2026-11-18):
@@ -14,6 +14,8 @@ export interface CanvasRemix {
   onApply: (answerId: Id, connection: Connection) => Promise<void>;
   /** 숨기기: 서버에 dismiss 하고 그 답변의 목록을 다시 받는다 */
   onDismiss: (answerId: Id, connection: Connection) => Promise<void>;
+  error?: unknown;
+  retry: () => void;
 }
 
 export interface RemixConnections extends CanvasRemix {
@@ -21,7 +23,12 @@ export interface RemixConnections extends CanvasRemix {
   appliedIdsFor: (answerId: Id) => readonly Id[];
 }
 
-const connectionsKey = (answerId: Id, partnerId: Id) => ['connections', answerId, partnerId];
+const connectionsKey = (answerId: Id, partnerId: Id, token: string | null) => [
+  'connections',
+  answerId,
+  partnerId,
+  token,
+];
 
 /** 받은 목록을 답변별로 묶고 숨긴(dismissed) 것은 뺀다. 아직 못 받은 답변은 빈 목록이다. */
 export function groupConnections(
@@ -35,9 +42,16 @@ export function groupConnections(
   return grouped;
 }
 
-/** 지금 페이지 세트들의 최신 답변 id(답변이 아직 없는 세트는 뺀다). */
+/** 지금 페이지에서 조회할 수 있는 확정 답변 id. */
 export function answerIdsOf(workspace: Pick<WorkspaceResponse, 'sets'>): Id[] {
-  return workspace.sets.flatMap((set) => (set.latestAnswer ? [set.latestAnswer.id] : []));
+  return [
+    ...new Set(
+      workspace.sets.flatMap((set) => [
+        ...set.answers.map((answer) => answer.id),
+        ...(set.latestAnswer?.status === 'accepted' ? [set.latestAnswer.id] : []),
+      ]),
+    ),
+  ];
 }
 
 /**
@@ -49,31 +63,55 @@ export function useRemixConnections(
 ): RemixConnections | undefined {
   const queryClient = useQueryClient();
   const partnerId = workspace?.project.remixPartner?.id;
+  const token = useSessionStore((state) => state.token);
+  const scope = JSON.stringify([token, workspace?.project.id]);
+  const [retained, setRetained] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    let active = true;
+    if (partnerId)
+      queueMicrotask(() => {
+        if (active)
+          setRetained((previous) =>
+            previous[scope]?.includes(partnerId)
+              ? previous
+              : { ...previous, [scope]: [...(previous[scope] ?? []), partnerId] },
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [partnerId, scope]);
+  const partnerIds = partnerId ? [...new Set([...(retained[scope] ?? []), partnerId])] : [];
   const answerIds = useMemo(
     () => (workspace === undefined || partnerId === undefined ? [] : answerIdsOf(workspace)),
     [workspace, partnerId],
   );
+  const requests = answerIds.flatMap((answerId) =>
+    partnerIds.map((id) => ({ answerId, partnerId: id })),
+  );
   const lists = useQueries({
-    queries: answerIds.map((answerId) => ({
-      queryKey: connectionsKey(answerId, partnerId ?? ''),
-      queryFn: () => api.listConnections(answerId),
+    queries: requests.map((target) => ({
+      queryKey: connectionsKey(target.answerId, target.partnerId, token),
+      queryFn: () => api.listConnections(target.answerId, target.partnerId),
       enabled: partnerId !== undefined,
+      retry: false,
+      staleTime: Infinity,
     })),
   });
   // Apply 로 고른 것: 상대가 바뀌면 그 상대의 것만 보이도록 상대 id 를 같이 둔다
   const [applied, setApplied] = useState<Record<string, Id[]>>({});
-  const appliedKey = (answerId: Id) => `${partnerId ?? ''}:${answerId}`;
+  const appliedKey = (answerId: Id) => `${scope}:${partnerId ?? ''}:${answerId}`;
 
   const onApply = useCallback(
     (answerId: Id, connection: Connection) => {
-      const key = `${partnerId ?? ''}:${answerId}`;
+      const key = `${scope}:${partnerId ?? ''}:${answerId}`;
       setApplied((all) => {
         const now = all[key] ?? [];
         return now.includes(connection.id) ? all : { ...all, [key]: [...now, connection.id] };
       });
       return Promise.resolve();
     },
-    [partnerId],
+    [partnerId, scope],
   );
 
   const onDismiss = useCallback(
@@ -86,10 +124,25 @@ export function useRemixConnections(
 
   if (partnerId === undefined) return undefined;
   return {
-    connectionsByAnswer: groupConnections(
-      answerIds,
-      lists.map((list) => list.data?.connections),
+    connectionsByAnswer: Object.fromEntries(
+      answerIds.map((answerId) => [
+        answerId,
+        [
+          ...new Map(
+            requests
+              .flatMap((target, index) =>
+                target.answerId === answerId ? (lists[index]?.data?.connections ?? []) : [],
+              )
+              .filter((connection) => connection.status !== 'dismissed')
+              .map((connection) => [connection.id, connection]),
+          ).values(),
+        ],
+      ]),
     ),
+    error: lists.find((list) => list.error)?.error,
+    retry: () => {
+      for (const list of lists) void list.refetch();
+    },
     onApply,
     onDismiss,
     appliedIdsFor: (answerId) => applied[appliedKey(answerId)] ?? [],

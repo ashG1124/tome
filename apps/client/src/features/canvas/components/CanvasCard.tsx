@@ -4,6 +4,8 @@ import type { CanvasNode } from '../model';
 import { CanvasNavigation } from '../navigation';
 import { COPY } from '../../../shared/copy';
 import { AnswerVersions } from './AnswerVersions';
+import { ConnectionPopover } from './ConnectionPopover';
+import { connectionsForNode } from '../remix-model';
 import { CanvasSurface } from './CanvasSurface';
 
 export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<CanvasNode>) {
@@ -73,6 +75,19 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
             onClick={() => navigation.history!.comment(data.setId, data.answerId!, data.output!.id)}
           />
         ) : null}
+        <div className="canvas-connections">
+          {connectionsForNode(navigation.remix, data.answerId, data.output?.id).map(
+            (connection) => (
+              <ConnectionPopover
+                key={`${data.answerId}:${connection.id}`}
+                answerId={data.answerId!}
+                connection={connection}
+                disabled={navigation.remixDisabled}
+                onDismiss={navigation.remix!.onDismiss}
+              />
+            ),
+          )}
+        </div>
       </CanvasSurface>
       {data.output && navigation.editor?.canOpen(data.setId, data.output.id) ? (
         <button

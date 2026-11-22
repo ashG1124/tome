@@ -254,6 +254,13 @@ export const COPY = {
   'NH-05': 'No comments yet.',
   'NH-06': 'Loading comments…',
   'NH-07': 'Comment saved.',
+  // Connection(#127): 임시 ID, 리드 확인 예정.
+  'RC-01': 'Connection',
+  'RC-02': 'Apply',
+  'RC-03': 'Hide',
+  'RC-04': 'Apply is not available yet.',
+  'RC-05': 'Hiding connection…',
+  'RC-06': 'Applied',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
 } as const;

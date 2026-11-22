@@ -330,3 +330,10 @@ cases.push(
     height: 44,
   },
 );
+
+cases.push({
+  id: 'canvas-remix/closed',
+  ref: 'design-ref/components/connection/open-off__1187-61226.png',
+  width: 60,
+  height: 60,
+});
