@@ -1,0 +1,257 @@
+/*
+ * 기준안 좌표(1728×1117 기준)
+ * MY WORK·REMIX 데모 화면의 노드(프롬프트·단계 헤더·칩·연결선).
+ * 크기와 좌표는 1:1 캔버스 값이고, 줄여 보이는 건 바깥 transform 이 한다. 색·글자는 토큰만 쓴다.
+ */
+.nodes-prompt,
+.nodes-col,
+.nodes-header,
+.nodes-entry,
+.nodes-chip,
+.nodes-label,
+.nodes-pill,
+.nodes-link {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.nodes-prompt,
+.nodes-col,
+.nodes-link {
+  font-family: var(--font-family-contents);
+  color: var(--color-font-main-text);
+}
+
+/* 프롬프트 노드 */
+.nodes-prompt {
+  width: 400px;
+  height: 260px;
+  padding: 25px;
+  border-radius: var(--radius-node);
+  background-color: var(--color-prompt);
+  background-image: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-background-default) 20%, transparent) 48%,
+    color-mix(in srgb, var(--color-tome-peach-5) 10%, transparent) 100%
+  );
+  box-shadow: inset 0 0 0 var(--stroke-weight-light)
+    color-mix(in srgb, var(--color-node-line) 40%, var(--color-background-default));
+}
+
+.nodes-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  font-size: var(--font-size-c2);
+  font-weight: var(--font-weight-regular);
+  line-height: 21px;
+  letter-spacing: var(--letter-spacing-default);
+}
+
+.nodes-prompt-mark {
+  color: var(--color-node-line);
+}
+
+.nodes-prompt-text {
+  margin: 24px 0 0;
+  font-size: var(--font-size-b2);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+}
+
+/* 연결점 */
+.nodes-dot {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  border-radius: 50%;
+  background: var(--color-node-line);
+}
+
+.nodes-dot--left {
+  left: 0;
+}
+
+.nodes-dot--right {
+  left: 100%;
+}
+
+/* 단계 열 */
+.nodes-col {
+  height: 0;
+}
+
+.nodes-header {
+  left: 0;
+  top: 0;
+  width: 300px;
+  height: 80px;
+}
+
+.nodes-grip {
+  position: absolute;
+  left: 123px;
+  top: 0;
+  width: 54px;
+  height: 6px;
+  border-radius: var(--radius-max);
+  background: var(--color-border-default);
+}
+
+.nodes-pill {
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 15px 0 20px;
+  border-radius: var(--radius-max);
+  background-color: var(--color-prompt);
+  background-image: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-background-default) 20%, transparent) 48%,
+    color-mix(in srgb, var(--color-tome-peach-5) 10%, transparent) 100%
+  );
+  box-shadow: inset 0 0 0 var(--stroke-weight-light)
+    color-mix(in srgb, var(--color-node-line) 40%, var(--color-background-default));
+}
+
+.nodes-no {
+  width: 24px;
+  text-align: center;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+}
+
+.nodes-title {
+  font-size: var(--font-size-b1);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  white-space: nowrap;
+}
+
+.nodes-plus {
+  margin-left: auto;
+}
+
+.nodes-plus-fill {
+  fill: var(--color-node-line);
+}
+
+.nodes-plus-mark {
+  fill: var(--color-background-default);
+}
+
+/* 칸(라벨 + 칩) */
+.nodes-entry {
+  left: 0;
+  width: 300px;
+}
+
+.nodes-label {
+  left: 0;
+  top: 0;
+  width: 100%;
+  font-size: var(--font-size-c2);
+  line-height: 21px;
+  letter-spacing: var(--letter-spacing-default);
+  white-space: nowrap;
+}
+
+.nodes-chip {
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30px;
+  border-radius: var(--radius-node);
+  background: var(--color-fill-neutral-weak);
+  box-shadow: inset 0 0 0 var(--stroke-weight-light) var(--color-border-default);
+  font-size: var(--font-size-b2);
+  font-weight: var(--font-weight-medium);
+  line-height: 27px;
+  letter-spacing: var(--letter-spacing-default);
+  text-align: center;
+}
+
+.nodes-chip--issue {
+  font-weight: var(--font-weight-semibold);
+}
+
+.nodes-chip--toggle {
+  justify-content: space-between;
+  padding: 0 16px;
+  text-align: left;
+}
+
+.nodes-chip--rank,
+.nodes-chip--check {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 20px 16px;
+  text-align: left;
+}
+
+.nodes-lines {
+  display: block;
+}
+
+.nodes-line {
+  display: block;
+  white-space: nowrap;
+}
+
+.nodes-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.nodes-row .nodes-lines {
+  flex: 1;
+}
+
+.nodes-icon {
+  flex: none;
+  color: var(--color-font-helper-text);
+}
+
+.nodes-switch {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 22px;
+  border-radius: var(--radius-max);
+  background: var(--color-tome-yellow-7);
+}
+
+.nodes-switch-knob {
+  position: absolute;
+  left: 20.5px;
+  top: 2.5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--color-background-default);
+}
+
+/* 연결선 */
+.nodes-link {
+  overflow: visible;
+  pointer-events: none;
+}
+
+.nodes-link path {
+  fill: none;
+  stroke: var(--color-node-line);
+  stroke-width: var(--stroke-weight-default);
+}

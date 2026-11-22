@@ -1,0 +1,358 @@
+/*
+ * 기준안 좌표(1728×1117 기준)
+ * REMIX 챕터. 틀은 1728×1117 앱 크기 그대로 두고 transform 으로 줄여 보인다.
+ * 색·글자 크기·굵기·그림자는 shared/tokens 만 쓴다(기준안과 딱 맞는 토큰이 없으면 가장 가까운 것).
+ */
+.rx-chapter {
+  position: relative;
+  --mw-ground: color-mix(
+    in srgb,
+    var(--color-background-weak) 50%,
+    var(--color-background-default)
+  );
+  font-family: var(--font-family-contents);
+  color: var(--color-font-main-text);
+}
+
+/* MY WORK 가 끝나는 바로 그 자리에서 이어 받도록 한 화면 높이만큼 겹친다 */
+.rx-chapter--motion {
+  z-index: 3;
+  margin-top: -100vh;
+  margin-top: -100svh;
+}
+
+.rx-stage {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  visibility: hidden;
+  background: linear-gradient(
+    to bottom,
+    var(--mw-ground) 0%,
+    var(--mw-ground) 12%,
+    color-mix(in srgb, var(--color-fill-brand-weak) 55%, var(--color-background-default)) 45%,
+    var(--color-fill-brand-weak) 100%
+  );
+}
+
+.rx-title {
+  position: absolute;
+  z-index: 7;
+  left: var(--space-padding-6);
+  right: var(--space-padding-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-gap-5);
+  text-align: center;
+  pointer-events: none;
+}
+
+.rx-title h2 {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-strong);
+  text-wrap: balance;
+}
+
+/* 앱 화면 틀 */
+.rx-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: 1728px;
+  height: 1117px;
+  transform-origin: 0 0;
+}
+
+.rx-fbox {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--mw-ground);
+}
+
+.rx-app {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+  overflow: hidden;
+  background: var(--color-background-weak);
+}
+
+.rx-lay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+}
+
+.rx-dots {
+  background-color: var(--color-background-weak);
+  background-image: radial-gradient(
+    circle at 7.8px 7.8px,
+    var(--color-border-default) 0,
+    var(--color-border-default) 1px,
+    transparent 1.7px
+  );
+  background-size: 15.6px 15.6px;
+}
+
+.rx-s3 {
+  opacity: 0;
+}
+
+.rx-s3dim {
+  position: absolute;
+  left: 0;
+  top: 762px;
+  width: 1728px;
+  height: 355px;
+  opacity: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    color-mix(in srgb, var(--mw-ground) 92%, transparent) 55%,
+    var(--mw-ground) 100%
+  );
+}
+
+.rx-s2i,
+.rx-s2p {
+  opacity: 0;
+}
+
+/* "Try Remix!" 말풍선(화면 밖으로 튀어나와서 틀 바깥에 둔다) */
+.rx-fx {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: 1728px;
+  height: 1117px;
+  pointer-events: none;
+}
+
+.rx-bub {
+  opacity: 0;
+  filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--color-tome-peach-5) 25%, transparent));
+}
+
+/* 노드 지도 */
+.rx-map {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+}
+
+.rx-node {
+  transform-origin: 0 0;
+}
+
+.rx-links {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+  overflow: visible;
+}
+
+.rx-links path {
+  fill: none;
+  stroke: var(--color-node-line);
+  stroke-width: var(--stroke-weight-default);
+}
+
+.rx-cn {
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  opacity: 0;
+  overflow: visible;
+}
+
+.rx-cn path {
+  fill: var(--color-node-line);
+}
+
+/* 의견 배너 */
+.rx-ban {
+  position: absolute;
+  left: 416.24px;
+  top: 535.12px;
+  width: 284.64px;
+  height: 39.66px;
+  clip-path: inset(0 0 0 100%);
+}
+
+.rx-ban-in {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 634px;
+  height: 88.34px;
+  transform: scale(0.44895);
+  transform-origin: 0 0;
+  filter: drop-shadow(0 0 10.39px var(--color-shadow-weak));
+}
+
+.rx-ban-corner {
+  position: absolute;
+  width: 38.97px;
+  height: 38.97px;
+  overflow: visible;
+}
+
+.rx-ban-corner path {
+  fill: var(--color-node-line);
+}
+
+.rx-ban-corner--tl {
+  left: 0;
+  top: 0;
+}
+
+.rx-ban-corner--br {
+  left: 595px;
+  top: 49.37px;
+}
+
+.rx-ban-body {
+  position: absolute;
+  left: 38.97px;
+  top: 0;
+  width: 556.06px;
+  height: 88.34px;
+  background: var(--color-node-line);
+  color: var(--color-font-main-text);
+}
+
+.rx-ban-avatar {
+  position: absolute;
+  left: 12.99px;
+  top: 23.38px;
+  width: 41.57px;
+  height: 41.57px;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.rx-ban-avatar .mw-pic {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rx-ban-text {
+  position: absolute;
+  left: 70.15px;
+  top: 10.39px;
+  width: 363.76px;
+  height: 67.55px;
+}
+
+.rx-ban-text p {
+  margin: 0;
+  font-size: 20.79px;
+  font-weight: var(--font-weight-medium);
+  line-height: 24.94px;
+  letter-spacing: var(--letter-spacing-default);
+}
+
+.rx-ban-line {
+  display: block;
+  white-space: nowrap;
+}
+
+.rx-ban-dots {
+  position: absolute;
+  left: 171.49px;
+  top: 59.76px;
+  display: flex;
+  gap: 5.2px;
+}
+
+.rx-ban-dots i {
+  display: block;
+  width: 7.79px;
+  height: 7.79px;
+  border-radius: 50%;
+  background: var(--color-background-default);
+}
+
+.rx-ban-dots i + i {
+  opacity: 0.5;
+}
+
+.rx-ban-apply {
+  position: absolute;
+  left: 449.5px;
+  top: 20.88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 93.57px;
+  height: 46.59px;
+  border-radius: var(--radius-max);
+  background: var(--color-background-dim);
+  font-size: 20.79px;
+  font-weight: var(--font-weight-medium);
+  line-height: 31.18px;
+  color: var(--color-font-on-fill);
+}
+
+/* 확대할 때 위쪽을 가리는 막과 제목 */
+.rx-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 4;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    var(--color-background-weak) 0,
+    var(--color-background-weak) 55%,
+    transparent 100%
+  );
+}
+
+.rx-heading {
+  position: absolute;
+  left: var(--space-padding-6);
+  right: var(--space-padding-6);
+  z-index: 5;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rx-heading h3 {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-strong);
+  text-wrap: balance;
+}
+
+/* 움직임을 줄인 정지 화면 */
+.rx-still-sub {
+  margin: 0;
+  max-width: calc(720 * var(--u));
+  font-size: calc(18 * var(--u));
+  line-height: var(--line-height-default);
+  color: var(--color-font-sub-text);
+}
