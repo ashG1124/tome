@@ -246,7 +246,7 @@ export const COPY = {
   'ON-30a': 'Recommended Projects',
   'ON-30b': 'Creator List',
   'ON-30c': 'Topic List',
-  // 노드 기록(#32): 임시 ID, 리드 확인 예정.
+  // 노드 기록(#32): 확정 ID(ADR-044).
   'NH-01': 'Previous version',
   'NH-02': 'Next version',
   'NH-03': 'Pin answer',
