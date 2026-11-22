@@ -62,6 +62,7 @@ for (const c of cases) {
     const refBase64 = readFileSync(resolve(repoRoot, c.ref)).toString('base64');
 
     await page.setViewportSize({ width: c.width, height: c.height });
+    if (c.reducedMotion) await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(`/design-check.html?case=${encodeURIComponent(c.id)}`);
     // React 가 케이스를 그린 뒤에 폰트·setup 을 기다린다(안 그러면 포커스 같은 setup 이 빈 박스에 실행된다).
     await page.waitForFunction(

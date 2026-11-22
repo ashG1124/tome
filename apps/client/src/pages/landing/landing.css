@@ -1,0 +1,567 @@
+/*
+ * 인트로 랜딩(#46). 시안(폭 1920)을 그대로 두고 화면 폭에 비례해 줄여 그린다.
+ * --landing-unit = 디자인 단위 1칸의 길이. 아래 calc(N * var(--u)) 의 N 은 시안의 숫자(디자인 단위)다.
+ * 색·글자 굵기·자간·선은 shared/tokens 의 토큰만 쓴다.
+ */
+.landing-frame {
+  container-type: inline-size;
+  overflow-x: clip;
+}
+
+.landing-scale {
+  /* 폭은 바깥 틀 기준(cqw)이라 세로 스크롤바가 있어도 가로로 넘치지 않는다. 1920 은 시안 폭(--size-landing-design-width)과 같다. */
+  --landing-unit: calc(min(100cqw, var(--size-landing-design-width)) / 1920);
+  --u: var(--landing-unit);
+  position: relative;
+  width: calc(1920 * var(--u));
+  margin-inline: auto;
+  font-family: var(--font-family-contents);
+  letter-spacing: var(--letter-spacing-default);
+  line-height: var(--line-height-default);
+  color: var(--color-font-main-text);
+}
+
+.landing-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.landing-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--color-gray-20);
+}
+
+/* ===== 헤더 3445:27263 ===== */
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(61 * var(--u));
+  padding-inline: calc(40 * var(--u));
+  background: var(--color-background-default);
+}
+
+.landing-header-logo {
+  display: inline-flex;
+  align-items: center;
+  height: calc(35.2 * var(--u));
+  border-radius: var(--radius-1);
+  color: var(--color-font-main-text);
+}
+
+.landing-logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-logo-mark {
+  flex: none;
+  width: calc(var(--logo-mark) * var(--u));
+  height: calc(var(--logo-mark) * var(--u));
+}
+
+.landing-logo-word {
+  flex: none;
+  width: calc(var(--logo-word-w) * var(--u));
+  height: calc(var(--logo-word-h) * var(--u));
+}
+
+.landing-header-right,
+.landing-header-nav {
+  display: flex;
+  align-items: center;
+  gap: calc(40 * var(--u));
+}
+
+.landing-nav-link {
+  font-size: calc(15 * var(--u));
+  font-weight: var(--font-weight-medium);
+  color: var(--color-font-main-text);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--radius-1);
+}
+
+/* 시안은 흐리게(40%)지만 대비가 모자라 안내 글자색을 쓴다 */
+.landing-nav-link-faded {
+  color: var(--color-font-helper-text);
+}
+
+.landing-nav-link-faded:hover {
+  color: var(--color-font-sub-text);
+}
+
+.landing-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(6 * var(--u)) calc(12 * var(--u));
+  border-radius: var(--radius-max);
+  background: var(--color-tome-orange-5);
+  color: var(--color-font-strong);
+  font-size: calc(14 * var(--u));
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ===== 히어로 3445:27232 (헤더 아래 y 61 ~ 1719) ===== */
+.landing-hero {
+  position: relative;
+  height: calc(1658 * var(--u));
+  overflow: clip;
+  background: var(--color-background-default);
+}
+
+.landing-hero-tile {
+  position: absolute;
+  left: calc(var(--x) * var(--u));
+  top: calc(var(--y) * var(--u));
+  width: calc(var(--w) * var(--u));
+  height: calc(var(--h) * var(--u));
+  opacity: var(--o);
+}
+
+.landing-hero-tile .landing-placeholder {
+  border-radius: calc(var(--r) * var(--u));
+}
+
+.landing-hero-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+.landing-hero-fade {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+}
+
+.landing-hero-fade-top {
+  top: 0;
+  height: calc(622 * var(--u));
+  background: linear-gradient(
+    to bottom,
+    var(--color-background-default),
+    color-mix(in srgb, var(--color-background-default) 0%, transparent)
+  );
+}
+
+.landing-hero-fade-bottom {
+  bottom: 0;
+  height: calc(661 * var(--u));
+  background: linear-gradient(
+    to top,
+    var(--color-background-default),
+    color-mix(in srgb, var(--color-background-default) 0%, transparent)
+  );
+}
+
+.landing-hero-logo {
+  position: absolute;
+  left: calc(699 * var(--u));
+  top: calc(546 * var(--u));
+  width: calc(521 * var(--u));
+}
+
+.landing-hero-logo-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(6 * var(--u));
+}
+
+.landing-hero-h1 {
+  display: flex;
+  margin: 0;
+  color: var(--color-font-main-text);
+}
+
+.landing-hero-tagline {
+  margin: 0;
+  font-size: calc(32 * var(--u));
+  font-weight: var(--font-weight-regular);
+  color: var(--color-font-sub-text);
+  white-space: nowrap;
+}
+
+/* ===== Our Vision 3445:27283 · 3445:27346 (y 1719 ~ 2196) ===== */
+.landing-vision {
+  position: relative;
+  height: calc(477 * var(--u));
+}
+
+.landing-vision-head {
+  position: absolute;
+  left: calc(315 * var(--u));
+  top: calc(123 * var(--u));
+  width: calc(616 * var(--u));
+}
+
+.landing-vision-body {
+  position: absolute;
+  left: calc(812 * var(--u));
+  top: calc(181 * var(--u));
+}
+
+.landing-eyebrow {
+  margin: 0 0 calc(12 * var(--u));
+  font-size: calc(24 * var(--u));
+  font-weight: var(--font-weight-medium);
+  color: var(--color-font-helper-text);
+}
+
+.landing-heading {
+  margin: 0;
+  font-size: calc(40 * var(--u));
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-font-main-text);
+}
+
+.landing-body {
+  margin: 0;
+  font-size: calc(17 * var(--u));
+  font-weight: var(--font-weight-medium);
+  color: var(--color-font-sub-text);
+  white-space: nowrap;
+}
+
+.landing-body + .landing-body {
+  margin-top: 1.5em;
+}
+
+/* ===== Volumes of Thinking 3330:206106 ===== */
+.landing-volumes {
+  position: relative;
+  height: calc(850 * var(--u));
+  overflow: clip;
+  background: var(--color-background-default);
+}
+
+.landing-volumes-bg {
+  position: absolute;
+  inset: 0;
+}
+
+.landing-volumes-bg-img {
+  position: absolute;
+  left: 0;
+  top: calc(-637.8 * var(--u));
+  width: 100%;
+  height: calc(1609.05 * var(--u));
+  opacity: 0.6;
+  transform: scale(-1, -1);
+}
+
+.landing-volumes-yellow {
+  position: absolute;
+  inset: 0;
+  background: var(--color-tome-yellow-4);
+  opacity: 0;
+}
+
+.landing-volumes-pieces {
+  position: absolute;
+  inset: 0;
+}
+
+.landing-volumes-slide {
+  position: absolute;
+  top: calc(50 * var(--u));
+  width: calc(796 * var(--u));
+  height: calc(749.922 * var(--u));
+}
+
+.landing-volumes-left {
+  left: calc(-77 * var(--u));
+}
+
+.landing-volumes-right {
+  left: calc(1201 * var(--u));
+}
+
+.landing-volumes-flip {
+  position: absolute;
+  inset: 0;
+}
+
+.landing-volumes-left .landing-volumes-flip {
+  transform: scaleX(-1);
+}
+
+.landing-volumes-piece {
+  position: absolute;
+  inset: 0;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.landing-volumes-white {
+  background: var(--color-background-default);
+}
+
+.landing-volumes-pink {
+  background: var(--color-tome-peach-5);
+  opacity: 0;
+}
+
+.landing-volumes-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(380 * var(--u));
+  margin: 0;
+  text-align: center;
+  font-size: calc(60 * var(--u));
+  font-weight: var(--font-weight-regular);
+  color: var(--color-font-strong);
+  white-space: nowrap;
+}
+
+.landing-volumes-strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ===== Three ways to work 3330:206270 ===== */
+.landing-ways {
+  position: relative;
+  height: calc(1113 * var(--u));
+}
+
+.landing-ways-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--color-background-weak);
+  opacity: 0.6;
+}
+
+.landing-ways-head {
+  position: absolute;
+  left: calc(311 * var(--u));
+  top: calc(121 * var(--u));
+  width: calc(616 * var(--u));
+}
+
+.landing-ways-text {
+  position: absolute;
+  left: calc(883 * var(--u));
+  top: calc(181 * var(--u));
+  width: calc(744 * var(--u));
+  white-space: normal;
+}
+
+.landing-cards {
+  position: absolute;
+  left: calc(270 * var(--u));
+  top: calc(372 * var(--u));
+  display: flex;
+  gap: calc(40 * var(--u));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-card-slot {
+  width: calc(433 * var(--u));
+  height: calc(577 * var(--u));
+}
+
+.landing-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: calc(16 * var(--u));
+  background: var(--color-background-default);
+}
+
+.landing-card-glyph {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: calc(320 * var(--u));
+  height: calc(320 * var(--u));
+}
+
+.landing-card-number {
+  position: absolute;
+  left: calc(46 * var(--u));
+  top: calc(40 * var(--u));
+  margin: 0;
+  font-size: calc(24 * var(--u));
+  font-style: italic;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-font-helper-text);
+}
+
+.landing-card-copy {
+  position: absolute;
+  left: calc(46 * var(--u));
+  top: calc(402 * var(--u));
+  width: calc(333 * var(--u));
+  display: flex;
+  flex-direction: column;
+  gap: calc(24 * var(--u));
+}
+
+.landing-card-title {
+  margin: 0;
+  font-size: calc(28 * var(--u));
+  font-style: italic;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-font-strong);
+}
+
+.landing-card-text {
+  margin: 0;
+  font-size: calc(22 * var(--u));
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-body-b1);
+  color: var(--color-font-helper-text);
+}
+
+/* 시안에서 첫 카드 설명만 20px·Medium 이다 */
+.landing-card-slot:first-child .landing-card-text {
+  font-size: calc(20 * var(--u));
+  font-weight: var(--font-weight-medium);
+}
+
+/* 카드는 링크가 아니라서 마우스를 올릴 때만 떠오른다 */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-card {
+    transition: transform 0.4s ease;
+  }
+
+  .landing-card-glyph {
+    transition: transform 1.2s ease;
+  }
+
+  .landing-card:hover {
+    transform: translateY(calc(-10 * var(--u)));
+  }
+
+  .landing-card:hover .landing-card-glyph {
+    transform: rotate(8deg) scale(1.08);
+  }
+}
+
+/* ===== 푸터 3445:27495 (테두리 1px + 485) ===== */
+.landing-footer {
+  position: relative;
+  box-sizing: content-box;
+  height: calc(485 * var(--u));
+  border-top: var(--stroke-weight-light) solid var(--color-border-default);
+  color: var(--color-landing-dark);
+}
+
+.landing-footer-brand {
+  position: absolute;
+  left: calc(270 * var(--u));
+  top: calc(94 * var(--u));
+  width: calc(410 * var(--u));
+  display: flex;
+  flex-direction: column;
+  gap: calc(4.722 * var(--u));
+  color: var(--color-font-main-text);
+}
+
+.landing-footer-tagline {
+  margin: 0;
+  font-size: calc(20 * var(--u));
+  font-weight: var(--font-weight-regular);
+  color: var(--color-font-sub-text);
+}
+
+.landing-contact {
+  position: absolute;
+  left: calc(1369 * var(--u));
+  top: calc(94 * var(--u));
+}
+
+.landing-contact-title {
+  margin: 0 0 calc(36 * var(--u));
+  font-size: calc(16 * var(--u));
+  font-weight: var(--font-weight-medium);
+}
+
+.landing-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(24 * var(--u));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-contact-item {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+}
+
+.landing-contact-icon {
+  position: relative;
+  flex: none;
+  width: calc(var(--icon) * var(--u));
+  height: calc(var(--icon) * var(--u));
+}
+
+.landing-contact-text {
+  font-size: calc(16 * var(--u));
+  font-weight: var(--font-weight-regular);
+  line-height: normal;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.landing-contact-line {
+  display: inline;
+}
+
+.landing-top-button {
+  position: absolute;
+  left: calc(270 * var(--u));
+  top: calc(318 * var(--u));
+  display: grid;
+  place-items: center;
+  width: calc(52 * var(--u));
+  height: calc(52 * var(--u));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-max);
+  background: var(--color-fill-brand);
+  color: var(--color-font-sub-text);
+  cursor: pointer;
+}
+
+.landing-top-arrow {
+  display: block;
+  width: calc(19 * var(--u));
+  height: calc(14 * var(--u));
+  transform: rotate(90deg);
+}
+
+.landing-copyright {
+  position: absolute;
+  left: calc(346 * var(--u));
+  top: calc(350 * var(--u));
+  margin: 0;
+  font-size: calc(12 * var(--u));
+  line-height: calc(20 * var(--u));
+  opacity: 0.65;
+  color: var(--color-font-strong);
+  white-space: nowrap;
+}

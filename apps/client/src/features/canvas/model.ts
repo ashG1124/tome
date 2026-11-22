@@ -56,6 +56,7 @@ export type CardData = {
   text?: string;
   output?: OutputNode;
   answer?: Answer;
+  answerId?: string;
   state?: 'pending' | 'running' | 'done' | 'skipped' | 'failed';
   error?: GenerationView['error'];
   onRetry?: () => Promise<void>;
@@ -168,6 +169,7 @@ export function buildCanvas(
             label: node.text,
             text: node.text,
             output: node,
+            answerId: answer?.status === 'accepted' ? answer.id : undefined,
             state,
             error: row === 0 ? error : undefined,
             onRetry: current?.onRetry,

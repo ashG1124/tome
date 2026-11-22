@@ -1,0 +1,178 @@
+.canvas-answer-versions,
+.canvas-node-comments header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+}
+.canvas-answer-versions {
+  justify-content: center;
+  padding: var(--space-padding-4);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b2-m);
+}
+.canvas-answer-versions button,
+.canvas-comment-corner,
+.canvas-node-comments button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--stroke-weight-light) solid var(--color-border-input);
+  border-radius: var(--radius-input);
+  padding: var(--space-padding-3);
+  background: var(--color-background-default);
+  color: var(--color-font-main-text);
+  font: inherit;
+  cursor: pointer;
+}
+.canvas-answer-versions button:disabled,
+.canvas-node-comments button:disabled {
+  color: var(--color-font-disable);
+  cursor: not-allowed;
+}
+.canvas-answer-versions button:focus-visible,
+.canvas-comment-corner:focus-visible,
+.canvas-node-comments :is(button, textarea):focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.canvas-comment-corner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  background: var(--color-fill-point);
+  border-radius: var(--radius-node) 0 var(--radius-node) 0;
+}
+.canvas-node-comments {
+  position: absolute;
+  z-index: 2;
+  right: calc(var(--size-icon-menu-button) + 2 * var(--space-padding-6));
+  top: var(--space-padding-6);
+  bottom: var(--space-padding-6);
+  width: min(
+    var(--canvas-answer-width),
+    calc(100% - var(--size-icon-menu-button) - 3 * var(--space-padding-6))
+  );
+  box-sizing: border-box;
+  padding: var(--space-padding-6);
+  overflow-y: auto;
+  border: var(--stroke-weight-light) solid var(--color-border-input);
+  border-radius: var(--radius-node);
+  background: var(--color-background-default);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b2-r);
+}
+.canvas-node-comments header strong {
+  flex: 1;
+}
+.canvas-node-comments ol {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-4);
+}
+.canvas-node-comments li {
+  padding: var(--space-padding-4);
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: var(--radius-input);
+}
+.canvas-node-comments :is(p, time) {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.canvas-node-comments time {
+  display: block;
+  color: var(--color-font-helper-text);
+}
+.canvas-node-comments :is(form, label) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-4);
+}
+.canvas-node-comments textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: calc(var(--size-input-height) * 2);
+  resize: vertical;
+  border: var(--stroke-weight-light) solid var(--color-border-input);
+  border-radius: var(--radius-input);
+  padding: var(--space-padding-4);
+  background: var(--color-background-default);
+  color: inherit;
+  font: inherit;
+}
+
+.canvas-answer-versions {
+  width: 100%;
+  padding: 0;
+}
+.canvas-answer-versions button {
+  border: 0;
+  background: transparent;
+}
+.canvas-answer-versions [aria-live='polite'] {
+  flex: 1;
+  text-align: center;
+  font: var(--text-body-b1-m);
+}
+.canvas-comment-corner {
+  width: calc(var(--size-icon-empty) + var(--space-gap-4));
+  height: calc(var(--size-icon-empty) + var(--space-gap-4));
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+.canvas-comment-corner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--color-fill-point);
+  clip-path: polygon(
+    0% 85.45455%,
+    58.18182% 85.45455%,
+    60.97501% 85.31405%,
+    63.68643% 84.90163%,
+    66.30251% 84.23087%,
+    68.80966% 83.31534%,
+    71.19429% 82.16863%,
+    73.44283% 80.80433%,
+    75.54168% 79.23602%,
+    77.47727% 77.47727%,
+    79.23602% 75.54168%,
+    80.80433% 73.44283%,
+    82.16863% 71.19429%,
+    83.31534% 68.80966%,
+    84.23087% 66.30251%,
+    84.90163% 63.68643%,
+    85.31405% 60.97501%,
+    85.45455% 58.18182%,
+    85.45455% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%
+  );
+  pointer-events: none;
+}
+.canvas-node-comments li > p {
+  white-space: pre-wrap;
+}
+
+.canvas-answer-versions button[data-answer-pin] {
+  width: calc(var(--size-icon-empty) + var(--space-gap-4));
+  height: calc(var(--size-icon-empty) + var(--space-gap-4));
+  flex: none;
+  padding: 0;
+  border-radius: var(--radius-max);
+  background: var(--color-shadow-medium);
+  color: var(--color-grayscale-white);
+}
+.canvas-answer-versions button[data-answer-pin][aria-pressed='true'] {
+  color: var(--color-fill-brand);
+}
+.canvas-history-pin-fixture .canvas-answer-versions > :not([data-answer-pin]) {
+  display: none;
+}

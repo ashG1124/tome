@@ -59,6 +59,7 @@ describe('tokens.css 대비 (WCAG 2.x)', () => {
     '--color-font-helper-text',
     '--color-peach-text',
     '--color-orange-text',
+    '--color-landing-dark',
   ];
   const backgrounds = [
     '--color-background-default',
@@ -82,6 +83,13 @@ describe('tokens.css 대비 (WCAG 2.x)', () => {
       );
     });
   }
+
+  // 랜딩 Get Started 버튼: 주황 면(--color-tome-orange-5) 위 강한 글자
+  it(`--color-font-strong 은 --color-tome-orange-5 위에서 ${TEXT_MIN} 이상`, () => {
+    expect(
+      contrast(color('--color-font-strong'), color('--color-tome-orange-5')),
+    ).toBeGreaterThanOrEqual(TEXT_MIN);
+  });
 
   it(`--color-font-point 는 --color-fill-point 위에서 ${TEXT_MIN} 이상`, () => {
     expect(

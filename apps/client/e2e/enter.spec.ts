@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('세션이 없으면 전시 코드 입력 화면으로 간다', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/agora');
   await expect(page).toHaveURL(/\/enter$/);
   await expect(page.getByRole('heading', { name: 'Enter the exhibition code' })).toBeVisible();
 });

@@ -53,6 +53,7 @@ const okClone = () =>
   spyClone(({ dir }) => {
     write(dir, 'apps/client/src/assets/icons/i.svg', 'I');
     write(dir, 'apps/client/src/assets/brand/b.svg', 'B');
+    write(dir, 'apps/client/src/assets/onboarding/landing-hero-01.webp', 'O');
     write(dir, 'design-ref/a.png', 'A');
     return { status: 0, stdout: '', stderr: '' };
   });
@@ -96,13 +97,14 @@ test('잘못된 ASSETS_REPO 는 1, clone 안 부르고 값도 출력하지 않�
   });
 });
 
-test('정상이면 icons·brand 만 복사하고 design-ref 는 만들지 않는다', () => {
+test('정상이면 icons·brand·onboarding 만 복사하고 design-ref 는 만들지 않는다', () => {
   withTmp((root) => {
     const env = { ASSETS_REPO: REPO, ASSETS_REPO_TOKEN: TOKEN };
     const { code, text } = capture(() => fetchBuildAssets({ env, root, clone: okClone() }));
     assert.equal(code, 0);
     assert.ok(existsSync(join(root, 'apps/client/src/assets/icons/i.svg')));
     assert.ok(existsSync(join(root, 'apps/client/src/assets/brand/b.svg')));
+    assert.ok(existsSync(join(root, 'apps/client/src/assets/onboarding/landing-hero-01.webp')));
     assert.ok(!existsSync(join(root, 'design-ref')));
     assert.match(text, /복사함: apps\/client\/src\/assets\/icons \(파일 1개\)/);
     assert.ok(!text.includes(REPO) && !text.includes(TOKEN));
@@ -119,6 +121,7 @@ test('받은 쪽에 경로가 없으면 건너뜀 출력', () => {
     const { code, text } = capture(() => fetchBuildAssets({ env, root, clone }));
     assert.equal(code, 0);
     assert.match(text, /건너뜀: apps\/client\/src\/assets\/brand/);
+    assert.match(text, /건너뜀: apps\/client\/src\/assets\/onboarding/);
   });
 });
 

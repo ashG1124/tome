@@ -2,13 +2,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ProjectSummary } from '@tome/shared';
 import type { ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { canvasDesignFixtures } from '../../src/features/canvas';
+import {
+  canvasDesignFixtures,
+  nodeEditorDesignFixtures,
+  canvasHistoryDesignFixtures,
+} from '../../src/features/canvas';
 import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
 import { RemixLabel } from '../../src/pages/workspace/remix/RemixPanel';
 import { CreatorPill } from '../../src/pages/agora/AgoraHomePage';
 import { Flash, Tabs, TitleInput } from '../../src/shared/ui';
+import {
+  LandingFooter,
+  LandingHeader,
+  LandingScale,
+  ThreeWaysSection,
+  VolumesBanner,
+} from '../../src/pages/landing';
 
 // 시범 비교용 안내 글자. 앱 copy 에는 넣지 않는다.
 const SAMPLE = 'Please ~~~';
@@ -114,3 +125,47 @@ const AGORA_PERSON = {
 Object.assign(renders, {
   'agora-cards/creator': () => withAppContext(<CreatorPill creator={AGORA_PERSON} />),
 });
+
+const previewImages = import.meta.glob<string>(
+  '../../../../design-ref/components/done-modal/assets/raw-image-01__3182-176717.png',
+  { eager: true, import: 'default', query: '?url' },
+);
+const previewImage = Object.values(previewImages)[0];
+
+Object.assign(renders, {
+  'node-editor/weighting': nodeEditorDesignFixtures.weighting,
+  'node-editor/meaning': nodeEditorDesignFixtures.meaning,
+  'node-editor/preview-generating': () => nodeEditorDesignFixtures.generating(previewImage),
+  'node-editor/preview-ready': () => nodeEditorDesignFixtures.ready(previewImage),
+});
+
+// ---- 인트로 랜딩(#46): 폭 1920 에서 한 구간씩
+Object.assign(renders, {
+  'landing/header': () =>
+    withAppContext(
+      <LandingScale>
+        <LandingHeader />
+      </LandingScale>,
+    ),
+  'landing/footer': () =>
+    withAppContext(
+      <LandingScale>
+        <LandingFooter onBackToTop={() => {}} />
+      </LandingScale>,
+    ),
+  'landing/three-ways': () =>
+    withAppContext(
+      <LandingScale>
+        <ThreeWaysSection />
+      </LandingScale>,
+    ),
+  'landing/volumes': () =>
+    withAppContext(
+      <LandingScale>
+        <VolumesBanner />
+      </LandingScale>,
+    ),
+});
+renders['canvas-history/corner'] = canvasHistoryDesignFixtures.corner;
+renders['canvas-history/pin-off'] = () => canvasHistoryDesignFixtures.pin(false);
+renders['canvas-history/pin-on'] = () => canvasHistoryDesignFixtures.pin(true);
