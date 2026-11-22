@@ -2,7 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ProjectSummary } from '@tome/shared';
 import type { ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { canvasDesignFixtures, nodeEditorDesignFixtures } from '../../src/features/canvas';
+import {
+  canvasDesignFixtures,
+  nodeEditorDesignFixtures,
+  canvasHistoryDesignFixtures,
+} from '../../src/features/canvas';
 import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
@@ -162,3 +166,6 @@ Object.assign(renders, {
       </LandingScale>,
     ),
 });
+renders['canvas-history/corner'] = canvasHistoryDesignFixtures.corner;
+renders['canvas-history/pin-off'] = () => canvasHistoryDesignFixtures.pin(false);
+renders['canvas-history/pin-on'] = () => canvasHistoryDesignFixtures.pin(true);

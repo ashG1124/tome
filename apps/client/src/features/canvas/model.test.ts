@@ -160,3 +160,32 @@ it('does not update unchanged cards when a later stage changes', () => {
   expect(sameCardData(previous.data, next.data)).toBe(true);
   expect(previous.style?.minHeight).toBe(geometry.nodeHeight);
 });
+
+it('binds output nodes and read-only verification lists to the displayed answer ID', () => {
+  const criterion: Node = {
+    id: 'v1',
+    kind: 'criterion',
+    stage: 'verify',
+    text: 'Criterion',
+    enabled: true,
+    parentIds: ['k1'],
+  };
+  const mismatch: Node = { ...criterion, id: 'm1', kind: 'mismatch', text: 'Mismatch' };
+  const answer = {
+    id: 'old-answer',
+    setId: set.id,
+    number: 1,
+    status: 'accepted',
+    imageUrl: '/old',
+    nodes: { schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [keyword] },
+    verification: { status: 'skipped', criteria: [criterion], mismatches: [mismatch] },
+  } as NonNullable<PromptSet['latestAnswer']>;
+  const graph = buildCanvas([{ ...set, latestAnswer: answer }], undefined, labels, geometry);
+  const outputs = graph.nodes.filter((node) => node.data.kind === 'output');
+  expect(outputs.map((node) => node.data.output!.id)).toEqual(['k1', 'v1', 'm1']);
+  expect(outputs.every((node) => node.data.answerId === 'old-answer')).toBe(true);
+  expect(
+    outputs.filter((node) => node.data.column === 5).every((node) => node.data.state === 'skipped'),
+  ).toBe(true);
+  expect(outputs.every((node) => node.data.onRetry === undefined)).toBe(true);
+});

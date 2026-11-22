@@ -246,6 +246,14 @@ export const COPY = {
   'ON-30a': 'Recommended Projects',
   'ON-30b': 'Creator List',
   'ON-30c': 'Topic List',
+  // 노드 기록(#32): 확정 ID(ADR-044).
+  'NH-01': 'Previous version',
+  'NH-02': 'Next version',
+  'NH-03': 'Pin answer',
+  'NH-04': 'Unpin answer',
+  'NH-05': 'No comments yet.',
+  'NH-06': 'Loading comments…',
+  'NH-07': 'Comment saved.',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
 } as const;
@@ -307,3 +315,20 @@ export const NODE_EDITOR_COPY = {
   weightInstructions: COPY['NE-13'],
   meaningInstructions: COPY['NE-14'],
 } as const;
+
+export const CANVAS_HISTORY_COPY = {
+  versions: {
+    previous: COPY['NH-01'],
+    next: COPY['NH-02'],
+    pin: COPY['NH-03'],
+    unpin: COPY['NH-04'],
+  },
+  comments: {
+    title: COPY['A-02'],
+    submit: COPY['S-07a'],
+    close: COPY['D-11'],
+    empty: COPY['NH-05'],
+    loading: COPY['NH-06'],
+    saved: COPY['NH-07'],
+  },
+};

@@ -310,3 +310,23 @@ cases.push(
     allowedDiff: landingFontDiff(0.011, 2600),
   },
 );
+cases.push(
+  {
+    id: 'canvas-history/corner',
+    ref: 'design-ref/components/corner/property-1-closed__1185-60669.png',
+    width: 44,
+    height: 44,
+  },
+  {
+    id: 'canvas-history/pin-off',
+    ref: 'design-ref/components/answer-pin/bg-light-pinned-off__3182-174887.png',
+    width: 44,
+    height: 44,
+  },
+  {
+    id: 'canvas-history/pin-on',
+    ref: 'design-ref/components/answer-pin/bg-light-pinned-on__3182-174891.png',
+    width: 44,
+    height: 44,
+  },
+);
