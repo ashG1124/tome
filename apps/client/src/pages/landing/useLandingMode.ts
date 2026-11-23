@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import {
   decideStoryMode,
   frameDeltas,
+  isMotionOn,
   isSlowDevice,
   MEASURE_MS,
   rememberSlow,
@@ -52,7 +53,9 @@ function useSlowDetection(ref: RefObject<HTMLElement | null>, active: boolean, o
 
 /**
  * 랜딩 연출을 켤지(motion) 정지 화면으로 보여 줄지(static) 정한다.
- * 움직임 줄이기·`?motion=off`·느린 PC 중 하나라도 해당하면 정지 화면이다. 느린 PC 판정은 watch 가 화면에 들어올 때 잰다.
+ * 우선순위: 움직임 줄이기 > `?motion=off` > `?motion=on` > 느린 PC. 앞의 둘은 정지 화면이다.
+ * `?motion=on`(전시 운영자용)이면 느린 PC 판정을 건너뛰고 연출로 고정한다(프레임 간격도 재지 않는다).
+ * 느린 PC 판정은 watch 가 화면에 들어올 때 잰다.
  */
 export function useLandingMode(watch: RefObject<HTMLElement | null>): StoryMode {
   const { search } = useLocation();
@@ -63,6 +66,6 @@ export function useLandingMode(watch: RefObject<HTMLElement | null>): StoryMode 
   );
   const [slow, setSlow] = useState(wasSlow);
   const mode = decideStoryMode({ search, reducedMotion, slow });
-  useSlowDetection(watch, mode === 'motion', () => setSlow(true));
+  useSlowDetection(watch, mode === 'motion' && !isMotionOn(search), () => setSlow(true));
   return mode;
 }
