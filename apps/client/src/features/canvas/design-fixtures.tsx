@@ -71,6 +71,16 @@ function previewEditor(generating: boolean, image?: string) {
         applyLabel={NODE_EDITOR_COPY.apply}
         statusLabel={generating ? CANVAS_COPY.generating : NODE_EDITOR_COPY.ready}
         generating={generating}
+        hasPreview={!generating}
+        open
+        navigation={{
+          index: 0,
+          count: 2,
+          previous: NODE_EDITOR_COPY.preview,
+          next: NODE_EDITOR_COPY.preview,
+          onPrevious: () => {},
+          onNext: () => {},
+        }}
         applying={false}
         canApply={!generating}
         stacked={false}

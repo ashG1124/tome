@@ -72,12 +72,16 @@ function EditorSession({
   options,
   onClose,
   onApplyingChange,
+  previewOpen,
+  onPreviewOpenChange,
 }: {
   base: Answer;
   nodeId: string;
   options: CanvasEditorOptions;
   onClose: () => void;
   onApplyingChange: (value: boolean) => void;
+  previewOpen: boolean;
+  onPreviewOpenChange: (open: boolean) => void;
 }) {
   const labels = { ...NODE_EDITOR_COPY, ...options.labels };
   const client = useQueryClient();
@@ -113,48 +117,61 @@ function EditorSession({
   const preview = editor.preview;
   const error = editor.applyError ?? (preview.status === 'error' ? preview.error : undefined);
   return (
-    <aside className="canvas-editor-panels">
-      <NodeEditPanel
-        key={nodeId}
-        node={node}
-        snapshot={editor.snapshot}
-        labels={labels}
-        disabled={editor.applying}
-        onChange={editor.edit}
-        onReorder={editor.reorder}
-        onReset={editor.reset}
-        onClose={onClose}
-      />
-      <PreviewPanel
-        title={labels.preview}
-        applyLabel={labels.apply}
-        statusLabel={
-          preview.status === 'generating'
-            ? stage
-              ? `${CANVAS_COPY.generating} ${CANVAS_COPY.step(VISIBLE_STAGES.indexOf(stage) + 1)}`
-              : CANVAS_COPY.generating
-            : preview.status === 'waiting'
-              ? labels.waiting
-              : preview.status === 'ready'
-                ? labels.ready
-                : ''
-        }
-        errorMessage={error ? COPY[errorCopyKey(error)] : undefined}
-        generating={preview.status === 'generating'}
-        applying={editor.applying}
-        canApply={editor.canApply}
-        stacked={editor.stacked}
-        answer={preview.status === 'ready' ? preview.answer : base}
-        renderImage={options.renderImage}
-        onApply={editor.apply}
-        onRetry={
-          preview.status === 'error' &&
-          !(preview.error instanceof ApiRequestError && !preview.error.retryable)
-            ? editor.retryPreview
-            : undefined
-        }
-      />
-    </aside>
+    <>
+      <aside className="canvas-editor-panels">
+        <NodeEditPanel
+          key={nodeId}
+          node={node}
+          snapshot={editor.snapshot}
+          labels={labels}
+          disabled={editor.applying}
+          onChange={editor.edit}
+          onReorder={editor.reorder}
+          onReset={editor.reset}
+          onClose={onClose}
+        />
+      </aside>
+      <div className="canvas-preview-dock">
+        <PreviewPanel
+          title={labels.preview}
+          applyLabel={labels.apply}
+          statusLabel={
+            preview.status === 'generating'
+              ? stage
+                ? `${CANVAS_COPY.generating} ${CANVAS_COPY.step(VISIBLE_STAGES.indexOf(stage) + 1)}`
+                : CANVAS_COPY.generating
+              : preview.status === 'waiting'
+                ? labels.waiting
+                : preview.status === 'ready'
+                  ? labels.ready
+                  : ''
+          }
+          errorMessage={error ? COPY[errorCopyKey(error)] : undefined}
+          generating={preview.status === 'generating'}
+          hasPreview={preview.status === 'ready'}
+          applying={editor.applying}
+          canApply={editor.canApply}
+          stacked={editor.stacked}
+          answer={
+            preview.status === 'ready'
+              ? preview.answer
+              : preview.status === 'generating'
+                ? base
+                : undefined
+          }
+          renderImage={options.renderImage}
+          open={previewOpen}
+          onOpenChange={onPreviewOpenChange}
+          onApply={editor.apply}
+          onRetry={
+            preview.status === 'error' &&
+            !(preview.error instanceof ApiRequestError && !preview.error.retryable)
+              ? editor.retryPreview
+              : undefined
+          }
+        />
+      </div>
+    </>
   );
 }
 
@@ -180,6 +197,7 @@ function PageCanvas({
   const client = useQueryClient();
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [selected, setSelected] = useState<{ setId: string; nodeId: string }>();
   const opener = useRef<HTMLElement | null>(null);
   const selectedBase = sets.find((set) => set.id === selected?.setId)?.latestAnswer;
@@ -325,6 +343,7 @@ function PageCanvas({
                       document.activeElement instanceof HTMLElement ? document.activeElement : null;
                     setCommentTarget(undefined);
                     setStacked(false);
+                    setPreviewOpen(true);
                     setSelected({ setId, nodeId });
                   },
                 }
@@ -332,10 +351,28 @@ function PageCanvas({
           }
         />
       ) : null}
+      {editor && !(selected && selectedBase?.status === 'accepted') ? (
+        <div className="canvas-preview-dock">
+          <PreviewPanel
+            title={editor.labels?.preview ?? NODE_EDITOR_COPY.preview}
+            applyLabel={editor.labels?.apply ?? NODE_EDITOR_COPY.apply}
+            statusLabel=""
+            generating={false}
+            applying={false}
+            canApply={false}
+            stacked={false}
+            open={previewOpen}
+            onOpenChange={setPreviewOpen}
+            onApply={async () => {}}
+          />
+        </div>
+      ) : null}
       {editor && selected && selectedBase?.status === 'accepted' ? (
         <EditorSession
           key={selectedBase.id}
           onApplyingChange={setEditingBusy}
+          previewOpen={previewOpen}
+          onPreviewOpenChange={setPreviewOpen}
           base={selectedBase}
           nodeId={selected.nodeId}
           options={{
