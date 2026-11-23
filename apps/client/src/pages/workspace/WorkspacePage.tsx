@@ -5,7 +5,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { WorkspaceCanvas } from '../../features/canvas';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
-import { ErrorNotice, Icon } from '../../shared/ui';
+import { ErrorNotice } from '../../shared/ui';
 import {
   downloadImage,
   finishAvailability,
@@ -15,6 +15,7 @@ import {
 } from './finish';
 import { IconMenu } from './IconMenu';
 import { pageIdFromSearch, pageMenu } from './pageMenu';
+import { ClipIcon } from './PromptIcons';
 import { PromptBar, type PromptSubmit } from './PromptBar';
 import { promptBarInfo } from './prompt';
 import { useRemixConnections } from './remix/useRemixConnections';
@@ -235,13 +236,13 @@ export function WorkspacePage() {
       ) : null}
       {bar ? (
         <div className="fixed inset-x-0 bottom-[var(--space-padding-8)] flex justify-center px-[var(--grid-margin)]">
-          <div className="flex w-[var(--size-prompt-width)] max-w-full items-end gap-[var(--space-gap-4)]">
+          <div className="flex w-[calc(var(--size-prompt-width)+var(--size-icon-menu-button)+var(--space-gap-4))] max-w-full items-center gap-[var(--space-gap-4)]">
             {/* 첨부(클립) 버튼은 자리만 둔다. 동작은 첨부 기능(T11)에서. */}
             <span
               aria-hidden="true"
-              className="flex size-[var(--size-icon-menu-button)] shrink-0 items-center justify-center rounded-[var(--radius-max)] bg-[color:var(--color-background-default)] text-[color:var(--color-font-disable)] shadow-[var(--shadow-icon-menu)]"
+              className="flex size-[var(--size-icon-menu-button)] shrink-0 items-center justify-center rounded-[var(--radius-max)] bg-[color:var(--color-background-default)] text-[color:var(--color-font-sub-text)] shadow-[var(--shadow-prompt)]"
             >
-              <Icon name="clip" />
+              <ClipIcon />
             </span>
             <div className="min-w-0 flex-1">
               <PromptBar

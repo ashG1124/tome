@@ -136,8 +136,7 @@
 .canvas-card--error {
   border: var(--stroke-weight-bold) solid var(--color-tome-peach-5);
 }
-.canvas-retry,
-.canvas-controls button {
+.canvas-retry {
   border: var(--stroke-weight-light) solid var(--color-border-input);
   border-radius: var(--radius-input);
   padding: var(--space-padding-3) var(--space-padding-6);
@@ -145,14 +144,6 @@
   color: var(--color-font-main-text);
   font: var(--text-body-b2-m);
   cursor: pointer;
-}
-.canvas-controls {
-  display: flex;
-  gap: var(--space-padding-3);
-  padding: var(--space-padding-3);
-  background: var(--color-background-default);
-  border-radius: var(--radius-2);
-  box-shadow: var(--shadow-floating);
 }
 .canvas-sr-only {
   position: absolute;

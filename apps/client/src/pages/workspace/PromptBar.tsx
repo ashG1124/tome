@@ -1,6 +1,7 @@
 import { LIMITS, PROMPT_PRESETS, type PresetKey } from '@tome/shared';
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { COPY, type CopyKey } from '../../shared/copy';
+import { SparkleIcon } from './PromptIcons';
 import { canSubmitPrompt, presetKeyFor, type PromptBarState } from './prompt';
 
 /** 프리셋 탭 이름 문구. PROMPT_PRESETS 순서와 같다. */
@@ -96,30 +97,39 @@ export function PromptBar({ state, emptyPage, value, onChange, onSubmit }: Promp
           ))}
         </ul>
       ) : null}
-      <textarea
-        ref={input}
-        aria-label={COPY['S-08']}
-        aria-describedby={reason ? reasonId : undefined}
-        placeholder={emptyPage ? COPY['S-08'] : undefined}
-        value={value}
-        maxLength={LIMITS.PROMPT_MAX}
-        rows={1}
-        disabled={locked}
-        readOnly={busy}
-        aria-busy={busy || undefined}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={handleKeyDown}
+      <div
         className={[
-          'box-border max-h-[40vh] w-full resize-none overflow-y-auto rounded-[var(--radius-node)] border border-solid',
-          'border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)]',
-          'bg-[color:var(--color-background-default)] shadow-[var(--shadow-prompt)]',
-          'px-[var(--space-padding-8)] py-[var(--space-padding-6)]',
-          '[font:var(--text-subtitle-st2-m)] text-[color:var(--color-font-main-text)]',
-          'placeholder:text-[color:var(--color-font-helper-text)]',
-          'disabled:cursor-not-allowed disabled:bg-[color:var(--color-gray-20)]',
-          'disabled:border-[color:var(--color-border-default)] disabled:text-[color:var(--color-font-disable)]',
+          'box-border flex w-full items-start gap-[var(--space-gap-4)] rounded-[var(--radius-dialog)]',
+          'bg-[color:var(--color-background-default)] px-[var(--space-padding-7)] py-[var(--space-padding-6)]',
+          'shadow-[var(--shadow-prompt)] text-[color:var(--color-font-main-text)]',
+          'focus-within:outline focus-within:outline-2 focus-within:outline-[color:var(--color-border-dark)]',
+          locked ? 'bg-[color:var(--color-gray-20)] text-[color:var(--color-font-disable)]' : '',
         ].join(' ')}
-      />
+      >
+        <span className="mt-[calc(var(--space-gap-1)/2)] flex">
+          <SparkleIcon />
+        </span>
+        <textarea
+          ref={input}
+          aria-label={COPY['S-08']}
+          aria-describedby={reason ? reasonId : undefined}
+          placeholder={COPY['S-08']}
+          value={value}
+          maxLength={LIMITS.PROMPT_MAX}
+          rows={1}
+          disabled={locked}
+          readOnly={busy}
+          aria-busy={busy || undefined}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          className={[
+            'm-0 box-border block max-h-[40vh] min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent p-0 outline-none',
+            '[font:var(--text-subtitle-st2-m)] text-[color:var(--color-font-main-text)]',
+            'placeholder:text-[color:var(--color-font-helper-text)]',
+            'disabled:cursor-not-allowed disabled:text-[color:var(--color-font-disable)]',
+          ].join(' ')}
+        />
+      </div>
       {reason ? (
         <p
           id={reasonId}

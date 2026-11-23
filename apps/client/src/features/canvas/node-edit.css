@@ -168,10 +168,18 @@
 .canvas-editor-panels {
   position: absolute;
   z-index: 2;
-  top: var(--space-padding-6);
-  right: var(--space-padding-6);
-  bottom: var(--space-padding-6);
-  width: min(var(--canvas-answer-width), calc(100% - 2 * var(--space-padding-6)));
+  /* 오른쪽 아이콘 메뉴 줄(오른쪽 여백 + 버튼 폭 + 간격)의 왼쪽에 놓아 헤더 아이콘·페이지 버튼을 가리지 않는다. */
+  --canvas-editor-right: calc(
+    var(--space-padding-8) + var(--size-icon-menu-button) + var(--space-gap-5)
+  );
+  top: var(--space-padding-8);
+  right: var(--canvas-editor-right);
+  /* 아래는 프롬프트 바 자리를 비워 둔다 */
+  bottom: calc(var(--space-padding-8) * 4);
+  width: min(
+    var(--canvas-answer-width),
+    calc(100% - var(--canvas-editor-right) - var(--space-padding-8))
+  );
   overflow-y: auto;
   display: flex;
   flex-direction: column;
