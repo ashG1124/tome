@@ -251,3 +251,235 @@
   left: var(--space-padding-6);
   z-index: 1;
 }
+
+/* ---- Figma 정합(#166): 노드 모양. 시안 Step 1226:69439, Node Tool 1187:62182, Corner 1480:135821, 단계별 노드 묶음 */
+/* 단계 이름표(알약) */
+.canvas-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-gap-4);
+  width: 100%;
+}
+.canvas-step-handle {
+  width: calc(var(--canvas-node-width) * 0.18);
+  height: var(--space-gap-2);
+  border-radius: var(--radius-max);
+  background: var(--color-border-default);
+}
+.canvas-step-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--canvas-node-height);
+  padding: var(--space-padding-6) var(--space-padding-5) var(--space-padding-6)
+    var(--space-padding-7);
+  border: var(--stroke-weight-light) solid
+    color-mix(in srgb, var(--color-tome-orange-5) 50%, var(--color-background-default));
+  border-radius: var(--radius-max);
+  background: color-mix(in srgb, var(--color-tome-orange-5) 8%, var(--color-background-default));
+  box-shadow: var(--shadow-connection);
+  color: var(--color-font-main-text);
+}
+.canvas-step-number {
+  flex: none;
+  width: var(--space-padding-8);
+  text-align: center;
+  font: var(--text-heading-h2);
+  letter-spacing: var(--letter-spacing-default);
+}
+.canvas-step-pill strong {
+  font: var(--text-subtitle-st1-sb);
+  letter-spacing: var(--letter-spacing-default);
+  white-space: nowrap;
+}
+.canvas-step .react-flow__handle.canvas-step-dot {
+  top: calc(var(--space-gap-2) + var(--space-gap-4) + var(--canvas-node-height) / 2);
+  width: var(--space-padding-4);
+  height: var(--space-padding-4);
+  background: var(--color-node-line);
+  border: 0;
+}
+/* 그룹 소제목 */
+.canvas-heading[data-variant='group'] {
+  color: var(--color-font-sub-text);
+  font: var(--text-body-b2-r);
+  letter-spacing: var(--letter-spacing-default);
+}
+.canvas-heading[data-variant='group'] strong {
+  font: inherit;
+}
+/* 키워드 카드: 회색 둥근 카드, 글자 18px */
+.canvas-card--output {
+  padding-inline: var(--space-padding-6);
+}
+.canvas-node-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-padding-4);
+}
+.canvas-card--output .canvas-output-text {
+  display: block;
+  -webkit-line-clamp: unset;
+  flex: 1;
+  min-width: 0;
+  padding-inline: 0;
+  overflow-wrap: anywhere;
+}
+.canvas-card--output small {
+  margin-top: 0;
+  text-align: center;
+}
+/* 근거 문장: 왼쪽 정렬 + 켜짐 스위치 */
+.canvas-card--evidence {
+  text-align: left;
+}
+.canvas-card--evidence .canvas-output-text {
+  text-align: left;
+}
+.canvas-node-switch {
+  position: relative;
+  flex: none;
+  width: calc(var(--space-padding-8) + var(--space-padding-6));
+  height: calc(var(--space-padding-8) - var(--space-padding-2) / 2);
+  border-radius: var(--radius-max);
+  background: var(--color-fill-card);
+}
+.canvas-node-switch::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--space-padding-2) / 2);
+  left: calc(var(--space-padding-2) / 2);
+  width: calc(100% / 2 - var(--space-padding-2));
+  aspect-ratio: 1;
+  border-radius: var(--radius-max);
+  background: var(--color-background-default);
+  box-shadow: var(--shadow-03);
+}
+.canvas-node-switch[data-on='true'] {
+  background: var(--color-tome-yellow-7);
+}
+.canvas-node-switch[data-on='true']::after {
+  left: auto;
+  right: calc(var(--space-padding-2) / 2);
+}
+/* 우선순위·검증 기준: 한 장 카드 안의 행처럼 이어 붙인다 */
+.canvas-card--row {
+  min-height: 0;
+  padding-block: calc(var(--space-gap-4) / 2);
+  border-block-width: 0;
+  border-radius: 0;
+  text-align: left;
+}
+.canvas-card--row.canvas-card--first,
+.canvas-card--row.canvas-card--only {
+  padding-top: var(--space-padding-7);
+  border-top-width: var(--stroke-weight-light);
+  border-start-start-radius: var(--radius-node);
+  border-start-end-radius: var(--radius-node);
+}
+.canvas-card--row.canvas-card--last,
+.canvas-card--row.canvas-card--only {
+  padding-bottom: var(--space-padding-7);
+  border-bottom-width: var(--stroke-weight-light);
+  border-end-start-radius: var(--radius-node);
+  border-end-end-radius: var(--radius-node);
+}
+.canvas-card--row .canvas-node-line {
+  justify-content: flex-start;
+}
+.canvas-card--row .canvas-output-text {
+  text-align: left;
+}
+.canvas-card--row [data-icon] {
+  color: var(--color-font-sub-text);
+}
+/* 노드 옆 세로 도구 */
+.canvas-node-tool {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  padding-left: var(--space-padding-4);
+  opacity: 0;
+}
+.react-flow__node:is(:hover, :focus-within) .canvas-node-tool,
+.canvas-node-tool:is([data-open], :focus-within) {
+  opacity: 1;
+}
+.canvas-node-tool-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-3);
+  padding: var(--space-padding-2);
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: var(--radius-max);
+  background: var(--color-canvas-node);
+}
+.canvas-node-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-padding-2);
+  border: 0;
+  border-radius: var(--radius-max);
+  background: transparent;
+  color: var(--color-font-main-text);
+  cursor: pointer;
+}
+.canvas-node-tool-button:is(:hover, [data-active]) {
+  background: var(--color-fill-neutral);
+  color: var(--color-font-on-fill);
+}
+.canvas-node-tool-button:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.generation-canvas .react-flow__node:is(:hover, :focus-within) {
+  z-index: 1000 !important;
+}
+/* 코멘트 코너와 띠 */
+.canvas-comment-band {
+  position: absolute;
+  z-index: 1;
+  left: calc(100% - var(--size-icon-empty) - var(--space-gap-4));
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  width: max-content;
+  pointer-events: none;
+}
+.canvas-comment-band .canvas-comment-corner {
+  position: relative;
+  flex: none;
+  right: auto;
+  bottom: auto;
+}
+.canvas-comment-text {
+  display: none;
+  box-sizing: border-box;
+  align-items: center;
+  min-height: calc(var(--size-icon-empty) + var(--space-gap-4));
+  max-width: calc(var(--canvas-node-width) + var(--space-padding-7) * 2 + var(--space-padding-4));
+  margin: 0;
+  padding: var(--space-padding-4) var(--space-padding-7) var(--space-padding-4)
+    var(--space-padding-4);
+  overflow: hidden;
+  background: var(--color-fill-point);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b1-m);
+  letter-spacing: var(--letter-spacing-default);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.canvas-comment-band[data-open] .canvas-comment-text,
+.react-flow__node:is(:hover, :focus-within) .canvas-comment-text {
+  display: -webkit-box;
+}

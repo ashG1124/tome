@@ -55,6 +55,9 @@ function recentView(
   };
 }
 
+/** 편집 패널을 피해 화면을 줄일 때의 가장 작은 확대 비율. 이보다 작아야 하면 줄이지 않고 답변 카드만 옮긴다. */
+const MIN_EDIT_ZOOM = 0.55;
+
 const NODE_TYPES = { card: CanvasCard };
 const EDGE_TYPES = {};
 
@@ -81,9 +84,21 @@ function CanvasContent({
   remix,
   remixDisabled,
 }: GenerationCanvasProps) {
+  // 글꼴이 늦게 도착하면 줄 수 어림이 달라지므로 다 받은 뒤 한 번 더 배치한다.
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void document.fonts?.ready.then(() => {
+      if (active) setFontsReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   const graph = useMemo(
     () => buildCanvas(sets, generation, labels, geometry),
-    [sets, generation, labels, geometry],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fontsReady 는 배치 재계산 신호다.
+    [sets, generation, labels, geometry, fontsReady],
   );
   const flow = useReactFlow<CanvasNode, Edge>();
   const initialized = useNodesInitialized();
@@ -141,6 +156,42 @@ function CanvasContent({
       else void flow.fitView({ padding: 0.12, minZoom: 0.3, maxZoom: 0.8 });
     }
   }, [initialized, flow, store, sets, graph.nodes.length]);
+
+  // 노드 편집 패널이 열리면 패널이 가리는 오른쪽 띠 밖으로 답변 카드(와 고른 노드)가 오게 화면을 옮긴다.
+  const selectedKey = editor?.selected ? `${editor.selected.setId}:${editor.selected.nodeId}` : '';
+  useEffect(() => {
+    if (!selectedKey) return;
+    const selection = editor?.selected;
+    const panel = document.querySelector('.canvas-editor-panels');
+    const { domNode, transform } = store.getState();
+    if (!selection || !panel || !domNode) return;
+    const answer = flow.getInternalNode(`${selection.setId}:answer`);
+    const node = flow.getInternalNode(`${selection.setId}:${selection.nodeId}`);
+    if (!answer || !node) return;
+    const box = domNode.getBoundingClientRect();
+    const margin = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--space-padding-8'),
+    );
+    const limit = panel.getBoundingClientRect().left - box.left - margin;
+    const [tx, ty, zoom] = transform;
+    const right =
+      answer.internals.positionAbsolute.x + (answer.measured.width ?? geometry.answerWidth);
+    const left = node.internals.positionAbsolute.x;
+    let nextZoom = zoom;
+    if ((right - left) * zoom > limit - 2 * margin) {
+      const fit = (limit - 2 * margin) / (right - left);
+      if (fit >= MIN_EDIT_ZOOM) nextZoom = fit;
+    }
+    // 답변 카드가 패널 밖에 있어야 하는 것이 먼저, 고른 노드가 화면 안에 있는 것이 그 다음이다.
+    const maxX = limit - right * nextZoom;
+    const minX = margin - left * nextZoom;
+    const nextX = minX <= maxX ? Math.min(Math.max(tx, minX), maxX) : maxX;
+    if (nextZoom === zoom && nextX === tx) return;
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    void flow.setViewport({ x: nextX, y: ty, zoom: nextZoom }, { duration: calm ? 0 : 200 });
+    // 선택 키가 바뀔 때만 한 번 맞춘다. 열려 있는 동안 사용자가 옮기는 화면은 건드리지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
 
   // 키보드로도 확대·축소할 수 있게 한다(화면 버튼을 없앤 대신). 입력칸 안에서는 글자 입력이 먼저다.
   const zoomByKey = useCallback(

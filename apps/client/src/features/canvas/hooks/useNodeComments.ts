@@ -20,6 +20,22 @@ export interface NodeCommentsApi {
 const commentsKey = (token: string | null, answerId: string) =>
   ['canvas-comments', token, answerId] as const;
 
+/** 답변 하나의 코멘트 전체. 같은 키를 쓰므로 코멘트 창과 요청 한 번을 나눠 쓴다. 노드 옆 코멘트 띠가 읽는다. */
+export function useAnswerComments(
+  answerId: string,
+  api: Pick<NodeCommentsApi, 'listComments'>,
+  enabled = true,
+) {
+  const token = useSessionStore((state) => state.token);
+  return useQuery({
+    queryKey: commentsKey(token, answerId),
+    queryFn: async () =>
+      (await api.listComments(answerId)).map((comment) => NodeCommentSchema.parse(comment)),
+    retry: false,
+    enabled,
+  });
+}
+
 export function useNodeComments(answerId: string, nodeId: string, api: NodeCommentsApi) {
   const client = useQueryClient();
   const token = useSessionStore((state) => state.token);

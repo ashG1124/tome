@@ -284,6 +284,7 @@ function PageCanvas({
                     versions.select(setId, answerId);
                   },
                   pin: versions.togglePin,
+                  listComments: historyApi?.listComments,
                   canComment: (setId, answerId, nodeId) => {
                     const answer = sets.find((set) => set.id === setId)?.latestAnswer;
                     return (
