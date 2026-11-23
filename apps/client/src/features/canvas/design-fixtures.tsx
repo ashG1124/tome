@@ -27,6 +27,12 @@ export const canvasDesignFixtures = {
     </div>
   ),
   gradient: () => <GenerationImage />,
+  // 파생 화면 원작자 머리글(시안 Work Space-Derive 1679:15197). 그림은 머리글 둘레 160×44 를 잘라 쓴다.
+  originHeading: () => (
+    <div className="canvas-heading" data-variant="origin" style={{ height: '100%' }}>
+      <strong>{CANVAS_COPY.derive.origin('shina')}</strong>
+    </div>
+  ),
 };
 
 const editorNode: Node = {

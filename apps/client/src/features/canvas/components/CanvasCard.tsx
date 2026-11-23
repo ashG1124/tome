@@ -165,7 +165,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         </div>
       ) : null}
 
-      {data.kind !== 'answer' ? (
+      {data.kind !== 'answer' && data.kind !== 'origin' ? (
         <Handle type="source" position={Position.Right} isConnectable={false} />
       ) : null}
     </>

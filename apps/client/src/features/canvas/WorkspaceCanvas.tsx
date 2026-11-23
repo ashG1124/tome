@@ -284,6 +284,7 @@ function PageCanvas({
           generation={displayedGeneration}
           labels={CANVAS_COPY}
           geometry={geometry}
+          derivedFrom={workspace.project.kind === 'derive' ? workspace.derivedFrom : undefined}
           announcement={announcement}
           history={
             history

@@ -6,6 +6,7 @@ import type {
   Node as OutputNode,
   NodeStage,
   PromptSet,
+  WorkspaceDerivedFrom,
 } from '@tome/shared';
 import type { Edge, Node } from '@xyflow/react';
 
@@ -29,13 +30,19 @@ export interface CanvasLabels {
   instructions: string;
   /** 단계 안 그룹 소제목. 없으면 소제목을 그리지 않는다. */
   groups?: Partial<Record<GroupKey, string>>;
+  /** 파생 워크스페이스 답변 카드 문구. 없으면 파생 2열을 그리지 않는다. */
+  derive?: {
+    mine: string;
+    origin: (name: string) => string;
+    deletedOriginal: string;
+  };
 }
 
 /** 노드 열 안의 묶음. 같은 묶음끼리 소제목 아래에 모인다. */
 export type GroupKey = 'keywords' | 'dataType' | 'priority' | 'evidence' | 'criteria' | 'mismatch';
 
 /** 단계 이름표(알약)와 그룹 소제목은 노드 위에 얹는 장식 줄이다. */
-export type HeadingVariant = 'step' | 'group';
+export type HeadingVariant = 'step' | 'group' | 'answer' | 'origin';
 /** 한 묶음 안 위치. 묶음 행(우선순위·검증 기준)을 한 장 카드처럼 이어 붙이는 데 쓴다. */
 export type GroupPosition = 'first' | 'middle' | 'last' | 'only';
 
@@ -63,6 +70,8 @@ const LAYOUT = {
   /** 묶음 행(우선순위·검증 기준) 사이 간격과 맨 위·맨 아래 안쪽 여백 */
   rowGap: 12,
   rowEdge: 20,
+  /** 답변 그림 비율 11:7(canvas.css .canvas-image-slot). 파생 2열에서 위 카드 높이를 어림해 아래 카드를 놓는 데 쓴다. */
+  answerAspect: 7 / 11,
 } as const;
 
 export interface CanvasGeometry {
@@ -84,7 +93,7 @@ export interface GenerationView {
 }
 
 export type CardData = {
-  kind: 'heading' | 'prompt' | 'output' | 'placeholder' | 'answer';
+  kind: 'heading' | 'prompt' | 'output' | 'placeholder' | 'answer' | 'origin';
   variant?: HeadingVariant;
   groupPosition?: GroupPosition;
   setId: string;
@@ -95,6 +104,8 @@ export type CardData = {
   output?: OutputNode;
   answer?: Answer;
   answerId?: string;
+  /** 원작 답변 카드(kind 'origin')가 그릴 원작 정보. 읽기 전용이다. */
+  origin?: WorkspaceDerivedFrom;
   state?: 'pending' | 'running' | 'done' | 'skipped' | 'failed';
   error?: GenerationView['error'];
   onRetry?: () => Promise<void>;
@@ -192,13 +203,17 @@ export function buildCanvas(
   generation: GenerationView | undefined,
   labels: CanvasLabels,
   geometry: CanvasGeometry,
+  derivedFrom?: WorkspaceDerivedFrom,
 ) {
   const nodes: CanvasNode[] = [];
   const edges: Edge[] = [];
   const stepEdges: Edge[] = [];
   let top = 0;
   const { nodeWidth, nodeHeight, columnGap, rowGap, setGap, headerHeight } = geometry;
-  for (const set of [...sets].sort((a, b) => a.position - b.position)) {
+  const ordered = [...sets].sort((a, b) => a.position - b.position);
+  for (const set of ordered) {
+    // 파생 프로젝트의 원작 답변은 첫 세트(파생 때 원작 대표 답변이 복사된 세트) 옆에만 둔다.
+    const derive = derivedFrom && labels.derive && set === ordered[0] ? labels.derive : undefined;
     const current = generation?.setId === set.id ? generation : undefined;
     const answer =
       current?.steps.find((step) => step.answer)?.answer ?? set.latestAnswer ?? undefined;
@@ -223,9 +238,14 @@ export function buildCanvas(
       column: number,
       row: number,
       data: Omit<CardData, 'setId' | 'column' | 'row' | 'labels'>,
-      opts: { heading?: boolean; y?: number; minHeight?: number | false } = {},
+      opts: {
+        heading?: boolean;
+        y?: number;
+        minHeight?: number | false;
+        draggable?: boolean;
+      } = {},
     ) => {
-      const { heading = false, y, minHeight } = opts;
+      const { heading = false, y, minHeight, draggable = !heading } = opts;
       nodes.push({
         id: id(suffix),
         type: 'card',
@@ -238,7 +258,7 @@ export function buildCanvas(
           width: column === 6 ? geometry.answerWidth : nodeWidth,
           minHeight: minHeight === false || heading ? undefined : (minHeight ?? nodeHeight),
         },
-        draggable: !heading,
+        draggable,
         selectable: false,
         focusable: false,
         deletable: false,
@@ -386,21 +406,87 @@ export function buildCanvas(
         deletable: false,
       });
     }
+    const answerHeading = derive ? derive.mine : labels.answer(answer?.number ?? 1);
+    // 파생 2열: 위는 원작 답변(읽기 전용), 아래는 내 답변. 아래 카드는 위 카드 높이만큼 내려 놓는다.
+    const originHeight = geometry.answerWidth * LAYOUT.answerAspect;
+    const mineHeadingY = top + headerHeight + originHeight + rowGap;
+    if (derive && derivedFrom) {
+      const creator = derivedFrom.creator;
+      const deleted = derivedFrom.title === null || creator === null;
+      if (!deleted) {
+        add(
+          'origin-heading',
+          6,
+          -1,
+          { kind: 'heading', variant: 'origin', label: derive.origin(creator.displayName) },
+          { heading: true, y: top },
+        );
+      }
+      add(
+        'origin-answer',
+        6,
+        0,
+        {
+          kind: 'origin',
+          label: deleted
+            ? derive.deletedOriginal
+            : derivedFrom.answer
+              ? labels.answer(derivedFrom.answer.number)
+              : derive.origin(creator.displayName),
+          origin: derivedFrom,
+          state: 'done',
+        },
+        { y: top + headerHeight, minHeight: false, draggable: false },
+      );
+      // 마지막 단계에 노드가 아직 없으면(복사된 답변 등) 마지막 단계 자리 카드에서 두 답변 카드로 잇는다.
+      const sources = answerParents.length
+        ? answerParents.map((node) => node.id)
+        : ['verify-placeholder'];
+      for (const parent of sources) {
+        if (!answerParents.length)
+          edges.push({
+            id: id(`${parent}->answer`),
+            source: id(parent),
+            target: id('answer'),
+            type: 'smoothstep',
+            focusable: false,
+            selectable: false,
+            deletable: false,
+          });
+        if (deleted) continue;
+        edges.push({
+          id: id(`${parent}->origin-answer`),
+          source: id(parent),
+          target: id('origin-answer'),
+          type: 'smoothstep',
+          className: 'canvas-edge--origin',
+          focusable: false,
+          selectable: false,
+          deletable: false,
+        });
+      }
+    }
     add(
       'answer-heading',
       6,
       -1,
-      { kind: 'heading', label: labels.answer(answer?.number ?? 1) },
-      { heading: true },
+      { kind: 'heading', variant: derive ? 'answer' : undefined, label: answerHeading },
+      { heading: true, y: derive ? mineHeadingY : undefined },
     );
-    add('answer', 6, 0, {
-      kind: 'answer',
-      label: labels.answer(answer?.number ?? 1),
-      answer,
-      state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
-      error: imageError,
-      onRetry: current?.onRetry,
-    });
+    add(
+      'answer',
+      6,
+      derive ? 1 : 0,
+      {
+        kind: 'answer',
+        label: labels.answer(answer?.number ?? 1),
+        answer,
+        state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
+        error: imageError,
+        onRetry: current?.onRetry,
+      },
+      derive ? { y: mineHeadingY + headerHeight } : {},
+    );
     for (const node of outputs.values()) {
       const parents = node.parentIds.length
         ? node.parentIds
@@ -420,7 +506,10 @@ export function buildCanvas(
         });
       }
     }
-    top += Math.max(columnBottom, geometry.answerWidth + headerHeight) + setGap;
+    const answerBottom = derive
+      ? 2 * (headerHeight + originHeight) + rowGap
+      : geometry.answerWidth + headerHeight;
+    top += Math.max(columnBottom, answerBottom) + setGap;
     edges.push(...stepEdges);
     stepEdges.length = 0;
   }
