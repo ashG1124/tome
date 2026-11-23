@@ -59,6 +59,9 @@ function stubMotion(noPreference: boolean) {
     }) as unknown as MediaQueryList) as typeof window.matchMedia;
 }
 
+// 연출 모드는 랜딩 전체(챕터 3개·GSAP)를 그려서 무겁다. 전체 병렬 실행 부하에서 5초를 넘길 수 있어 넉넉히 둔다(#149).
+const MOTION_TEST_TIMEOUT = 20_000;
+
 const originalMatchMedia = window.matchMedia;
 beforeEach(() => {
   window.scrollTo = vi.fn() as typeof window.scrollTo;
@@ -188,16 +191,20 @@ describe('인트로 랜딩 — 이동과 스크롤', () => {
     expect(screen.getByText('입장 화면')).toBeTruthy();
   });
 
-  it('챕터 메뉴를 누르면 그 챕터로 스크롤하고, 메뉴는 화면 이동을 하지 않는다', () => {
-    stubMotion(true);
-    renderLanding();
-    const remix = screen.getByRole('link', { name: COPY['ON-02b'] });
-    expect(remix.getAttribute('href')).toBe('#remix');
-    fireEvent.click(remix);
-    expect(lenisCalls.scrollTo).toHaveLength(1);
-    expect(lenisCalls.scrollTo[0]?.[0]).toBe(document.getElementById('remix'));
-    expect(screen.queryByText('입장 화면')).toBeNull();
-  });
+  it(
+    '챕터 메뉴를 누르면 그 챕터로 스크롤하고, 메뉴는 화면 이동을 하지 않는다',
+    () => {
+      stubMotion(true);
+      renderLanding();
+      const remix = screen.getByRole('link', { name: COPY['ON-02b'] });
+      expect(remix.getAttribute('href')).toBe('#remix');
+      fireEvent.click(remix);
+      expect(lenisCalls.scrollTo).toHaveLength(1);
+      expect(lenisCalls.scrollTo[0]?.[0]).toBe(document.getElementById('remix'));
+      expect(screen.queryByText('입장 화면')).toBeNull();
+    },
+    MOTION_TEST_TIMEOUT,
+  );
 
   it('정지 모드의 챕터 메뉴는 브라우저 기본 스크롤을 쓴다', () => {
     stubMotion(false);
@@ -241,14 +248,18 @@ describe('인트로 랜딩 — 움직임 줄이기(정지 화면)', () => {
     expect(gsap.getTweensOf(container.querySelector('[data-hero-enter]'))).toHaveLength(0);
   });
 
-  it('?motion=off 도 정지 화면 모드다', () => {
-    stubMotion(true);
-    const { container } = renderLanding('/?motion=off');
-    expect(container.querySelector('[data-story-mode]')?.getAttribute('data-story-mode')).toBe(
-      'static',
-    );
-    expect(lenisCalls.created).toBe(0);
-  });
+  it(
+    '?motion=off 도 정지 화면 모드다',
+    () => {
+      stubMotion(true);
+      const { container } = renderLanding('/?motion=off');
+      expect(container.querySelector('[data-story-mode]')?.getAttribute('data-story-mode')).toBe(
+        'static',
+      );
+      expect(lenisCalls.created).toBe(0);
+    },
+    MOTION_TEST_TIMEOUT,
+  );
 
   it('세 챕터가 정지 화면에서도 제목을 읽을 수 있게 모두 보인다', () => {
     stubMotion(false);
@@ -280,40 +291,52 @@ describe('인트로 랜딩 — 자산이 없는 빌드', () => {
 });
 
 describe('인트로 랜딩 — 연출(GSAP·Lenis)과 정리', () => {
-  it('움직임 줄이기가 아니면 Lenis 와 연출이 켜진다', () => {
-    stubMotion(true);
-    const { container } = renderLanding();
-    expect(lenisCalls.created).toBe(1);
-    expect(ScrollTrigger.getAll().length).toBeGreaterThan(0);
-    const tile = container.querySelector('[data-hero-tile]') as HTMLElement;
-    expect(gsap.getTweensOf(tile).length).toBeGreaterThan(0);
-    expect(container.querySelector('[data-story-mode]')?.getAttribute('data-story-mode')).toBe(
-      'motion',
-    );
-  }, 20_000);
+  it(
+    '움직임 줄이기가 아니면 Lenis 와 연출이 켜진다',
+    () => {
+      stubMotion(true);
+      const { container } = renderLanding();
+      expect(lenisCalls.created).toBe(1);
+      expect(ScrollTrigger.getAll().length).toBeGreaterThan(0);
+      const tile = container.querySelector('[data-hero-tile]') as HTMLElement;
+      expect(gsap.getTweensOf(tile).length).toBeGreaterThan(0);
+      expect(container.querySelector('[data-story-mode]')?.getAttribute('data-story-mode')).toBe(
+        'motion',
+      );
+    },
+    MOTION_TEST_TIMEOUT,
+  );
 
-  it('떠나면 Lenis destroy, ScrollTrigger kill, 트윈 되돌리기가 모두 끝난다', () => {
-    stubMotion(true);
-    const { container, unmount } = renderLanding();
-    const tile = container.querySelector('[data-hero-tile]') as HTMLElement;
-    expect(ScrollTrigger.getAll().length).toBeGreaterThan(0);
-    act(() => unmount());
-    expect(lenisCalls.destroyed).toBe(lenisCalls.created);
-    expect(ScrollTrigger.getAll()).toHaveLength(0);
-    expect(gsap.getTweensOf(tile)).toHaveLength(0);
-    expect(tile.getAttribute('style') ?? '').not.toContain('translate');
-    expect(document.documentElement.style.overflow).toBe('');
-  }, 20_000);
+  it(
+    '떠나면 Lenis destroy, ScrollTrigger kill, 트윈 되돌리기가 모두 끝난다',
+    () => {
+      stubMotion(true);
+      const { container, unmount } = renderLanding();
+      const tile = container.querySelector('[data-hero-tile]') as HTMLElement;
+      expect(ScrollTrigger.getAll().length).toBeGreaterThan(0);
+      act(() => unmount());
+      expect(lenisCalls.destroyed).toBe(lenisCalls.created);
+      expect(ScrollTrigger.getAll()).toHaveLength(0);
+      expect(gsap.getTweensOf(tile)).toHaveLength(0);
+      expect(tile.getAttribute('style') ?? '').not.toContain('translate');
+      expect(document.documentElement.style.overflow).toBe('');
+    },
+    MOTION_TEST_TIMEOUT,
+  );
 
-  it('다시 들어와도(마운트 → 언마운트 → 마운트) 이전 연출이 남지 않는다', () => {
-    stubMotion(true);
-    const first = renderLanding();
-    act(() => first.unmount());
-    const second = renderLanding();
-    const pinned = ScrollTrigger.getAll().filter((trigger) => trigger.pin);
-    // 같은 pin 요소에 ScrollTrigger 가 겹쳐 쌓이지 않는다
-    expect(new Set(pinned.map((trigger) => trigger.pin)).size).toBe(pinned.length);
-    act(() => second.unmount());
-    expect(ScrollTrigger.getAll()).toHaveLength(0);
-  }, 20_000);
+  it(
+    '다시 들어와도(마운트 → 언마운트 → 마운트) 이전 연출이 남지 않는다',
+    () => {
+      stubMotion(true);
+      const first = renderLanding();
+      act(() => first.unmount());
+      const second = renderLanding();
+      const pinned = ScrollTrigger.getAll().filter((trigger) => trigger.pin);
+      // 같은 pin 요소에 ScrollTrigger 가 겹쳐 쌓이지 않는다
+      expect(new Set(pinned.map((trigger) => trigger.pin)).size).toBe(pinned.length);
+      act(() => second.unmount());
+      expect(ScrollTrigger.getAll()).toHaveLength(0);
+    },
+    MOTION_TEST_TIMEOUT,
+  );
 });
