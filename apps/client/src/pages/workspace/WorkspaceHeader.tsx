@@ -2,6 +2,9 @@ import { Link } from 'react-router';
 import { COPY, SKELETON_COPY } from '../../shared/copy';
 import { ICON_URLS } from '../../shared/ui/icon-registry';
 
+/** 서버가 제목 없이 만든 새 프로젝트의 기본 제목. 초기 화면에서는 눈에 안 보인다(3174:174539). 낭독기용 제목은 남긴다. */
+const PLACEHOLDER_TITLE = 'Untitled';
+
 interface WorkspaceHeaderProps {
   /** 프로젝트 제목. 불러오는 중이면 undefined */
   title: string | undefined;
@@ -30,7 +33,9 @@ export function WorkspaceHeader({ title, partnerName }: WorkspaceHeaderProps) {
           <span aria-hidden="true" className={logoBox} />
         )}
       </Link>
-      <h1 className="m-0 max-w-[50vw] truncate text-center [font:var(--text-subtitle-st1-m)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-main-text)]">
+      <h1
+        className={`${title === PLACEHOLDER_TITLE ? 'sr-only ' : ''}m-0 max-w-[50vw] truncate text-center [font:var(--text-subtitle-st1-m)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-main-text)]`}
+      >
         {title ?? SKELETON_COPY.workspace}
         {title !== undefined && partnerName !== undefined ? (
           <>

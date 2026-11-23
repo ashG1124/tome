@@ -233,12 +233,14 @@ export function IconMenu({
           <Icon name="add" />
         </button>
       ) : finish !== undefined ? (
-        <div className="relative flex items-center">
+        <div className="group relative flex items-center">
           {finishReason !== null ? (
             <p
               id={reasonId}
+              // 안내는 손을 올리거나(hover) 포커스가 있을 때만 보인다. 숨겨도 낭독기는 aria-describedby 로 읽는다.
               className={[
-                'absolute right-[calc(100%+var(--space-padding-3))] m-0 whitespace-nowrap',
+                'pointer-events-none absolute right-[calc(100%+var(--space-padding-3))] m-0 whitespace-nowrap',
+                'opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100',
                 'rounded-[var(--radius-max)] bg-[color:var(--color-background-default)] px-[var(--space-padding-5)] py-[var(--space-padding-2)]',
                 'shadow-[var(--shadow-icon-menu)] [font:var(--text-body-b2-r)] text-[color:var(--color-font-sub-text)]',
               ].join(' ')}

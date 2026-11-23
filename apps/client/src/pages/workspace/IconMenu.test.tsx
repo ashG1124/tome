@@ -112,7 +112,12 @@ describe('IconMenu', () => {
     const save = screen.getByRole('button', { name: COPY['W-04'] }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     const reasonId = save.getAttribute('aria-describedby');
-    expect(document.getElementById(reasonId ?? '')?.textContent).toBe(COPY.G1);
+    const reason = document.getElementById(reasonId ?? '');
+    expect(reason?.textContent).toBe(COPY.G1);
+    // 말풍선은 평소엔 투명하고 hover·focus 때만 보인다
+    expect(reason?.className).toContain('opacity-0');
+    expect(reason?.className).toContain('group-hover:opacity-100');
+    expect(reason?.className).toContain('group-focus-within:opacity-100');
   });
 
   it('끝내기 칸을 주지 않으면 그리지 않는다', () => {

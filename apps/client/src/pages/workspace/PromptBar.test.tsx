@@ -158,7 +158,8 @@ describe('PromptBar', () => {
   it('빈 페이지가 아니면 인사말·프리셋이 없다', () => {
     render(<Harness emptyPage={false} onSubmit={vi.fn()} />);
 
-    expect(input().placeholder).toBe('');
+    // 생성 뒤에도 자리표시 문구는 그대로 남는다
+    expect(input().placeholder).toBe(COPY['S-08']);
     expect(screen.queryByRole('list')).toBeNull();
   });
 });
