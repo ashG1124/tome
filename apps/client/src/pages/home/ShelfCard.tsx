@@ -38,7 +38,7 @@ interface ShelfCardProps {
 
 /**
  * 서가 카드 한 장(108×192). 마우스를 올리거나 키보드 포커스가 오면 넓어지며 종류·편집일이 보인다.
- * 표지 사진이 뜨면 글자를 흰색으로 바꾸고, 좁을 때는 제목을 투명하게 둔다(낭독기·Tab·클릭은 그대로).
+ * 표지 사진이 뜨면 글자를 흰색으로 바꾸고, 좁을 때는 사진 유무와 관계없이 제목을 투명하게 둔다(낭독기·Tab·클릭은 그대로).
  * 링크에는 제목만 넣어 화면 낭독기가 제목으로 읽게 하고, Alt+←/→ 로 순서를 바꾼다(드래그의 키보드 대체).
  */
 export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
@@ -80,6 +80,8 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
           'absolute top-0 box-border h-full w-[var(--size-shelf-card-width)] overflow-hidden',
           openToLeft ? 'right-0' : 'left-0',
           'rounded-[var(--radius-shelf-card)] bg-[color:var(--color-fill-neutral-weak)] p-[var(--space-padding-4)]',
+          // 넓어지는 전환(약 250ms). 움직임 줄이기면 바로 바뀐다.
+          'transition-[width] duration-[250ms] ease-out motion-reduce:transition-none',
           'group-focus-within:z-10 group-focus-within:w-[var(--size-shelf-card-width-open)]',
           'group-hover:z-10 group-hover:w-[var(--size-shelf-card-width-open)]',
         ].join(' ')}
@@ -153,9 +155,12 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
               'mt-auto line-clamp-3 break-words no-underline',
               '[font:var(--text-subtitle-st2-sb)] tracking-[var(--letter-spacing-default)]',
               'group-focus-within:line-clamp-1 group-hover:line-clamp-1',
-              // 사진 카드는 좁을 때 제목을 투명하게 둔다. 마우스·포커스가 오면 카드가 넓어지며 다시 보인다.
+              // 기본(좁을 때)은 이미지만 보이게 제목을 투명하게 둔다(링크 이름은 그대로라 낭독기·Tab·클릭 가능).
+              // 마우스·키보드 포커스가 오면 카드가 넓어지며 제목이 서서히 보인다.
+              'opacity-0 transition-opacity duration-[250ms] ease-out motion-reduce:transition-none',
+              'group-focus-within:opacity-100 group-hover:opacity-100',
               onImage
-                ? 'text-[color:var(--color-font-on-fill)] opacity-0 group-focus-within:opacity-100 group-hover:opacity-100'
+                ? 'text-[color:var(--color-font-on-fill)]'
                 : 'text-[color:var(--color-font-strong)]',
             ].join(' ')}
           >

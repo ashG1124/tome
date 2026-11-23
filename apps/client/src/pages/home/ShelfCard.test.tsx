@@ -50,11 +50,15 @@ function titleHidden(): boolean {
 }
 
 describe('ShelfCard 표지 사진', () => {
-  it('사진 주소가 없으면 사진 없는 면에 제목을 보여 준다', () => {
+  it('사진 주소가 없어도 기본은 제목을 화면에서만 숨기고, hover·focus 때 보이게 하는 클래스를 가진다', () => {
     const container = renderCard();
     expect(container.querySelector('img')).toBeNull();
     expect(coverState(container)).toBe('none');
-    expect(titleHidden()).toBe(false);
+    expect(titleHidden()).toBe(true);
+    const link = screen.getByRole('link', { name: 'Alpha' });
+    expect(link.className).toContain('group-hover:opacity-100');
+    expect(link.className).toContain('group-focus-within:opacity-100');
+    expect(link.className).toContain('motion-reduce:transition-none');
   });
 
   it('사진이 다 뜨기 전에는 사진 없는 면 그대로, 뜨고 나면 제목을 화면에서만 숨긴다', () => {
@@ -62,7 +66,7 @@ describe('ShelfCard 표지 사진', () => {
     const image = coverImage(container);
     expect(image.getAttribute('alt')).toBe('');
     expect(coverState(container)).toBe('loading');
-    expect(titleHidden()).toBe(false);
+    expect(titleHidden()).toBe(true);
 
     fireEvent.load(image);
     expect(coverState(container)).toBe('shown');
@@ -75,6 +79,6 @@ describe('ShelfCard 표지 사진', () => {
     fireEvent.error(coverImage(container));
     expect(container.querySelector('img')).toBeNull();
     expect(coverState(container)).toBe('failed');
-    expect(titleHidden()).toBe(false);
+    expect(titleHidden()).toBe(true);
   });
 });
