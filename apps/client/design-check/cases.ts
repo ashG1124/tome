@@ -311,3 +311,17 @@ cases.push({
   width: 60,
   height: 60,
 });
+
+// 헤더 ETC 변형(#156): 프로필 이중 원 테두리 확인용. 글자 로고·AGORA 글자 렌더링 차이만 남아야 한다.
+cases.push({
+  id: 'header/etc',
+  ref: 'design-ref/components/header/property-1-etc__1226-80947.png',
+  width: 1728,
+  height: 100,
+  allowedDiff: {
+    max: 0.021,
+    maxBlob: 650,
+    reason:
+      '연한 로고·AGORA 글자를 안내 글자색(#6A7281)으로 진하게(시안 #C5CBD7 은 1.6:1) + 글자 렌더링',
+  },
+});

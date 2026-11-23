@@ -13,7 +13,7 @@ import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
 import { RemixLabel } from '../../src/pages/workspace/remix/RemixPanel';
 import { CreatorPill } from '../../src/pages/agora/AgoraHomePage';
-import { Flash, Tabs, TitleInput } from '../../src/shared/ui';
+import { AppHeader, Flash, Tabs, TitleInput } from '../../src/shared/ui';
 import { LandingFooter, LandingScale } from '../../src/pages/landing';
 
 // 시범 비교용 안내 글자. 앱 copy 에는 넣지 않는다.
@@ -148,3 +148,4 @@ renders['canvas-history/pin-off'] = () => canvasHistoryDesignFixtures.pin(false)
 renders['canvas-history/pin-on'] = () => canvasHistoryDesignFixtures.pin(true);
 
 renders['canvas-remix/closed'] = remixDesignFixtures.closed;
+renders['header/etc'] = () => withAppContext(<AppHeader current={null} profileTo="/" />);

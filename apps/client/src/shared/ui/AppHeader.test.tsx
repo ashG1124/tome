@@ -47,4 +47,18 @@ describe('AppHeader', () => {
       expect(mark.getAttribute('aria-hidden')).toBe('true');
     }
   });
+
+  it('어디도 아닐 때만(ETC) 프로필에 이중 원 테두리가 있다', () => {
+    renderHeader(null);
+    const profile = screen.getByRole('link', { name: COPY['HD-02'] });
+    expect(profile.hasAttribute('data-avatar-ring')).toBe(true);
+    expect(profile.className).toContain('--color-fill-neutral)');
+  });
+
+  it('TÓME·AGORA 일 때 프로필에는 바깥 테두리가 없다', () => {
+    renderHeader('tome');
+    expect(screen.getByRole('link', { name: COPY['HD-02'] }).hasAttribute('data-avatar-ring')).toBe(
+      false,
+    );
+  });
 });
