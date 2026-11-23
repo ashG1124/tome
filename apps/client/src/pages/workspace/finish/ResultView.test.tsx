@@ -23,7 +23,7 @@ function setup(downloading = false) {
 }
 
 describe('ResultView', () => {
-  it('큰 그림과 Download·닫기 버튼만 보이고, Share·Plugin 은 없다', () => {
+  it('큰 그림·닫기 버튼·Download 알약만 보이고, Share·Plugin 은 없다', () => {
     setup();
 
     const dialog = screen.getByRole('dialog', { name: 'Neon street at night' });
@@ -32,10 +32,9 @@ describe('ResultView', () => {
     expect(screen.getByRole('img', { name: 'Neon street at night' }).getAttribute('src')).toBe(
       '/preview-result.png',
     );
-    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
-      COPY['D-13'],
-      COPY['D-11'],
-    ]);
+    expect(
+      screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent),
+    ).toEqual([COPY['D-11'], COPY['D-13']]);
   });
 
   it('Download 를 누르면 알리고, 받는 중이면 잠긴다', () => {

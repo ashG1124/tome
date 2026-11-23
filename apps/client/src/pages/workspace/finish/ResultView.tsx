@@ -19,15 +19,18 @@ interface ResultViewProps {
   errorMessage?: string;
 }
 
-const CIRCLE = [
+const CLOSE_CIRCLE = [
+  'absolute top-[var(--space-padding-6)] right-[var(--space-padding-6)] z-10',
   'flex size-[var(--size-result-button)] cursor-pointer items-center justify-center p-0',
-  'rounded-[var(--radius-max)] border-0 bg-[color:var(--color-background-default)] text-[color:var(--color-font-sub-text)]',
-  'shadow-[var(--shadow-03)] disabled:cursor-not-allowed disabled:text-[color:var(--color-font-disable)]',
+  'rounded-[var(--radius-max)] border-0 text-[color:var(--color-font-on-fill)]',
+  'bg-[color-mix(in_srgb,var(--color-background-default)_30%,transparent)] backdrop-blur-[var(--blur-tag)]',
+  'hover:bg-[color-mix(in_srgb,var(--color-background-default)_45%,transparent)]',
 ].join(' ');
 
 /**
- * 결과 크게 보기. 큰 그림과 오른쪽 위 Download·닫기 버튼(시안의 Share·Plugin 은 빼기로 했다).
- * 화면 전체를 덮는 모달이라 포커스가 안에 갇히고, Esc·닫기·바깥 클릭으로 닫힌다.
+ * 결과 크게 보기(라이트박스). 큰 그림 위 오른쪽 위에 닫기 동그라미, 그림 아래에 Download 가 든 알약.
+ * 시안의 Share·Plugin 은 범위 밖이라 뺐다. 화면 전체를 덮는 모달이라 포커스가 안에 갇히고,
+ * Esc·닫기·바깥 클릭으로 닫힌다.
  */
 export function ResultView({
   open,
@@ -43,25 +46,21 @@ export function ResultView({
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 grid place-items-center overflow-y-auto bg-[color:var(--color-result-backdrop)] p-[var(--grid-margin)]">
+        <RadixDialog.Overlay className="fixed inset-0 grid place-items-center overflow-y-auto bg-[color:var(--color-background-dim)] p-[var(--space-padding-8)]">
           <RadixDialog.Content
             aria-describedby={undefined}
-            className="relative flex max-h-full max-w-full flex-col items-end gap-[var(--space-padding-8)]"
+            className="flex max-h-full max-w-full flex-col items-center gap-[var(--space-padding-8)]"
           >
             <RadixDialog.Title className="sr-only">{alt}</RadixDialog.Title>
-            <div className="flex gap-[var(--space-gap-5)]">
-              <button
-                type="button"
-                aria-label={COPY['D-13']}
-                aria-busy={downloading || undefined}
-                disabled={downloading}
-                onClick={onDownload}
-                className={CIRCLE}
-              >
-                <Icon name="download" />
-              </button>
+            <div className="relative max-w-full">
+              <img
+                ref={imageRef}
+                src={directSrc}
+                alt={alt}
+                className="block h-[min(63vh,calc(100vh-var(--size-header-height)-var(--size-result-button)))] max-h-full w-[71vw] max-w-full rounded-[var(--radius-node)] bg-[color:var(--color-fill-card)] object-cover shadow-[var(--shadow-floating)]"
+              />
               <RadixDialog.Close asChild>
-                <button type="button" aria-label={COPY['D-11']} className={CIRCLE}>
+                <button type="button" aria-label={COPY['D-11']} className={CLOSE_CIRCLE}>
                   <Icon name="close" />
                 </button>
               </RadixDialog.Close>
@@ -74,12 +73,18 @@ export function ResultView({
                 {errorMessage}
               </p>
             ) : null}
-            <img
-              ref={imageRef}
-              src={directSrc}
-              alt={alt}
-              className="block h-[calc(100vh-4*var(--grid-margin))] w-auto max-w-full rounded-[var(--radius-node)] object-contain"
-            />
+            <div className="flex items-center rounded-[var(--radius-max)] bg-[color-mix(in_srgb,var(--color-background-default)_90%,transparent)] p-[var(--space-padding-3)] shadow-[var(--shadow-03)] backdrop-blur-[var(--blur-background)]">
+              <button
+                type="button"
+                aria-busy={downloading || undefined}
+                disabled={downloading}
+                onClick={onDownload}
+                className="flex cursor-pointer items-center gap-[var(--space-gap-3)] rounded-[var(--radius-max)] border-0 bg-transparent px-[var(--space-padding-6)] py-[var(--space-padding-3)] [font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-body-b1)] text-[color:var(--color-font-main-text)] hover:bg-[color:var(--color-shadow-weak)] disabled:cursor-not-allowed disabled:text-[color:var(--color-font-disable)] disabled:hover:bg-transparent"
+              >
+                <Icon name="download" />
+                {COPY['D-13']}
+              </button>
+            </div>
           </RadixDialog.Content>
         </RadixDialog.Overlay>
       </RadixDialog.Portal>
