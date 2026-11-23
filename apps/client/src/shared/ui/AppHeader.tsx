@@ -85,8 +85,13 @@ export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderP
       <Link
         to={profileTo}
         aria-label={COPY['HD-02']}
+        data-avatar-ring={current === null ? '' : undefined}
         className={[
-          'box-border inline-flex size-[var(--size-header-avatar)] items-center justify-center overflow-hidden rounded-[var(--radius-max)]',
+          'inline-flex size-[var(--size-header-avatar)] items-center justify-center rounded-[var(--radius-max)]',
+          // ETC 변형(Profile Container 1226:80996): 지름 40 그림 둘레에 간격 2(선 굵기 2배)를 두고 진한 선 1을 두른다 = 이중 원
+          current === null
+            ? 'box-content border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-fill-neutral)] p-[calc(var(--stroke-weight-light)*2)]'
+            : '',
           // 그림 파일이 없는 환경에서만 테두리 있는 빈 동그라미로 그린다
           profileIcon === undefined
             ? 'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)] bg-[color:var(--color-fill-neutral-weak)]'
@@ -97,7 +102,7 @@ export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderP
         {profileIcon === undefined ? (
           <span aria-hidden="true" data-avatar-placeholder="" />
         ) : (
-          <img src={profileIcon} alt="" className="block size-full" />
+          <img src={profileIcon} alt="" className="block size-full rounded-[var(--radius-max)]" />
         )}
       </Link>
     </header>
