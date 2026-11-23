@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { CanvasRemixOptions } from '../../features/canvas';
+import { FAKE_OTHER_CREATORS } from '../../shared/api/fake/identity';
 import { JobStageSchema } from '@tome/shared';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,8 +15,21 @@ import { WorkspacePage } from './WorkspacePage';
 // 캔버스(#26)는 그림 라이브러리가 jsdom 에 없는 ResizeObserver 를 써서, 이 화면 테스트에서는 자리 표시로 바꾼다.
 // 캔버스 자체는 features/canvas 테스트와 e2e/canvas.spec.ts(실제 페이지 연결 상태)에서 본다.
 vi.mock('../../features/canvas', () => ({
-  WorkspaceCanvas: ({ projectId, pageId }: { projectId: string; pageId: string }) => (
-    <div data-testid="canvas" data-project={projectId} data-page={pageId} />
+  WorkspaceCanvas: ({
+    projectId,
+    pageId,
+    remix,
+  }: {
+    projectId: string;
+    pageId: string;
+    remix?: CanvasRemixOptions;
+  }) => (
+    <div
+      data-testid="canvas"
+      data-project={projectId}
+      data-page={pageId}
+      data-connections={Object.values(remix?.connectionsByAnswer ?? {}).flat().length}
+    />
   ),
 }));
 
@@ -254,4 +269,20 @@ describe('WorkspacePage 리믹스(#41)', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(COPY['RX-04']);
   });
+});
+
+it('passes actual remix Connection data into the canvas public API', async () => {
+  const partner = FAKE_OTHER_CREATORS[0]!;
+  const { project, job } = await api.createProject({
+    prompt: 'A lighthouse at dusk',
+    remixPartnerId: partner.id,
+  });
+  if (!job) throw new Error('Missing job');
+  for (const stage of JobStageSchema.options) await api.advanceJob(job.id, stage);
+  renderWorkspace(`/projects/${project.id}`);
+  await waitFor(() =>
+    expect(Number(screen.getByTestId('canvas').getAttribute('data-connections'))).toBeGreaterThan(
+      0,
+    ),
+  );
 });

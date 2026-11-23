@@ -1,4 +1,5 @@
 import type { AnswerSummary } from '@tome/shared';
+import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { createContext, type ContextType } from 'react';
 
@@ -22,6 +23,8 @@ export const CanvasNavigation = createContext<{
     canComment: (setId: string, answerId: string, nodeId: string) => boolean;
     comment: (setId: string, answerId: string, nodeId: string) => void;
   };
+  remix?: CanvasRemixOptions;
+  remixDisabled?: boolean;
   active: Record<string, string>;
   focus: (id: string) => void;
   move: (id: string, key: string) => void;

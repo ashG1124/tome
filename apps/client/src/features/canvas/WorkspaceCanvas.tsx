@@ -23,6 +23,7 @@ import { NodeComments, type NodeCommentLabels } from './components/NodeComments'
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistory';
 import type { NodeCommentsApi } from './hooks/useNodeComments';
+import type { CanvasRemixOptions } from './remix-model';
 import './history.css';
 
 const HISTORY_API: AnswerHistoryApi & NodeCommentsApi = {
@@ -62,6 +63,7 @@ export interface WorkspaceCanvasProps {
   onOpenResult?: (answerId: string) => void;
   editor?: CanvasEditorOptions | false;
   history?: CanvasHistoryOptions | false;
+  remix?: CanvasRemixOptions;
 }
 
 function EditorSession({
@@ -162,6 +164,7 @@ function PageCanvas({
   workspace,
   editor = {},
   history = {},
+  remix,
 }: WorkspaceCanvasProps) {
   const historyApi = history ? (history.api ?? HISTORY_API) : undefined;
   const historyLabels = history ? (history.labels ?? CANVAS_HISTORY_COPY) : CANVAS_HISTORY_COPY;
@@ -258,6 +261,8 @@ function PageCanvas({
       {geometry ? (
         <GenerationCanvas
           sets={sets}
+          remix={remix}
+          remixDisabled={busy || editingBusy}
           generation={displayedGeneration}
           labels={CANVAS_COPY}
           geometry={geometry}

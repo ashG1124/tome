@@ -1,0 +1,108 @@
+.canvas-connections {
+  position: absolute;
+  top: calc(-1 * var(--canvas-node-surface-height) / 2);
+  right: 0;
+  display: flex;
+}
+.canvas-connection:has(> button[aria-expanded='true']) {
+  z-index: 2;
+}
+.canvas-connection {
+  position: relative;
+  z-index: 1;
+}
+.canvas-connection-trigger {
+  position: relative;
+  display: block;
+  width: var(--canvas-node-surface-height);
+  height: var(--canvas-node-surface-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.canvas-connection-trigger::before,
+.canvas-connection-trigger::after {
+  content: '';
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  background: var(--color-tome-orange-5);
+  clip-path: polygon(
+    0% 83.33333%,
+    50% 83.33333%,
+    54.35087% 83.04816%,
+    58.6273% 82.19753%,
+    62.75611% 80.79598%,
+    66.66667% 78.86751%,
+    70.29205% 76.44511%,
+    73.57023% 73.57023%,
+    76.44511% 70.29205%,
+    78.86751% 66.66667%,
+    80.79598% 62.75611%,
+    82.19753% 58.6273%,
+    83.04816% 54.35087%,
+    83.33333% 50%,
+    83.33333% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%
+  );
+}
+.canvas-connection-trigger::before {
+  top: 0;
+  left: 0;
+}
+.canvas-connection-trigger::after {
+  bottom: 0;
+  right: 0;
+  transform: rotate(180deg);
+}
+.canvas-connection :is(button):focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.canvas-connection-trigger:disabled {
+  cursor: not-allowed;
+}
+.canvas-connection-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-gap-3));
+  width: min(var(--canvas-answer-width), 70vw);
+  box-sizing: border-box;
+  padding: var(--space-padding-6);
+  border-radius: var(--radius-node);
+  background: var(--color-tome-orange-5);
+  color: var(--color-font-main-text);
+  box-shadow: var(--shadow-connection);
+  font: var(--text-body-b1-m);
+  overflow-wrap: anywhere;
+  max-height: min(calc(var(--canvas-node-surface-height) * 6), 60vh);
+  overflow-y: auto;
+}
+.canvas-connection-popover header,
+.canvas-connection-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+}
+.canvas-connection-popover header strong {
+  flex: 1;
+}
+.canvas-connection-popover button {
+  border: 0;
+  border-radius: var(--radius-max);
+  padding: var(--space-padding-3) var(--space-padding-4);
+  background: var(--color-shadow-medium);
+  color: var(--color-font-main-text);
+  font: inherit;
+  cursor: pointer;
+}
+.canvas-connection-popover button:disabled {
+  cursor: not-allowed;
+  color: var(--color-font-disable);
+}
+.canvas-connection-help {
+  font: var(--text-body-b2-r);
+}

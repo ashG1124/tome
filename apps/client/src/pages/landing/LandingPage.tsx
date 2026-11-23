@@ -1,10 +1,15 @@
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { COPY } from '../../shared/copy';
+import { DeriveChapter } from './chapters/DeriveChapter';
+import { MyWorkChapter } from './chapters/MyWorkChapter';
+import { RemixChapter } from './chapters/RemixChapter';
 import { HeroSection } from './HeroSection';
 import { LandingFooter } from './LandingFooter';
-import { LandingHeader } from './LandingHeader';
-import { prefersReducedMotion } from './motion';
-import { StorySection } from './story/StorySection';
+import { LandingHeader, type ChapterId } from './LandingHeader';
+import { ScrollTrigger } from './motion';
 import { ThreeWaysSection } from './ThreeWaysSection';
+import { useLandingMode } from './useLandingMode';
+import { useSmoothScroll } from './useSmoothScroll';
 import { VisionSection } from './VisionSection';
 import { VolumesBanner } from './VolumesBanner';
 import './landing.css';
@@ -23,10 +28,17 @@ export function LandingScale({ children }: { children: React.ReactNode }) {
 
 /**
  * 인트로 랜딩. 앱 상태·데이터를 읽지 않는 정적 페이지다.
- * 스토리 구간(#47)은 `ThreeWaysSection` 과 푸터 사이에 있다.
+ * 순서: 히어로 → Our Vision → Volumes of Thinking → Three ways → MY WORK → REMIX → DERIVE → 푸터.
+ * 연출을 켤지는 `useLandingMode` 가 정한다(움직임 줄이기면 Lenis·ScrollTrigger 없이 정지 화면).
  */
 export function LandingPage() {
   const logoRef = useRef<HTMLAnchorElement>(null);
+  const storyRef = useRef<HTMLDivElement>(null);
+  const mode = useLandingMode(storyRef);
+  const motion = mode === 'motion';
+  const scroll = useSmoothScroll(motion);
+  const [active, setActive] = useState<ChapterId>('mywork');
+  const [headerClear, setHeaderClear] = useState(false);
 
   // 들어오면 맨 위에서 시작한다(새로고침·뒤로 가기도). 떠날 때 원래 복원 방식으로 되돌린다.
   useLayoutEffect(() => {
@@ -38,19 +50,65 @@ export function LandingPage() {
     };
   }, []);
 
+  // 지금 보이는 챕터를 메뉴에 표시한다
+  useEffect(() => {
+    const triggers = Array.from(document.querySelectorAll<HTMLElement>('[data-chapter]')).map(
+      (chapter) =>
+        ScrollTrigger.create({
+          trigger: chapter,
+          start: 'top 60%',
+          end: 'bottom 40%',
+          onToggle: (self) => {
+            if (self.isActive) setActive(chapter.dataset.chapter as ChapterId);
+          },
+        }),
+    );
+    return () => {
+      for (const trigger of triggers) trigger.kill();
+    };
+  }, [mode]);
+
+  // 이미지가 자리를 잡은 뒤(페이지 load) 위치를 한 번 다시 잰다
+  useEffect(() => {
+    const refresh = () => requestAnimationFrame(() => ScrollTrigger.refresh());
+    if (document.readyState === 'complete') {
+      refresh();
+      return;
+    }
+    window.addEventListener('load', refresh, { once: true });
+    return () => window.removeEventListener('load', refresh);
+  }, [mode]);
+
+  const goToChapter = useCallback(
+    (id: ChapterId) => {
+      const target = document.getElementById(id);
+      if (target) scroll.scrollTo(target);
+    },
+    [scroll],
+  );
+
   const backToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    scroll.scrollTo(0, 1.8);
     logoRef.current?.focus({ preventScroll: true });
-  }, []);
+  }, [scroll]);
 
   return (
     <LandingScale>
-      <LandingHeader logoRef={logoRef} />
+      <LandingHeader
+        logoRef={logoRef}
+        active={active}
+        clear={headerClear}
+        onNavigate={goToChapter}
+      />
       <HeroSection />
       <VisionSection />
       <VolumesBanner />
       <ThreeWaysSection />
-      <StorySection />
+      <div ref={storyRef} data-story-mode={mode} aria-label={COPY['ON-22']} role="group">
+        <MyWorkChapter motion={motion} onHeaderClear={setHeaderClear} />
+        <RemixChapter motion={motion} />
+        <DeriveChapter motion={motion} />
+      </div>
       <LandingFooter onBackToTop={backToTop} />
     </LandingScale>
   );
