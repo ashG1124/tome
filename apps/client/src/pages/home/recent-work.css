@@ -1,0 +1,11 @@
+/*
+ * 홈 좌하단 Recent Work(1185:58874). 디자인 변수가 없는 치수만 이 화면 안에서 이름을 붙여 둔다.
+ * 색·간격·글자·모서리는 shared/tokens 값을 쓴다.
+ */
+.recent-work {
+  --recent-work-width: 400px; /* 원값 400px — 열린 카드 폭 */
+  --recent-work-card-height: 400px; /* 원값 400px — 열린 카드 높이 */
+  --recent-work-open-size: 56px; /* 원값 12px 안쪽 여백 + 32px 아이콘 — 노란 ↗ 원 */
+  --recent-work-offset-x: 21px; /* 시안 x 위치 */
+  --recent-work-offset-bottom: 0px; /* 시안은 화면 아래 끝에 붙는다 */
+}

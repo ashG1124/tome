@@ -1,25 +1,47 @@
 import { useQuery } from '@tanstack/react-query';
-import type { AgoraHomeResponse, AgoraProjectCard, CreatorSummary } from '@tome/shared';
+import type { AgoraProjectCard, CreatorSummary } from '@tome/shared';
 import type { ReactNode } from 'react';
 import { Link, Navigate } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
 import { ErrorNotice } from '../../shared/ui';
-import { isAgoraEmpty, topicTiles } from './agora';
+import { isAgoraEmpty } from './agora';
 import { AgoraFrame } from './AgoraFrame';
 import { AgoraImage } from './AgoraImage';
 import { AuthorAvatar } from './AuthorAvatar';
+import { TopicBundle } from './TopicBundle';
 
 const SECTION_TITLE =
   'm-0 [font:var(--text-heading-h1)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-strong)]';
 
 /** 제목과 가로 한 줄. 넘치면 줄 안에서 가로로 스크롤된다(시안처럼 오른쪽이 잘려 보인다). */
-function Row({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Row({
+  id,
+  title,
+  moreTo,
+  children,
+}: {
+  id: string;
+  title: string;
+  /** 있으면 제목 옆에 "See more" 링크를 둔다(전체 목록 화면으로) */
+  moreTo?: string;
+  children: ReactNode;
+}) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-[var(--space-gap-5)]">
-      <h2 id={id} className={SECTION_TITLE}>
-        {title}
-      </h2>
+      <div className="flex items-baseline gap-[var(--space-gap-5)]">
+        <h2 id={id} className={SECTION_TITLE}>
+          {title}
+        </h2>
+        {moreTo !== undefined ? (
+          <Link
+            to={moreTo}
+            className="[font:var(--text-body-b1-r)] tracking-[var(--letter-spacing-body-b1)] text-[color:var(--color-font-sub-text)] underline"
+          >
+            {COPY['A-03']}
+          </Link>
+        ) : null}
+      </div>
       <ul className="m-0 flex list-none gap-[var(--space-gap-5)] overflow-x-auto p-0 pb-[var(--space-padding-3)]">
         {children}
       </ul>
@@ -75,31 +97,6 @@ export function CreatorPill({ creator }: { creator: CreatorSummary }) {
   );
 }
 
-/**
- * 핫토픽 묶음: 표지 4장(2×2)과 아래 주제 제목. 누르면 핫토픽 목록으로 간다.
- * 시안의 "+N"(주제의 나머지 공개 프로젝트 수)은 홈 응답이 주제당 일부만 주고 전체 수가 없어 표시하지 않는다.
- */
-function TopicBundle({ entry }: { entry: AgoraHomeResponse['hotTopics'][number] }) {
-  const tiles = topicTiles(entry.projects);
-  return (
-    <Link
-      to={`/agora/topics/${encodeURIComponent(entry.topic.id)}`}
-      className="flex w-[var(--size-agora-topic-width)] flex-col gap-[var(--space-padding-5)]"
-    >
-      <span className="relative grid h-[var(--size-agora-topic-height)] grid-cols-2 grid-rows-2 gap-[var(--space-agora-tile-gap)] overflow-hidden rounded-[var(--radius-agora-card)]">
-        {tiles.covers.map((cover, index) => (
-          <span key={index} className="relative">
-            <AgoraImage path={cover} />
-          </span>
-        ))}
-      </span>
-      <span className="[font:var(--text-subtitle-st1-m)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-main-text)]">
-        {entry.topic.title}
-      </span>
-    </Link>
-  );
-}
-
 /** 아고라 홈(1720:101534): Recommended Project · Rising Creator · Hot Topic. 게시물이 없으면 S-02. */
 export function AgoraHomePage() {
   const home = useQuery({ queryKey: ['agora-home'], queryFn: api.getAgoraHome });
@@ -143,7 +140,7 @@ export function AgoraHomePage() {
             </Row>
           ) : null}
           {data.hotTopics.length > 0 ? (
-            <Row id="agora-topics" title={COPY['A-01']}>
+            <Row id="agora-topics" title={COPY['A-01']} moreTo="/agora/topics">
               {data.hotTopics.map((entry) => (
                 <li key={entry.topic.id} className="shrink-0">
                   <TopicBundle entry={entry} />
