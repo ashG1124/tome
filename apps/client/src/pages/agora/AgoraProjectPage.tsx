@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
-import { BusyMark, ErrorNotice, Icon } from '../../shared/ui';
+import { BusyMark, ErrorNotice } from '../../shared/ui';
 import { deriveFailure, derivedFromView } from './agora';
 import { AgoraFrame } from './AgoraFrame';
 import { AgoraImage } from './AgoraImage';
@@ -54,7 +54,10 @@ export function AgoraProjectPage() {
       {data ? (
         <div className="flex items-start gap-[var(--space-agora-columns)]">
           <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-padding-8)]">
-            <div className="relative h-[var(--size-agora-hero-height)] overflow-hidden rounded-[var(--radius-agora-card)]">
+            <div
+              data-testid="agora-hero"
+              className="relative h-[var(--size-agora-hero-height)] overflow-hidden [mask-composite:intersect] [mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent),linear-gradient(to_bottom,transparent,black_14%,black_86%,transparent)]"
+            >
               <AgoraImage path={data.coverImageUrl} />
             </div>
             <p className="m-0 flex items-center gap-[var(--space-padding-3)] [font:var(--text-subtitle-st1-m)] text-[color:var(--color-font-strong)]">
@@ -94,7 +97,10 @@ export function AgoraProjectPage() {
                   'disabled:cursor-not-allowed disabled:bg-[color:var(--color-gray-20)] disabled:text-[color:var(--color-font-disable)]',
                 ].join(' ')}
               >
-                <Icon name="arrow-right" size={20} />
+                <span
+                  aria-hidden="true"
+                  className="size-[var(--space-padding-4)] bg-current [clip-path:polygon(0_0,100%_50%,0_100%)]"
+                />
                 {COPY['A-05']}
                 <BusyMark busy={derive.isPending} />
               </button>
