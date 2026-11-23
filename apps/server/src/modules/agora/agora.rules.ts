@@ -7,6 +7,13 @@ export const HOT_TOPIC_PROJECT_LIMIT = 6;
 export const TOPIC_PROJECT_LIMIT = 50;
 export const DERIVATIVE_LIMIT = 12;
 
+/** 공개 프로젝트 판정: 게시 중이고 삭제·숨김이 아니다(ADR-015). 아고라·워크스페이스 원작 표시가 함께 쓴다. */
+export const isPublicProject = (p: {
+  postedAt: Date | null;
+  deletedAt: Date | null;
+  hiddenAt: Date | null;
+}): boolean => p.postedAt !== null && p.deletedAt === null && p.hiddenAt === null;
+
 export interface ScoredProject {
   id: string;
   postedAt: Date;

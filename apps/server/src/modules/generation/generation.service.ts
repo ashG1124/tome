@@ -7,9 +7,11 @@ import {
   type CreateSetResponse,
   type GetJobResponse,
   LIMITS,
+  type WorkspaceDerivedFrom,
   type WorkspaceResponse,
 } from '@tome/shared';
 import { AppError } from '../../common';
+import { isPublicProject } from '../agora/agora.rules';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import type { AuthContext } from '../session/auth.decorators';
 import { InputSafetyService, isValidKey } from '../projects/input-safety.service';
@@ -22,7 +24,15 @@ import {
   isUniqueViolation,
   type ProjectAccessRow,
 } from './generation.repository';
-import { toAnswer, toAnswerSummary, toJob, toStepResponse } from './generation.mappers';
+import { isPublicAnswer } from './answers.service';
+import {
+  answerImageUrl,
+  answerThumbUrl,
+  toAnswer,
+  toAnswerSummary,
+  toJob,
+  toStepResponse,
+} from './generation.mappers';
 
 @Injectable()
 export class GenerationService {
@@ -83,7 +93,49 @@ export class GenerationService {
       }),
     };
     if (activeJob) response.activeJob = toJob(activeJob);
+    if (project.kind === 'derive') {
+      const derivedFrom = await this.derivedFromOf(projectId);
+      if (derivedFrom) response.derivedFrom = derivedFrom;
+    }
     return response;
+  }
+
+  /**
+   * 파생 프로젝트의 원작 표시. 원작이 지워졌거나 비공개면 제목·원작자·답변을 비운다(ADR-015, 아고라와 같은 규칙).
+   * 원작 답변은 원작 프로젝트의 공개 답변일 때만 내보내 비공개 이미지를 노출하지 않는다.
+   */
+  private async derivedFromOf(projectId: string): Promise<WorkspaceDerivedFrom | null> {
+    const row = await this.repo.findDerivedOrigin(this.repo.client, projectId);
+    if (!row?.derivedFromProjectId) return null;
+    const original = row.derivedFrom;
+    if (!original || !isPublicProject(original)) {
+      return { projectId: row.derivedFromProjectId, title: null, creator: null, answer: null };
+    }
+    const answer = row.derivedFromAnswer;
+    const visible =
+      answer !== null &&
+      answer.number !== null &&
+      answer.set.projectId === original.id &&
+      isPublicAnswer(original, answer);
+    return {
+      projectId: original.id,
+      title: original.title,
+      creator: {
+        id: original.owner.id,
+        kind: original.owner.kind,
+        displayName: original.owner.displayName,
+        bio: original.owner.bio,
+        avatarUrl: null,
+      },
+      answer: visible
+        ? {
+            id: answer.id,
+            number: answer.number!,
+            imageUrl: answerImageUrl(answer.id),
+            thumbUrl: answerThumbUrl(answer.id),
+          }
+        : null,
+    };
   }
 
   createPage(auth: AuthContext, key: string | undefined, projectId: string) {

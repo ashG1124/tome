@@ -57,6 +57,25 @@ export const UpdateProjectResponseSchema = z.object({
 });
 export type UpdateProjectResponse = z.infer<typeof UpdateProjectResponseSchema>;
 
+/**
+ * 파생 워크스페이스가 보여 줄 원작 정보. 원작이 지워졌거나 비공개면 title·creator·answer 가 null,
+ * 원작은 공개인데 원작 답변만 지워졌거나 비공개면 answer 만 null 이다.
+ */
+export const WorkspaceDerivedFromSchema = z.object({
+  projectId: IdSchema,
+  title: z.string().nullable(),
+  creator: CreatorSummarySchema.nullable(),
+  answer: z
+    .object({
+      id: IdSchema,
+      number: z.number().int().min(1),
+      imageUrl: z.string(),
+      thumbUrl: z.string(),
+    })
+    .nullable(),
+});
+export type WorkspaceDerivedFrom = z.infer<typeof WorkspaceDerivedFromSchema>;
+
 export const WorkspaceResponseSchema = z.object({
   project: ProjectSummarySchema,
   pages: z.array(PageWithCountSchema),
@@ -64,6 +83,7 @@ export const WorkspaceResponseSchema = z.object({
   sets: z.array(PromptSetSchema),
   activeJob: JobSchema.optional(),
   remix: RemixStateSchema.optional(),
+  derivedFrom: WorkspaceDerivedFromSchema.optional(),
 });
 export type WorkspaceResponse = z.infer<typeof WorkspaceResponseSchema>;
 

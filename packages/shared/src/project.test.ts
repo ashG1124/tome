@@ -13,6 +13,7 @@ import {
   ProjectSummarySchema,
   UpdateProjectRequestSchema,
   UpdateProjectResponseSchema,
+  WorkspaceDerivedFromSchema,
   WorkspaceResponseSchema,
 } from './project.js';
 import { ID_A, ID_B, NOW, answer, job, project } from './testing/fixtures.js';
@@ -66,6 +67,45 @@ describe('project schemas', () => {
     expect(WorkspaceResponseSchema.safeParse(ws).success).toBe(true);
     expect(WorkspaceResponseSchema.safeParse({ ...ws, activeJob: job }).success).toBe(true);
     expect(WorkspaceResponseSchema.safeParse({ ...ws, currentPageId: 'x' }).success).toBe(false);
+  });
+
+  it('parses workspace derivedFrom: present, null parts, and missing', () => {
+    const creator = {
+      id: ID_B,
+      kind: 'persona',
+      displayName: 'shina',
+      bio: null,
+      avatarUrl: null,
+    };
+    const full = {
+      projectId: ID_A,
+      title: 'Original',
+      creator,
+      answer: { id: ID_B, number: 6, imageUrl: '/assets/answers/x/full', thumbUrl: '/t' },
+    };
+    const gone = { projectId: ID_A, title: null, creator: null, answer: null };
+    const noAnswer = { ...full, answer: null };
+    expect(WorkspaceDerivedFromSchema.safeParse(full).success).toBe(true);
+    expect(WorkspaceDerivedFromSchema.safeParse(gone).success).toBe(true);
+    expect(WorkspaceDerivedFromSchema.safeParse(noAnswer).success).toBe(true);
+    expect(WorkspaceDerivedFromSchema.safeParse({ projectId: ID_A }).success).toBe(false);
+    expect(
+      WorkspaceDerivedFromSchema.safeParse({ ...full, answer: { ...full.answer, number: 0 } })
+        .success,
+    ).toBe(false);
+
+    const ws = {
+      project,
+      pages: [{ id: ID_A, index: 0, setCount: 1 }],
+      currentPageId: ID_A,
+      sets: [],
+    };
+    expect(WorkspaceResponseSchema.safeParse(ws).success).toBe(true);
+    expect(WorkspaceResponseSchema.safeParse({ ...ws, derivedFrom: full }).success).toBe(true);
+    expect(WorkspaceResponseSchema.safeParse({ ...ws, derivedFrom: gone }).success).toBe(true);
+    expect(WorkspaceResponseSchema.safeParse({ ...ws, derivedFrom: { title: 'x' } }).success).toBe(
+      false,
+    );
   });
 
   it('parses the finish response', () => {
