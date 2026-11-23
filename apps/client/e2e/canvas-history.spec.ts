@@ -59,7 +59,7 @@ for (const viewport of [
     );
     await page.screenshot({ path: info.outputPath('01-version-and-pin.png'), fullPage: true });
 
-    const corner = page.locator('[data-canvas-card$=":k1"] .canvas-comment-corner');
+    const corner = page.locator('[data-id$=":k1"]').getByRole('button', { name: /Add a comment/ });
     await corner.focus();
     await page.keyboard.press('Enter');
     const panel = page.getByRole('region', { name: 'Comments', exact: true });

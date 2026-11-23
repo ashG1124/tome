@@ -282,10 +282,15 @@
   gap: calc(var(--space-padding-3) - var(--stroke-weight-light));
 }
 
-.node-edit-dial-values span:first-child,
-.node-edit-dial-values span:last-child {
-  filter: blur(calc(var(--space-padding-3) / 2));
-  opacity: 0.5;
+.node-edit-dial {
+  /* 양 끝 칸은 흐려지며 사라진다(시안 Keyword 1226:68293의 숫자 휠) */
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-font-main-text) 12%,
+    var(--color-font-main-text) 88%,
+    transparent
+  );
 }
 
 .node-edit-pad::before,
@@ -438,6 +443,8 @@
 }
 
 .node-edit-keyword-weight .node-edit-description {
+  /* 설명은 두 줄 폭(시안 글꼴 Pretendard보다 Open Sans가 좁아 안쪽 여백을 절반만 쓴다) */
+  margin-inline: calc(-1 * (var(--space-padding-8) + var(--space-gap-4) / 2) / 2);
   min-height: calc(var(--font-size-c2) * var(--line-height-default) * 2);
 }
 

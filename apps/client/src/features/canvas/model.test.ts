@@ -158,7 +158,8 @@ it('does not update unchanged cards when a later stage changes', () => {
   const previous = before.nodes.find((node) => node.id === 'set-a:k1')!;
   const next = after.nodes.find((node) => node.id === 'set-a:k1')!;
   expect(sameCardData(previous.data, next.data)).toBe(true);
-  expect(previous.style?.minHeight).toBe(geometry.nodeHeight);
+  // 출력 노드의 최소 높이는 CSS(카드 모양)가 정한다.
+  expect(previous.style?.minHeight).toBeUndefined();
 });
 
 it('binds output nodes and read-only verification lists to the displayed answer ID', () => {
@@ -188,4 +189,42 @@ it('binds output nodes and read-only verification lists to the displayed answer 
     outputs.filter((node) => node.data.column === 5).every((node) => node.data.state === 'skipped'),
   ).toBe(true);
   expect(outputs.every((node) => node.data.onRetry === undefined)).toBe(true);
+});
+
+it('draws step pills, group labels and joins priority rows into one card', () => {
+  const rows: Node[] = [1, 2, 3].map((n) => ({
+    id: `s${n}`,
+    kind: 'priority',
+    stage: 'research',
+    text: `Row ${n}`,
+    enabled: true,
+    parentIds: [],
+    order: n,
+  }));
+  const { nodes, edges } = buildCanvas(
+    [set],
+    {
+      ...generation,
+      steps: [
+        {
+          stage: 'research',
+          status: 'succeeded',
+          nodes: [keyword, ...rows],
+          provider: null,
+          fallbackUsed: false,
+        },
+      ],
+    },
+    { ...labels, groups: { keywords: 'Keywords', priority: 'Search priority' } },
+    geometry,
+  );
+  expect(nodes.filter((n) => n.data.variant === 'step')).toHaveLength(5);
+  expect(nodes.filter((n) => n.data.variant === 'group').map((n) => n.data.label)).toEqual(
+    expect.arrayContaining(['Keywords', 'Search priority']),
+  );
+  const positions = rows.map(
+    (r) => nodes.find((n) => n.id === `set-a:${r.id}`)!.data.groupPosition,
+  );
+  expect(positions).toEqual(['first', 'middle', 'last']);
+  expect(edges.some((e) => e.id === 'set-a:analyze-heading->research-heading')).toBe(true);
 });
