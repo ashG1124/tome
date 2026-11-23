@@ -254,7 +254,7 @@ export const COPY = {
   'NH-05': 'No comments yet.',
   'NH-06': 'Loading comments…',
   'NH-07': 'Comment saved.',
-  // Connection(#127): 임시 ID, 리드 확인 예정.
+  // Connection(#127): 확정 ID.
   'RC-01': 'Connection',
   'RC-02': 'Apply',
   'RC-03': 'Hide',
