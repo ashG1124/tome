@@ -37,6 +37,7 @@ import {
   type UpdateProjectRequest,
   type UpdateProjectResponse,
   type WorkspaceResponse,
+  type WorkspaceDerivedFrom,
 } from '@tome/shared';
 import { FAKE_CREATOR, FAKE_PAGE_IDS, FAKE_PROJECTS } from './data';
 import { FakeFailure } from './errors';
@@ -77,6 +78,8 @@ interface ProjectRecord {
   postedAt?: string | null;
   pages: PageRecord[];
   sets: SetRecord[];
+  /** 파생 프로젝트의 원작 표시(서버 workspace 의 derivedFrom). 원작 프로젝트에는 없다 */
+  derivedFrom?: WorkspaceDerivedFrom;
 }
 
 interface JobRecord {
@@ -399,6 +402,7 @@ export interface DeriveSource {
   title: string;
   prompt: string;
   answer: Answer;
+  derivedFrom: WorkspaceDerivedFrom;
 }
 
 /**
@@ -420,6 +424,7 @@ export function addDerivedProject(s: FakeStore, source: DeriveSource): UpdatePro
       shelfPosition: 0,
       kind: 'derive',
     },
+    derivedFrom: structuredClone(source.derivedFrom),
     pages: [{ id: pageId, index: 0 }],
     sets: [
       {
@@ -522,6 +527,9 @@ export function workspaceOf(s: FakeStore, id: string, pageId?: string): Workspac
   };
   const active = activeJobOf(s, id);
   if (active) response.activeJob = toJob(active);
+  if (record.summary.kind === 'derive' && record.derivedFrom) {
+    response.derivedFrom = structuredClone(record.derivedFrom);
+  }
   return response;
 }
 

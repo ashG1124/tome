@@ -1,11 +1,11 @@
-import { DeriveProjectResponseSchema } from '@tome/shared';
+import { DeriveProjectResponseSchema, WorkspaceResponseSchema } from '@tome/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { api } from './endpoints';
 import { ApiRequestError } from './errors';
-import { FAKE_AGORA_IDS, FAKE_TOPICS } from './fake/agora';
+import { FAKE_AGORA_IDS, FAKE_TOPICS, fakeDeletedOriginDerivedFrom } from './fake/agora';
 import { FAKE_CREATOR, FAKE_TOKEN } from './fake/data';
 import { resetFake } from './fake/state';
-import { dropFakeStoreMemory, fakeStore } from './fake/store';
+import { addDerivedProject, dropFakeStoreMemory, fakeStore, workspaceOf } from './fake/store';
 import { fakeTransport } from './fake/transport';
 import { clearSession, setSession } from './session';
 
@@ -272,5 +272,38 @@ describe('댓글', () => {
     delete fakeStore(false).agoraComments;
     const { comments } = await api.listComments(FAKE_AGORA_IDS.original);
     expect(comments).toHaveLength(2);
+  });
+});
+
+describe('파생 워크스페이스의 원작 표시', () => {
+  it('원작이 공개면 제목·원작자·원작 답변을, 원작 프로젝트에는 필드를 주지 않는다', async () => {
+    await signIn();
+    const { project } = await api.deriveProject(FAKE_AGORA_IDS.original);
+    const workspace = await api.getWorkspace(project.id);
+    expect(WorkspaceResponseSchema.parse(workspace).derivedFrom).toEqual({
+      projectId: FAKE_AGORA_IDS.original,
+      title: 'Urban commuter shoe',
+      creator: expect.objectContaining({ displayName: 'Lind' }),
+      answer: expect.objectContaining({ number: 1, imageUrl: expect.any(String) }),
+    });
+    const mine = (await api.listProjects()).projects.find((p) => p.kind === 'original');
+    expect((await api.getWorkspace(mine!.id)).derivedFrom).toBeUndefined();
+  });
+
+  it('원작이 지워졌으면 제목·원작자·답변이 null 이다', async () => {
+    await signIn();
+    const { project } = addDerivedProject(fakeStore(false), {
+      title: 'Harbor at dusk',
+      prompt: 'p',
+      answer: (await api.getAgoraProject(FAKE_AGORA_IDS.original)).sets[0]!.latestAnswer!,
+      derivedFrom: fakeDeletedOriginDerivedFrom(),
+    });
+    const workspace = workspaceOf(fakeStore(false), project.id);
+    expect(workspace.derivedFrom).toEqual({
+      projectId: FAKE_AGORA_IDS.deletedOriginal,
+      title: null,
+      creator: null,
+      answer: null,
+    });
   });
 });

@@ -28,6 +28,7 @@ import {
   DERIVATIVE_LIMIT,
   HOT_TOPIC_LIMIT,
   HOT_TOPIC_PROJECT_LIMIT,
+  isPublicProject,
   RECOMMENDED_LIMIT,
   RISING_LIMIT,
   TOPIC_PROJECT_LIMIT,
@@ -60,12 +61,6 @@ const toCreator = (c: CreatorLike): CreatorSummary => ({
   bio: c.bio,
   avatarUrl: null,
 });
-
-const isPublicProject = (p: {
-  postedAt: Date | null;
-  deletedAt: Date | null;
-  hiddenAt: Date | null;
-}) => p.postedAt !== null && p.deletedAt === null && p.hiddenAt === null;
 
 function toComment(row: AgoraCommentRow, auth: AuthContext): AgoraComment {
   return {

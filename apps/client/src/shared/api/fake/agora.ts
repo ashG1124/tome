@@ -13,6 +13,7 @@ import type {
   Topic,
   TopicResponse,
   DeriveProjectResponse,
+  WorkspaceDerivedFrom,
 } from '@tome/shared';
 import { FAKE_CREATOR } from './data';
 import { FakeFailure } from './errors';
@@ -365,6 +366,42 @@ function derivedFromOf(project: PublicProject): DerivedFrom | null {
   };
 }
 
+/** 공개 원작에서 파생한 워크스페이스의 원작 표시: 제목·원작자와 대표 답변(원작의 답변 번호·이미지). */
+function originDerivedFrom(original: PublicProject): WorkspaceDerivedFrom {
+  const answer = coverAnswerOf(original);
+  return {
+    projectId: original.id,
+    title: original.title,
+    creator: original.author,
+    answer: answer
+      ? {
+          id: answer.id,
+          number: answer.number ?? 1,
+          imageUrl: answer.imageUrl,
+          thumbUrl: answer.thumbUrl,
+        }
+      : null,
+  };
+}
+
+/** 원작이 지워졌거나 비공개면 제목·원작자·답변이 null(서버 derivedFromOf 와 같다, ADR-015). */
+function workspaceDerivedFromOf(project: PublicProject): WorkspaceDerivedFrom | null {
+  if (project.derivedFromId === undefined) return null;
+  const original = PUBLIC_PROJECTS.find((p) => p.id === project.derivedFromId);
+  if (!original) {
+    return { projectId: project.derivedFromId, title: null, creator: null, answer: null };
+  }
+  return originDerivedFrom(original);
+}
+
+/** 지워진 원작에서 파생한 것처럼 보이는 워크스페이스 원작 표시(화면·테스트 확인용). */
+export function fakeDeletedOriginDerivedFrom(): WorkspaceDerivedFrom {
+  const project = PUBLIC_PROJECTS.find((p) => p.id === FAKE_AGORA_IDS.deletedOriginalDerive);
+  const derivedFrom = project && workspaceDerivedFromOf(project);
+  if (!derivedFrom) throw new Error('지워진 원작 가짜 데이터가 없다');
+  return derivedFrom;
+}
+
 // ---- 홈·토픽·상세 ----
 
 export function agoraHome(s: FakeStore): AgoraHomeResponse {
@@ -448,7 +485,13 @@ export function deriveFromAgora(s: FakeStore, id: string): DeriveProjectResponse
   const project = requirePublic(id);
   const answer = coverAnswerOf(project);
   if (!project.cover || !answer) throw new FakeFailure('DERIVE_SOURCE_UNAVAILABLE');
-  return addDerivedProject(s, { title: project.title, prompt: project.cover.prompt, answer });
+  return addDerivedProject(s, {
+    title: project.title,
+    prompt: project.cover.prompt,
+    answer,
+    // 파생하는 대상(project)이 곧 새 프로젝트의 원작이다
+    derivedFrom: originDerivedFrom(project),
+  });
 }
 
 // ---- 댓글 ----
