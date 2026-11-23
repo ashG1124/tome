@@ -75,17 +75,15 @@ describe('formatCount', () => {
 });
 
 describe('topicTiles', () => {
-  it('앞의 4개 표지를 보여 주고, 나머지 개수를 +N 으로 준다', () => {
+  it('앞의 4개 표지만 보여 준다', () => {
     const tiles = topicTiles([1, 2, 3, 4, 5, 6].map((n) => card(n)));
     expect(tiles.covers).toHaveLength(TOPIC_TILE_COUNT);
     expect(tiles.covers[0]).toBe('/assets/answers/a1/thumb');
-    expect(tiles.more).toBe(2);
   });
 
   it('4개보다 적으면 있는 만큼만, 표지 없는 프로젝트는 빈 칸(null)으로 둔다', () => {
     const tiles = topicTiles([card(1), card(2, null), card(3)]);
     expect(tiles.covers).toEqual(['/assets/answers/a1/thumb', null, '/assets/answers/a3/thumb']);
-    expect(tiles.more).toBe(0);
   });
 });
 

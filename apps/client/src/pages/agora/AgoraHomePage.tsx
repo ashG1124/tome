@@ -75,7 +75,10 @@ export function CreatorPill({ creator }: { creator: CreatorSummary }) {
   );
 }
 
-/** 핫토픽 묶음: 표지 4장(2×2)과 다 못 보인 수("+N"), 아래 주제 제목. 누르면 핫토픽 목록으로 간다. */
+/**
+ * 핫토픽 묶음: 표지 4장(2×2)과 아래 주제 제목. 누르면 핫토픽 목록으로 간다.
+ * 시안의 "+N"(주제의 나머지 공개 프로젝트 수)은 홈 응답이 주제당 일부만 주고 전체 수가 없어 표시하지 않는다.
+ */
 function TopicBundle({ entry }: { entry: AgoraHomeResponse['hotTopics'][number] }) {
   const tiles = topicTiles(entry.projects);
   return (
@@ -89,11 +92,6 @@ function TopicBundle({ entry }: { entry: AgoraHomeResponse['hotTopics'][number] 
             <AgoraImage path={cover} />
           </span>
         ))}
-        {tiles.more > 0 ? (
-          <span className="absolute right-[var(--space-padding-5)] bottom-[var(--space-padding-5)] rounded-[var(--radius-max)] bg-[color:var(--color-shelf-cover-shade)] px-[var(--space-padding-3)] [font:var(--text-body-b2-r)] text-[color:var(--color-font-on-fill)]">
-            +{tiles.more}
-          </span>
-        ) : null}
       </span>
       <span className="[font:var(--text-subtitle-st1-m)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-main-text)]">
         {entry.topic.title}

@@ -18,9 +18,7 @@ interface ProjectTileProps {
  */
 export function ProjectTile({ card, variant }: ProjectTileProps) {
   const height =
-    variant === 'topic'
-      ? 'h-[var(--size-agora-tile-height)]'
-      : 'h-[var(--size-agora-derivative-height)]';
+    variant === 'topic' ? 'aspect-[551/359]' : 'h-[var(--size-agora-derivative-height)]';
   return (
     <Link
       to={`/agora/projects/${encodeURIComponent(card.id)}`}

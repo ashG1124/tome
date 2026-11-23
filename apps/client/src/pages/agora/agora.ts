@@ -30,15 +30,12 @@ export const TOPIC_TILE_COUNT = 4;
 export interface TopicTiles {
   /** 앞의 표지 최대 4장. 표지가 없는 프로젝트는 null(빈 칸) */
   covers: (string | null)[];
-  /** 타일에 다 못 보인 프로젝트 수. 0 이면 "+N" 표시를 하지 않는다. */
-  more: number;
 }
 
-/** 핫토픽 타일: 앞의 프로젝트 4개의 표지와, 나머지 개수("+N") */
+/** 핫토픽 타일: 앞의 프로젝트 4개의 표지 */
 export function topicTiles(projects: readonly AgoraProjectCard[]): TopicTiles {
   return {
     covers: projects.slice(0, TOPIC_TILE_COUNT).map((project) => project.coverThumbUrl),
-    more: Math.max(0, projects.length - TOPIC_TILE_COUNT),
   };
 }
 
