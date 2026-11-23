@@ -94,6 +94,7 @@ Object.assign(renders, {
 });
 
 renders['canvas/keyword'] = canvasDesignFixtures.keyword;
+renders['canvas/origin-heading'] = canvasDesignFixtures.originHeading;
 for (let index = 1; index <= 8; index++)
   renders[`canvas/preview-generating-${String(index).padStart(2, '0')}`] =
     canvasDesignFixtures.gradient;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Node, PromptSet } from '@tome/shared';
+import type { Node, PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
+import { fakeDeletedOriginDerivedFrom } from '../../shared/api/fake/agora';
 import {
   buildCanvas,
   keyboardTarget,
@@ -32,6 +33,11 @@ const labels: CanvasLabels = {
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   instructions: 'Arrow keys',
+  derive: {
+    mine: 'My answer',
+    origin: (name) => `${name}’s answer`,
+    deletedOriginal: 'Deleted original',
+  },
 };
 const geometry: CanvasGeometry = {
   nodeWidth: 300,
@@ -227,4 +233,90 @@ it('draws step pills, group labels and joins priority rows into one card', () =>
   );
   expect(positions).toEqual(['first', 'middle', 'last']);
   expect(edges.some((e) => e.id === 'set-a:analyze-heading->research-heading')).toBe(true);
+});
+
+describe('derive columns', () => {
+  const answer = (id: string) =>
+    ({
+      id,
+      setId: set.id,
+      number: 1,
+      status: 'accepted',
+      imageUrl: '/mine',
+      nodes: { schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [keyword, verifyNode] },
+    }) as unknown as NonNullable<PromptSet['latestAnswer']>;
+  const verifyNode: Node = {
+    id: 'v1',
+    stage: 'verify',
+    kind: 'criterion',
+    text: 'Keywords reflected',
+    parentIds: ['k1'],
+    enabled: true,
+  };
+  const withAnswer = { ...set, latestAnswer: answer('a1') };
+  const open: WorkspaceDerivedFrom = {
+    projectId: 'origin',
+    title: 'City sneakers',
+    creator: { id: 'c1', kind: 'seed', displayName: 'shina', bio: null, avatarUrl: null },
+    answer: { id: 'o1', number: 6, imageUrl: '/origin', thumbUrl: '/origin-thumb' },
+  };
+  const build = (derivedFrom?: WorkspaceDerivedFrom) =>
+    buildCanvas([withAnswer], undefined, labels, geometry, derivedFrom);
+  const headings = (nodes: ReturnType<typeof build>['nodes']) =>
+    nodes.filter((n) => n.id.endsWith('-heading') && n.data.column === 6).map((n) => n.data.label);
+
+  it('puts the original answer above My answer and links both from the last step', () => {
+    const { nodes, edges } = build(open);
+    expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
+    const origin = nodes.find((n) => n.id === 'set-a:origin-answer')!;
+    const mine = nodes.find((n) => n.id === 'set-a:answer')!;
+    expect(origin.data).toMatchObject({ kind: 'origin', label: 'Answer 6', origin: open });
+    expect(origin.draggable).toBe(false);
+    expect(mine.position.y).toBeGreaterThan(origin.position.y + 1);
+    expect(mine.position.x).toBe(origin.position.x);
+    expect(edges.filter((e) => e.target === 'set-a:origin-answer').map((e) => e.source)).toEqual([
+      'set-a:v1',
+    ]);
+    expect(edges.some((e) => e.source === 'set-a:v1' && e.target === 'set-a:answer')).toBe(true);
+  });
+  it('links from the last step card when the copied answer has no verification nodes yet', () => {
+    const bare = {
+      ...answer('a2'),
+      nodes: { schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [] },
+    } as unknown as NonNullable<PromptSet['latestAnswer']>;
+    const { edges } = buildCanvas(
+      [{ ...set, latestAnswer: bare }],
+      undefined,
+      labels,
+      geometry,
+      open,
+    );
+    expect(
+      edges.filter((e) => e.source === 'set-a:verify-placeholder').map((e) => e.target),
+    ).toEqual(['set-a:answer', 'set-a:origin-answer']);
+  });
+  it('keeps the original card in the keyboard order, above My answer', () => {
+    const { nodes } = build(open);
+    const origin = nodes.find((n) => n.id === 'set-a:origin-answer')!;
+    expect(keyboardTarget(nodes, origin.id, 'ArrowDown')?.id).toBe('set-a:answer');
+    expect(keyboardTarget(nodes, 'set-a:answer', 'ArrowUp')?.id).toBe(origin.id);
+    expect(keyboardTarget(nodes, origin.id, 'End')?.id).toBe('set-a:answer');
+  });
+  it('shows Deleted original in place of the card when the original is gone', () => {
+    const { nodes, edges } = build(fakeDeletedOriginDerivedFrom());
+    expect(headings(nodes)).toEqual(['My answer']);
+    expect(nodes.find((n) => n.id === 'set-a:origin-answer')?.data.label).toBe('Deleted original');
+    expect(edges.some((e) => e.target === 'set-a:origin-answer')).toBe(false);
+  });
+  it('keeps the creator heading and an empty slot when only the original answer is gone', () => {
+    const { nodes } = build({ ...open, answer: null });
+    expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
+    expect(nodes.find((n) => n.id === 'set-a:origin-answer')?.data.origin?.answer).toBeNull();
+  });
+  it('leaves an original project as a single answer column', () => {
+    const { nodes } = build(undefined);
+    expect(headings(nodes)).toEqual(['Answer 1']);
+    expect(nodes.some((n) => n.id === 'set-a:origin-answer')).toBe(false);
+    expect(nodes.find((n) => n.id === 'set-a:answer')?.data.row).toBe(0);
+  });
 });

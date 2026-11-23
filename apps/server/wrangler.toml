@@ -17,7 +17,10 @@
 # R2_* 넷은 배포 전에 먼저 등록한다(STORAGE_DRIVER=r2 라서 없으면 서버가 켜지지 않는다).
 # 새 비밀값은 worker/index.ts 의 envVars 에도 추가해야 컨테이너에 전달된다.
 # 배포: main 에 병합되면 .github/workflows/deploy.yml 이 자동으로 한다(#45).
-# 손으로 할 때 순서: (direct 주소로) prisma migrate deploy → wrangler deploy --var APP_VERSION:<커밋 해시>
+# 손으로 할 때 순서: (direct 주소로) prisma migrate deploy
+#   → apps/server/build-info/version.txt 에 커밋 해시(7자리)를 쓴다(printf '%s' <해시> > build-info/version.txt)
+#   → wrangler deploy --var APP_VERSION:<커밋 해시>
+# version.txt 가 이미지에 들어가야 서버 코드가 같아도 컨테이너가 새로 교체된다(#177).
 
 name = "tome-api"
 main = "worker/index.ts"

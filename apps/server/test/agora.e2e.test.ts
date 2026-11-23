@@ -12,6 +12,7 @@ import {
   DeriveProjectResponseSchema,
   LIMITS,
   TopicResponseSchema,
+  WorkspaceResponseSchema,
 } from '@tome/shared';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client';
@@ -320,6 +321,68 @@ describe.skipIf(!url)('agora API (real Postgres)', () => {
     );
     expect(after.derivedFrom).toEqual({ projectId: original.id, answerId: null, title: null });
     expect((await call('GET', `/agora/projects/${original.id}`, owner.token)).status).toBe(404);
+  });
+
+  it('adds the original author and answer to a derived workspace (ADR-015)', async () => {
+    const owner = await newWho();
+    const me = await newWho();
+    const original = await newPublic(owner, { title: 'Original' });
+    const child = await newPublic(me, { title: 'Child', derivedFromProjectId: original.id });
+    await prisma.project.update({
+      where: { id: child.id },
+      data: { derivedFromAnswerId: original.answerId },
+    });
+    const workspace = async (id: string) => {
+      const res = await call('GET', `/projects/${id}/workspace`, me.token);
+      expect(res.status).toBe(200);
+      return WorkspaceResponseSchema.parse(await res.json());
+    };
+
+    // 원작 공개: 제목·원작자·원작 답변(공개 답변과 같은 URL)
+    expect((await workspace(child.id)).derivedFrom).toEqual({
+      projectId: original.id,
+      title: 'Original',
+      creator: expect.objectContaining({ id: owner.creatorId, avatarUrl: null }),
+      answer: {
+        id: original.answerId,
+        number: 1,
+        imageUrl: `/assets/answers/${original.answerId}/full`,
+        thumbUrl: `/assets/answers/${original.answerId}/thumb`,
+      },
+    });
+
+    // 원작 프로젝트에는 이 필드가 없다
+    const mineOriginal = await newPublic(me, { title: 'Mine' });
+    expect((await workspace(mineOriginal.id)).derivedFrom).toBeUndefined();
+
+    // 원작 답변만 비공개(확정 취소): answer 만 null
+    await prisma.answer.update({ where: { id: original.answerId }, data: { status: 'discarded' } });
+    expect((await workspace(child.id)).derivedFrom).toMatchObject({
+      title: 'Original',
+      answer: null,
+    });
+    await prisma.answer.update({ where: { id: original.answerId }, data: { status: 'accepted' } });
+
+    // 공개 철회: 제목·원작자·답변 모두 null
+    await prisma.project.update({ where: { id: original.id }, data: { postedAt: null } });
+    expect((await workspace(child.id)).derivedFrom).toEqual({
+      projectId: original.id,
+      title: null,
+      creator: null,
+      answer: null,
+    });
+
+    // 삭제된 원작도 같다
+    await prisma.project.update({
+      where: { id: original.id },
+      data: { postedAt: new Date(), deletedAt: new Date() },
+    });
+    expect((await workspace(child.id)).derivedFrom).toEqual({
+      projectId: original.id,
+      title: null,
+      creator: null,
+      answer: null,
+    });
   });
 
   it('hides unposted, hidden and unknown projects with 404', async () => {

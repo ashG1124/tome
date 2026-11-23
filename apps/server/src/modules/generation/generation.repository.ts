@@ -30,6 +30,32 @@ const PROJECT_ACCESS_SELECT = {
 } satisfies Prisma.ProjectSelect;
 export type ProjectAccessRow = Prisma.ProjectGetPayload<{ select: typeof PROJECT_ACCESS_SELECT }>;
 
+const DERIVED_ORIGIN_SELECT = {
+  derivedFromProjectId: true,
+  derivedFrom: {
+    select: {
+      id: true,
+      title: true,
+      postedAt: true,
+      finishedAt: true,
+      deletedAt: true,
+      hiddenAt: true,
+      owner: { select: { id: true, kind: true, displayName: true, bio: true } },
+    },
+  },
+  derivedFromAnswer: {
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      createdAt: true,
+      acceptedAt: true,
+      set: { select: { projectId: true } },
+    },
+  },
+} satisfies Prisma.ProjectSelect;
+export type DerivedOriginRow = Prisma.ProjectGetPayload<{ select: typeof DERIVED_ORIGIN_SELECT }>;
+
 const ANSWER_ARGS = { include: { set: { select: { projectId: true } } } } as const;
 export type AnswerRow = Prisma.AnswerGetPayload<typeof ANSWER_ARGS>;
 
@@ -70,6 +96,11 @@ export class GenerationRepository {
 
   findProject(db: Db, id: string): Promise<ProjectAccessRow | null> {
     return db.project.findUnique({ where: { id }, select: PROJECT_ACCESS_SELECT });
+  }
+
+  /** 파생 프로젝트의 원작 프로젝트·원작 답변(공개 판정은 service 가 한다). */
+  findDerivedOrigin(db: Db, id: string): Promise<DerivedOriginRow | null> {
+    return db.project.findUnique({ where: { id }, select: DERIVED_ORIGIN_SELECT });
   }
 
   /** 프로젝트 행을 잠가 같은 프로젝트의 쓰기를 한 줄로 세운다(트랜잭션이 끝나면 풀린다). */

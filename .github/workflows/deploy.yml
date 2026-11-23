@@ -1,7 +1,7 @@
 name: Deploy
 
 # main 에 병합(push)되면 실서버에 배포한다(#45). 순서는 손으로 하던 배포와 같다:
-#   ① 운영 DB 마이그레이션(direct 주소) → ② wrangler deploy(APP_VERSION=커밋) → ③ /health 의 version 확인
+#   ① 운영 DB 마이그레이션(direct 주소) → ② 커밋 해시를 파일로 써서 이미지에 넣고 wrangler deploy ③ /health 의 version 확인
 # 이 저장소는 공개라 Actions 로그도 공개다. 주소·계정·토큰은 모두 Secrets 로만 받는다
 # (Secrets 값은 로그에서 *** 로 가려진다). DB 호스트가 찍히는 줄은 따로 걸러 낸다.
 #
@@ -84,6 +84,11 @@ jobs:
           set -o pipefail
           version="${GITHUB_SHA::7}"
           echo "APP_VERSION=$version"
+          # 커밋 해시를 파일로 써 둔다. Dockerfile 이 이 파일을 이미지에 복사한다(#177).
+          # 서버 코드가 안 바뀐 배포도 이미지가 달라져야 컨테이너가 새로 교체되고,
+          # 그래야 /health 가 예전 version 을 계속 보여 주지 않는다.
+          mkdir -p build-info
+          printf '%s' "$version" > build-info/version.txt
           pnpm exec wrangler deploy --var "APP_VERSION:$version" 2>&1 | { grep -v -i 'workers.dev' || true; }
 
       - name: Check /health version
@@ -91,8 +96,9 @@ jobs:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
           version="${GITHUB_SHA::7}"
-          # 새 컨테이너로 바뀌는 데 시간이 걸려서 최대 5분 동안 다시 본다.
-          for i in $(seq 1 30); do
+          # 이미지가 바뀌면 컨테이너 교체와 다시 켜지는 데 시간이 걸려서 최대 10분(10초 × 60번) 동안 다시 본다.
+          # job 제한(timeout-minutes 30)을 넘지 않는다.
+          for i in $(seq 1 60); do
             got=$(curl -s -m 30 "$API_BASE_URL/health" | jq -r '.version // empty' 2>/dev/null || true)
             echo "try $i: version=${got:-none}"
             if [ "$got" = "$version" ]; then

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CANVAS_COPY, COPY } from '../../../shared/copy';
 import { apiConfig } from '../../../shared/api';
-import type { Answer } from '@tome/shared';
+import type { Answer, WorkspaceDerivedFrom } from '@tome/shared';
 import type { ReactNode } from 'react';
 import { CanvasSurface } from './CanvasSurface';
 
@@ -81,4 +81,49 @@ it('does not label a generated answer as a sample', () => {
   render(<CanvasSurface data={card('/generated.png')} />, { wrapper });
   expect(screen.queryByText(CANVAS_COPY.sample)).toBeNull();
   expect(screen.queryByText(CANVAS_COPY.sampleDescription)).toBeNull();
+});
+
+function origin(extra: Partial<WorkspaceDerivedFrom>, label = 'Answer 06') {
+  return {
+    kind: 'origin' as const,
+    setId: 'set',
+    column: 6,
+    row: 0,
+    label,
+    labels: CANVAS_COPY,
+    state: 'done' as const,
+    origin: {
+      projectId: 'origin',
+      title: 'City sneakers',
+      creator: { id: 'c', kind: 'seed', displayName: 'shina', bio: null, avatarUrl: null },
+      answer: { id: 'o', number: 6, imageUrl: '/origin.png', thumbUrl: '/origin-thumb.png' },
+      ...extra,
+    } as WorkspaceDerivedFrom,
+  };
+}
+it('draws the original answer read-only with its number chip and veil', () => {
+  const { container } = render(<CanvasSurface data={origin({})} />, { wrapper });
+  expect(screen.getByRole('img', { name: 'Answer 06' }).getAttribute('src')).toBe('/origin.png');
+  expect(container.querySelector('.canvas-answer-chip')?.textContent).toBe('Answer 06');
+  expect(container.querySelector('.canvas-origin-veil')).not.toBeNull();
+  expect(container.querySelector('article')?.getAttribute('data-readonly')).toBe('true');
+  expect(screen.queryByRole('button')).toBeNull();
+});
+it('shows Deleted original when the original is gone', () => {
+  render(
+    <CanvasSurface data={origin({ title: null, creator: null, answer: null }, COPY['S-06'])} />,
+    { wrapper },
+  );
+  expect(screen.getByRole('status').textContent).toBe('Deleted original');
+});
+it('leaves an empty slot without a chip when only the original answer is gone', () => {
+  const { container } = render(
+    <CanvasSurface data={origin({ answer: null }, 'shina’s answer')} />,
+    {
+      wrapper,
+    },
+  );
+  expect(container.querySelector('.canvas-origin-slot')?.getAttribute('data-empty')).toBe('true');
+  expect(container.querySelector('.canvas-answer-chip')).toBeNull();
+  expect(screen.queryByRole('status')).toBeNull();
 });
