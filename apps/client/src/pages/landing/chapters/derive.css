@@ -1,0 +1,664 @@
+/*
+ * DERIVE 챕터 스타일.
+ * 기준안 좌표(1728×1117 기준): 아래 절대 좌표·크기는 1920×1440 판(board)과 1920×1080 지도(map) 안의 연출용 숫자다.
+ * (DERIVE 는 1920 폭 판이라 가로 1920 기준이다.) 색·글자 굵기·그림자는 토큰만 쓴다.
+ */
+.dv {
+  position: relative;
+  font-family: var(--font-family-contents);
+  color: var(--color-font-main-text);
+}
+
+/* ===== 고정되는 한 화면 ===== */
+.dv-stage {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-background-default);
+}
+
+/* 점무늬 배경 */
+.dv-bg,
+.dv-tail {
+  background-color: var(--color-dot-pattern);
+  background-image: radial-gradient(
+    circle at 7.8px 7.8px,
+    var(--color-fill-card) 0,
+    var(--color-fill-card) 1px,
+    transparent 1.7px
+  );
+  background-size: 15.6px 15.6px;
+}
+
+.dv-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.dv-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 75% at 50% 52%,
+    transparent 0,
+    color-mix(in srgb, var(--color-background-default) 55%, transparent) 100%
+  );
+}
+
+.dv-tail {
+  position: relative;
+  height: max(200px, 28vh);
+}
+
+.dv-tail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-background-default) 42%, transparent) 0,
+    color-mix(in srgb, var(--color-background-default) 70%, transparent) 55%,
+    var(--color-background-default) 100%
+  );
+}
+
+/* ===== 판: 제목 + 아고라 세 줄 ===== */
+.dv-b {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1440px;
+  transform-origin: 0 0;
+}
+
+.dv-h {
+  position: absolute;
+  left: 741px;
+  top: 131px;
+  width: 438px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.dv-eyebrow {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font-size: var(--dv-eyebrow-fs, var(--font-size-h2));
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.06em;
+  line-height: 1.4;
+  color: var(--color-font-main-text);
+}
+
+.dv-glyph {
+  display: block;
+  width: 0.66em;
+  height: 0.66em;
+  margin: 0 0.03em 0 0.05em;
+  fill: currentcolor;
+}
+
+.dv-title {
+  margin: var(--dv-title-gap, 22px) 0 0;
+  font-size: var(--dv-title-fs, var(--font-size-h1));
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  color: var(--color-font-strong);
+  white-space: nowrap;
+}
+
+/* 줄(row): 왼쪽 -1082 에서 시작, 가운데 묶음이 줄의 왼쪽에 놓인다 */
+.dv-row {
+  position: absolute;
+  left: -1082px;
+}
+
+.dv-r1 {
+  top: 421px;
+  height: 340.8px;
+}
+
+.dv-r2 {
+  top: 838.6px;
+  height: 80.2px;
+}
+
+.dv-r3 {
+  top: 995.6px;
+  height: 369.2px;
+}
+
+.dv-trk {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: flex;
+}
+
+.dv-cp {
+  flex: none;
+  display: flex;
+  gap: 19.2px;
+  padding-right: 19.2px;
+  height: 100%;
+}
+
+.dv-r3 .dv-cp {
+  gap: 24px;
+  padding-right: 24px;
+}
+
+/* 프로젝트 카드 */
+.dv-pcard {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: 436.8px;
+  height: 340.8px;
+  overflow: hidden;
+  border-radius: var(--radius-agora-card);
+  background-color: var(--color-gray-20);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.dv-pcard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--color-font-strong) 30%, transparent) 100%
+  );
+}
+
+.dv-pcard-title {
+  position: absolute;
+  left: 19.2px;
+  top: 283.2px;
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  color: var(--color-font-on-fill);
+  white-space: nowrap;
+}
+
+.dv-pcard-avatar {
+  position: absolute;
+  left: 369.6px;
+  top: 271.2px;
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2.4px var(--color-font-on-fill);
+  background-color: var(--color-fill-card);
+  background-size: cover;
+  background-position: center;
+}
+
+/* 크리에이터 카드 */
+.dv-ccard {
+  flex: none;
+  box-sizing: border-box;
+  height: 80.2px;
+  display: flex;
+  align-items: center;
+  gap: 9.6px;
+  padding: 0 28.8px 0 12px;
+  border-radius: var(--radius-max);
+  background: var(--color-background-default);
+  box-shadow: inset 0 0 0 1.2px var(--color-border-default);
+}
+
+.dv-ccard-avatar {
+  flex: none;
+  width: 57.6px;
+  height: 57.6px;
+  border-radius: 50%;
+  background-color: var(--color-fill-card);
+  background-size: cover;
+  background-position: center;
+}
+
+.dv-ccard-text {
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.dv-ccard-name {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-font-main-text);
+}
+
+.dv-ccard-role {
+  font-size: 16.8px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-font-sub-text);
+}
+
+/* 주제 카드 */
+.dv-tcard {
+  flex: none;
+  width: 471.6px;
+  display: flex;
+  flex-direction: column;
+  gap: 13.2px;
+}
+
+.dv-tcard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 162px 162px;
+  overflow: hidden;
+  border-radius: var(--radius-agora-card);
+  background: var(--color-background-lower);
+}
+
+.dv-tcard-cell {
+  position: relative;
+  box-shadow: inset 0 0 0 1px var(--color-background-default);
+  background-size: cover;
+  background-position: center;
+}
+
+.dv-tcard-more {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  padding: 3.6px 9.6px;
+  border-radius: var(--radius-max);
+  background: color-mix(in srgb, var(--color-font-main-text) 40%, transparent);
+  backdrop-filter: blur(12px);
+  font-size: 16.8px;
+  line-height: 1.5;
+  color: var(--color-font-on-fill);
+}
+
+.dv-tcard-title {
+  font-size: 21.6px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  color: var(--color-font-main-text);
+}
+
+/* ===== 줌 카드(줄에서 떠올라 펼쳐지는 복제본) ===== */
+.dv-z {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 436.8px;
+  height: 340.8px;
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: var(--radius-agora-card);
+  box-shadow: 0 10px 30px -8px var(--color-shadow-medium);
+}
+
+/* ===== 노드 지도 ===== */
+.dv-m {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.dv-w {
+  position: absolute;
+  left: -161px;
+  top: 0;
+  width: 3423px;
+  height: 1080px;
+}
+
+.dv-map {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.dv-map > * {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.dv-handle {
+  width: 46.9px;
+  height: 5.2px;
+  border-radius: var(--radius-max);
+  background: var(--color-border-default);
+}
+
+.dv-pill {
+  width: 260.4px;
+  height: 53.8px;
+  display: flex;
+  align-items: center;
+  gap: 10.4px;
+  padding-left: 17.4px;
+  border-radius: var(--radius-max);
+  background:
+    radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--color-background-default) 20%, transparent) 48%,
+      color-mix(in srgb, var(--color-tome-peach-5) 8%, transparent) 100%
+    ),
+    var(--color-fill-brand-weak);
+  box-shadow: inset 0 0 0 0.87px color-mix(in srgb, var(--color-tome-orange-5) 55%, transparent);
+}
+
+.dv-pill-no {
+  width: 20.8px;
+  text-align: center;
+  font-size: 19.1px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+}
+
+.dv-pill-title {
+  font-size: 17.4px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.dv-pdot,
+.dv-dot {
+  width: 8.68px;
+  height: 8.68px;
+  border-radius: 50%;
+  background: var(--color-node-line);
+}
+
+.dv-conn {
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.dv-conn path {
+  stroke: var(--color-node-line);
+  stroke-width: 1.215;
+}
+
+.dv-map-label {
+  width: 260.4px;
+  font-size: 12.2px;
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  color: var(--color-font-main-text);
+}
+
+.dv-chip {
+  width: 260.4px;
+  border-radius: 17.4px;
+  background: var(--color-canvas-node);
+  box-shadow: inset 0 0 0 0.87px var(--color-border-default);
+  font-size: 15.6px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  color: var(--color-font-main-text);
+}
+
+.dv-chip-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  text-align: center;
+}
+
+.dv-chip-ev {
+  display: flex;
+  align-items: center;
+  padding: 0 13.9px;
+}
+
+.dv-chip-text {
+  width: 190.9px;
+}
+
+.dv-chip-off .dv-chip-text {
+  color: var(--color-font-disable);
+}
+
+.dv-toggle {
+  position: absolute;
+  left: 211.8px;
+  top: 27.3px;
+  width: 34.7px;
+  height: 19.1px;
+  border-radius: var(--radius-max);
+  background: var(--color-fill-card);
+}
+
+.dv-toggle::after {
+  content: '';
+  position: absolute;
+  left: 1.8px;
+  top: 2.2px;
+  width: 14.8px;
+  height: 14.8px;
+  border-radius: 50%;
+  background: var(--color-background-default);
+}
+
+.dv-toggle-on {
+  background: var(--color-tome-yellow-7);
+}
+
+.dv-toggle-on::after {
+  left: 17.8px;
+}
+
+.dv-criteria {
+  display: flex;
+  flex-direction: column;
+  gap: 10.5px;
+  padding: 18.2px 16.5px;
+}
+
+.dv-criteria-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 23px;
+}
+
+.dv-minus {
+  flex: none;
+  color: var(--color-font-main-text);
+}
+
+.dv-corner {
+  left: 172.9px;
+  top: 656.2px;
+  fill: var(--color-fill-point);
+}
+
+/* 원작 연결선 / 파생 연결선 */
+.dv-l5,
+.dv-ln {
+  position: absolute;
+  left: 894.16px;
+  top: 176.26px;
+  overflow: visible;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-shadow-medium) 80%, transparent));
+}
+
+.dv-l5 path,
+.dv-ln path {
+  stroke: var(--color-node-line);
+  stroke-width: 1.215;
+}
+
+.dv-dot {
+  position: absolute;
+  left: 1066.35px;
+  top: 452.67px;
+  z-index: 2;
+}
+
+.dv-sha,
+.dv-shf,
+.dv-my {
+  position: absolute;
+}
+
+.dv-shf,
+.dv-my {
+  opacity: 0;
+}
+
+.dv-fit {
+  display: block;
+}
+
+.dv-lab {
+  position: absolute;
+  left: 1410px;
+  top: 652px;
+  width: 83px;
+  height: 26px;
+  font-size: 17.4px;
+  font-weight: var(--font-weight-medium);
+  line-height: 26px;
+  letter-spacing: -0.03em;
+  color: var(--color-font-sub-text);
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+}
+
+/* ===== 지도 위 문장 ===== */
+.dv-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    var(--color-background-weak) 0,
+    var(--color-background-weak) 55%,
+    transparent 100%
+  );
+}
+
+.dv-t {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dv-t h3 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  margin: 0;
+  font-size: var(--dv-text-fs, var(--font-size-h2));
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.03em;
+  line-height: 1.5;
+  color: var(--color-font-strong);
+  opacity: 0;
+  text-wrap: balance;
+}
+
+/* ===== 정지 화면(움직임 줄이기) ===== */
+.dv-still {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  padding: 96px 16px 64px;
+  background: var(--color-background-default);
+}
+
+.dv-still-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.dv-still-head .dv-title {
+  white-space: normal;
+}
+
+.dv-still-frame {
+  position: relative;
+  width: min(100%, 1200px);
+  overflow: hidden;
+}
+
+.dv-still-board {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1440px;
+  transform-origin: 0 0;
+}
+
+.dv-still-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: min(100%, 720px);
+  text-align: center;
+}
+
+.dv-still-step h3 {
+  margin: 0;
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.03em;
+  line-height: 1.5;
+  color: var(--color-font-strong);
+  text-wrap: balance;
+}
+
+.dv-still-art {
+  position: relative;
+  width: min(100%, 514px);
+}
+
+.dv-still-img {
+  position: absolute;
+  inset: 0;
+}
+
+.dv-still-label {
+  margin: 0;
+  font-size: var(--font-size-c1);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-font-sub-text);
+}

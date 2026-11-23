@@ -220,6 +220,9 @@ importers:
       gsap:
         specifier: ^3.15.1
         version: 3.15.1
+      lenis:
+        specifier: ^1.3.27
+        version: 1.3.27(react@19.3.1)
       react:
         specifier: ~19.3.1
         version: 19.3.1
@@ -3057,6 +3060,20 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  lenis@1.3.27:
+    resolution: {integrity: sha512-QIHNH4LIfWyLfgH/5K0aTGZgyFJJ7GfHNcaH/AIgyKjb8gstLh5siNGvrVqz1w5ClLXzOvllBVk7vby8JzUVPQ==}
+    peerDependencies:
+      '@nuxt/kit': '>=3.0.0'
+      react: '>=17.0.0'
+      vue: '>=3.0.0'
+    peerDependenciesMeta:
+      '@nuxt/kit':
+        optional: true
+      react:
+        optional: true
+      vue:
+        optional: true
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -6674,6 +6691,10 @@ snapshots:
       '@keyv/serialize': 1.1.1
 
   kleur@4.1.5: {}
+
+  lenis@1.3.27(react@19.3.1):
+    optionalDependencies:
+      react: 19.3.1
 
   levn@0.4.1:
     dependencies:

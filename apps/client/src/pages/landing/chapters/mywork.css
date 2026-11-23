@@ -1,0 +1,642 @@
+/*
+ * 기준안 좌표(1728×1117 기준)
+ * MY WORK 챕터. 앱 화면은 1728×1117 캡처 크기로 그리고 transform 으로 줄여 보인다.
+ * 색·글자 크기·굵기·그림자는 shared/tokens 만 쓴다(기준안과 딱 맞는 토큰이 없으면 가장 가까운 것).
+ */
+.mw-chapter {
+  position: relative;
+  --mw-ground: color-mix(
+    in srgb,
+    var(--color-background-weak) 50%,
+    var(--color-background-default)
+  );
+  font-family: var(--font-family-contents);
+  color: var(--color-font-main-text);
+}
+
+.mw-stage {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: linear-gradient(
+    to bottom,
+    var(--mw-ground) 0%,
+    var(--mw-ground) 12%,
+    color-mix(in srgb, var(--color-fill-brand-weak) 55%, var(--color-background-default)) 45%,
+    var(--color-fill-brand-weak) 100%
+  );
+}
+
+/* 제목(영문 이름 + 큰 글) */
+.mw-title {
+  position: absolute;
+  z-index: 7;
+  left: var(--space-padding-6);
+  right: var(--space-padding-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-gap-5);
+  text-align: center;
+  pointer-events: none;
+}
+
+.mw-title h2,
+.mw-still-head h2 {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-strong);
+  text-wrap: balance;
+}
+
+.mw-title--remix {
+  opacity: 0;
+}
+
+/* 앱 화면 틀 */
+.mw-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.mw-fbox {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--br, 24px);
+  box-shadow: var(--sh, none);
+  background: var(--color-background-default);
+}
+
+.mw-app {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+  overflow: hidden;
+  transform-origin: 0 0;
+  background: var(--color-background-weak);
+}
+
+.mw-lay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+}
+
+.mw-lay-bg {
+  background: var(--color-background-weak);
+}
+
+.mw-lay-entry {
+  opacity: 0;
+}
+
+.mw-dim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-background-default);
+  opacity: 0;
+}
+
+/* 홈에서 고른 New Project 타일(작업 화면으로 열린다) */
+.mw-pick {
+  --lift: 0;
+  position: absolute;
+  z-index: 5;
+  overflow: hidden;
+  border-radius: var(--radius-shelf-card);
+  box-shadow: 0 calc(22px * var(--lift)) calc(44px * var(--lift)) calc(-14px * var(--lift))
+    color-mix(in srgb, var(--color-font-main-text) calc(38% * var(--lift)), transparent);
+}
+
+.mw-pick-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-background-weak);
+  opacity: 0;
+}
+
+/* 작업 영역(캔버스를 카메라처럼 움직인다) */
+.mw-ws {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  background: var(--mw-ground);
+}
+
+.mw-cv {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3423px;
+  height: 1457px;
+  will-change: transform;
+}
+
+.mw-dots {
+  position: absolute;
+  left: -3900px;
+  top: -1560px;
+  width: 11223px;
+  height: 4577px;
+  background-color: var(--mw-ground);
+  background-image: radial-gradient(
+    circle at 7.8px 7.8px,
+    var(--color-border-thick) 0,
+    var(--color-border-thick) 1px,
+    transparent 1.7px
+  );
+  background-size: 15.6px 15.6px;
+  background-position: 2.95px 2.575px;
+}
+
+.mw-vig {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 75% at 50% 58%,
+    transparent 55%,
+    color-mix(in srgb, var(--color-background-default) 90%, transparent) 100%
+  );
+}
+
+.mw-tfade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 가장자리를 부드럽게 녹이는 이미지 */
+.mw-fe {
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      var(--color-font-strong) 12px,
+      var(--color-font-strong) calc(100% - 12px),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-font-strong) 12px,
+      var(--color-font-strong) calc(100% - 12px),
+      transparent
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      var(--color-font-strong) 12px,
+      var(--color-font-strong) calc(100% - 12px),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-font-strong) 12px,
+      var(--color-font-strong) calc(100% - 12px),
+      transparent
+    );
+  mask-composite: intersect;
+}
+
+.mw-s1o,
+.mw-plot,
+.mw-dot,
+.mw-corner,
+.mw-note,
+.mw-c06 {
+  opacity: 0;
+}
+
+/* 노드 컨트롤: 2차원 판과 점 */
+.mw-plot {
+  position: absolute;
+  left: 712px;
+  top: 590px;
+  width: 274px;
+  height: 270px;
+  /* 열린 노드 이미지의 판 색과 이어지도록 두 토큰을 섞는다 */
+  background: color-mix(in srgb, var(--color-fill-neutral-weak) 66%, var(--color-fill-card));
+}
+
+.mw-plot-field {
+  --gx: 73px;
+  --gy: 63px;
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 240px;
+  height: 240px;
+  border-radius: var(--radius-node);
+  background-color: var(--color-background-default);
+  background-image:
+    radial-gradient(
+      circle 170px at var(--gx) var(--gy),
+      transparent 52.5px,
+      var(--color-fill-neutral-weak) 170px
+    ),
+    radial-gradient(
+      circle at center,
+      var(--color-border-input) 0,
+      var(--color-border-input) 0.85px,
+      transparent 1.1px
+    );
+  background-size:
+    auto,
+    4px 4px;
+  background-position:
+    0 0,
+    -1.75px -1.75px;
+}
+
+.mw-plot-label {
+  position: absolute;
+  height: 21px;
+  font-size: var(--font-size-c2);
+  font-weight: var(--font-weight-regular);
+  line-height: 21px;
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-fill-neutral);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mw-plot-top {
+  left: 100px;
+  top: 5px;
+  width: 73px;
+}
+
+.mw-plot-bottom {
+  left: 113px;
+  top: 245px;
+  width: 46px;
+}
+
+.mw-plot-left {
+  left: -11px;
+  top: 126px;
+  width: 53px;
+  transform: rotate(-90deg);
+}
+
+.mw-plot-right {
+  left: 232px;
+  top: 125px;
+  width: 47px;
+  transform: rotate(90deg);
+}
+
+.mw-dot {
+  position: absolute;
+  left: 775px;
+  top: 642px;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-fill-brand);
+  border: var(--stroke-weight-light) solid var(--color-tome-yellow-7);
+  box-shadow: var(--shadow-floating);
+}
+
+.mw-corner {
+  position: absolute;
+  left: 958px;
+  top: 836px;
+  width: 44px;
+  height: 44px;
+}
+
+.mw-corner-fill {
+  fill: var(--color-fill-neutral-weak);
+}
+
+.mw-corner-edge {
+  fill: var(--color-tome-peach-5);
+}
+
+.mw-note {
+  position: absolute;
+}
+
+/* 답변 카드(두 장이 겹친다) */
+.mw-vclip {
+  position: absolute;
+  left: 2754px;
+  top: 230px;
+  width: 609px;
+  height: 444px;
+  overflow: hidden;
+}
+
+.mw-c05,
+.mw-c06 {
+  filter: drop-shadow(0 14px 22px color-mix(in srgb, var(--color-gray-700) 18%, transparent));
+}
+
+/* 기기 틀(작업 영역이 커지는 동안 위에 남는 메뉴 막대·로고·아이콘) */
+.mw-bz {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.mw-bzi {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1728px;
+  height: 1117px;
+  transform-origin: 0 0;
+}
+
+.mw-rxs {
+  opacity: 0;
+}
+
+.mw-fbi {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 72px;
+  height: 212px;
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 단계 설명 */
+.mw-heads {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.mw-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 0 var(--space-padding-6);
+  text-align: center;
+}
+
+.mw-cap-e {
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: color-mix(in srgb, var(--color-font-strong) 50%, transparent);
+}
+
+.mw-cap-e b {
+  margin-right: 0.5em;
+  font-weight: var(--font-weight-semibold);
+}
+
+.mw-cap-h {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-strong);
+  text-wrap: balance;
+}
+
+/* 하단 작성줄 */
+.mw-cmp {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: 620px;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: 0 100%;
+  will-change: transform;
+}
+
+.mw-cmp svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  color: var(--color-fill-neutral);
+}
+
+.mw-cb {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 5.5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-background-default) 90%, transparent);
+  box-shadow: var(--shadow-prompt);
+  transition: margin 0.28s;
+}
+
+.mw-cbox {
+  position: relative;
+  flex: none;
+  width: 500px;
+  height: 59px;
+  border-radius: 32px;
+  transition: height 0.3s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+.mw-cbox-glow,
+.mw-cbox-skin {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.mw-cbox-glow {
+  background: color-mix(in srgb, var(--color-background-default) 94%, transparent);
+  box-shadow: var(--shadow-prompt);
+}
+
+.mw-cbox-skin {
+  background: var(--color-prompt);
+  box-shadow: inset 0 0 0 var(--stroke-weight-light)
+    color-mix(in srgb, var(--color-node-line) 40%, var(--color-background-default));
+  opacity: 0;
+}
+
+.mw-cclip {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.mw-cin {
+  padding: 16px 20px;
+}
+
+.mw-nhd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: var(--font-size-c2);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-main-text);
+}
+
+.mw-cmp .mw-nhd-mark {
+  color: var(--color-node-line);
+  transform: rotate(90deg);
+}
+
+.mw-row1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 27px;
+}
+
+.mw-ph {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: var(--font-size-b2);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-helper-text);
+}
+
+.mw-cmp .mw-row1-mark {
+  width: 20px;
+  height: 20px;
+}
+
+.mw-row2 {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mw-cmp.is-typing .mw-row1 {
+  display: none;
+}
+
+.mw-cmp.is-typing .mw-row2 {
+  display: flex;
+}
+
+.mw-cmp.is-typing .mw-cin {
+  padding: 18px 20px;
+}
+
+.mw-cmp.is-typing .mw-cb {
+  margin-bottom: 0;
+}
+
+.mw-txt {
+  margin: 0;
+  width: 436px;
+  min-height: 27px;
+  overflow-wrap: break-word;
+  font-size: var(--font-size-b2);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-default);
+  letter-spacing: var(--letter-spacing-default);
+  color: var(--color-font-main-text);
+}
+
+.mw-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+}
+
+/* 작업 영역 위를 움직이는 커서 */
+.mw-wcur {
+  z-index: 7;
+  opacity: 0;
+}
+
+/* 움직임을 줄인 정지 화면 */
+.mw-still {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-gap-field);
+  padding: calc(61 * var(--u) + var(--grid-margin)) var(--grid-margin) calc(2 * var(--grid-margin));
+  background: linear-gradient(
+    to bottom,
+    var(--mw-ground) 0%,
+    var(--mw-ground) 12%,
+    var(--color-fill-brand-weak) 100%
+  );
+}
+
+.mw-still-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-gap-5);
+  text-align: center;
+}
+
+.mw-still-head h2 {
+  font-size: calc(40 * var(--u));
+}
+
+.mw-still-head .mw-eyebrow {
+  font-size: calc(24 * var(--u));
+}
+
+.mw-still-frame {
+  position: relative;
+  width: min(100%, calc(1080 * var(--u)));
+  aspect-ratio: 1728 / 1117;
+  overflow: hidden;
+  border-radius: calc(24 * var(--u));
+  background: var(--color-background-default);
+  box-shadow: var(--shadow-floating);
+}
+
+.mw-still-frame img,
+.mw-still-frame .landing-placeholder {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

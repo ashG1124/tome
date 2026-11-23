@@ -7,7 +7,7 @@ import {
   isSlowDevice,
   MIN_SAMPLES,
   SLOW_FRAME_MS,
-} from './storyMode';
+} from './motionMode';
 
 const steady = (ms: number, count: number) => Array.from({ length: count }, () => ms);
 

@@ -37,9 +37,12 @@
 
 /* ===== 헤더 3445:27263 ===== */
 .landing-header {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 20;
+  left: 50%;
+  translate: -50% 0;
+  width: calc(1920 * var(--u));
+  z-index: 60;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -47,6 +50,12 @@
   height: calc(61 * var(--u));
   padding-inline: calc(40 * var(--u));
   background: var(--color-background-default);
+  transition: background-color 0.45s ease;
+}
+
+/* MY WORK 가 화면을 가득 채우는 동안 헤더 바탕만 투명하게 한다 */
+.landing-header-clear {
+  background: transparent;
 }
 
 .landing-header-logo {
@@ -116,13 +125,15 @@
 /* ===== 히어로 3445:27232 (헤더 아래 y 61 ~ 1719) ===== */
 .landing-hero {
   position: relative;
-  height: calc(1658 * var(--u));
+  height: calc(1719 * var(--u));
   overflow: clip;
   background: var(--color-background-default);
 }
 
 .landing-hero-tile {
   position: absolute;
+  overflow: hidden;
+  border-radius: calc(var(--r) * var(--u));
   left: calc(var(--x) * var(--u));
   top: calc(var(--y) * var(--u));
   width: calc(var(--w) * var(--u));
@@ -149,7 +160,7 @@
 }
 
 .landing-hero-fade-top {
-  top: 0;
+  top: calc(61 * var(--u));
   height: calc(622 * var(--u));
   background: linear-gradient(
     to bottom,
@@ -170,12 +181,10 @@
 
 .landing-hero-logo {
   position: absolute;
-  left: calc(699 * var(--u));
-  top: calc(546 * var(--u));
-  width: calc(521 * var(--u));
-}
-
-.landing-hero-logo-in {
+  left: 0;
+  width: 100%;
+  top: calc(607 * var(--u));
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -199,7 +208,7 @@
 /* ===== Our Vision 3445:27283 · 3445:27346 (y 1719 ~ 2196) ===== */
 .landing-vision {
   position: relative;
-  height: calc(477 * var(--u));
+  height: calc(417 * var(--u));
 }
 
 .landing-vision-head {
@@ -241,92 +250,104 @@
   margin-top: 1.5em;
 }
 
-/* ===== Volumes of Thinking 3330:206106 ===== */
+/* ===== Volumes of Thinking: 화면에 고정된 채 책이 열린다 ===== */
 .landing-volumes {
   position: relative;
-  height: calc(850 * var(--u));
+  height: max(100vh, calc(850 * var(--u)));
   overflow: clip;
+  display: grid;
+  place-items: center;
   background: var(--color-background-default);
-}
-
-.landing-volumes-bg {
-  position: absolute;
-  inset: 0;
 }
 
 .landing-volumes-bg-img {
   position: absolute;
-  left: 0;
-  top: calc(-637.8 * var(--u));
+  inset: 0;
   width: 100%;
-  height: calc(1609.05 * var(--u));
-  opacity: 0.6;
-  transform: scale(-1, -1);
+  height: 100%;
+  object-fit: cover;
 }
 
-.landing-volumes-yellow {
-  position: absolute;
-  inset: 0;
-  background: var(--color-tome-yellow-4);
-  opacity: 0;
-}
-
-.landing-volumes-pieces {
-  position: absolute;
-  inset: 0;
-}
-
-.landing-volumes-slide {
-  position: absolute;
-  top: calc(50 * var(--u));
-  width: calc(796 * var(--u));
-  height: calc(749.922 * var(--u));
-}
-
-.landing-volumes-left {
-  left: calc(-77 * var(--u));
-}
-
-.landing-volumes-right {
-  left: calc(1201 * var(--u));
-}
-
-.landing-volumes-flip {
-  position: absolute;
-  inset: 0;
-}
-
-.landing-volumes-left .landing-volumes-flip {
-  transform: scaleX(-1);
-}
-
-.landing-volumes-piece {
-  position: absolute;
-  inset: 0;
-  mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-}
-
-.landing-volumes-white {
-  background: var(--color-background-default);
-}
-
-.landing-volumes-pink {
-  background: var(--color-tome-peach-5);
-  opacity: 0;
-}
-
-.landing-volumes-title {
+.landing-volumes-fade-top,
+.landing-volumes-fade-bottom {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(380 * var(--u));
+  z-index: 1;
+  pointer-events: none;
+}
+
+.landing-volumes-fade-top {
+  top: 0;
+  height: 45%;
+  background: linear-gradient(
+    to bottom,
+    var(--color-background-default) 0,
+    color-mix(in srgb, var(--color-background-default) 85%, transparent) 30%,
+    color-mix(in srgb, var(--color-background-default) 0%, transparent) 100%
+  );
+}
+
+.landing-volumes-fade-bottom {
+  bottom: 0;
+  height: 40%;
+  background: linear-gradient(
+    to top,
+    var(--color-background-weak) 0,
+    color-mix(in srgb, var(--color-background-weak) 85%, transparent) 30%,
+    color-mix(in srgb, var(--color-background-weak) 0%, transparent) 100%
+  );
+}
+
+.landing-volumes-page {
+  position: absolute;
+  top: calc(50% - 375 * var(--u));
+  width: calc(796 * var(--u));
+  height: calc(750 * var(--u));
+}
+
+.landing-volumes-page-left {
+  left: calc(-77 * var(--u));
+}
+
+.landing-volumes-page-right {
+  left: calc(1201 * var(--u));
+}
+
+.landing-volumes-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* 왼쪽 조각은 같은 모양을 좌우로 뒤집는다(GSAP 가 다루는 요소가 아니라 안쪽 svg 에 건다) */
+.landing-volumes-page-left .landing-volumes-svg {
+  transform: scaleX(-1);
+}
+
+.landing-volumes-path {
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+}
+
+.landing-volumes-stop-from {
+  stop-color: var(--color-background-default);
+  stop-opacity: 0;
+}
+
+.landing-volumes-stop-to {
+  stop-color: var(--color-background-default);
+}
+
+.landing-volumes-title {
+  position: relative;
+  z-index: 2;
   margin: 0;
-  text-align: center;
-  font-size: calc(60 * var(--u));
+  font-size: max(26px, calc(60 * var(--u)));
   font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-default);
   color: var(--color-font-strong);
   white-space: nowrap;
 }
@@ -365,7 +386,7 @@
 
 .landing-cards {
   position: absolute;
-  left: calc(270 * var(--u));
+  left: calc(215 * var(--u));
   top: calc(372 * var(--u));
   display: flex;
   gap: calc(40 * var(--u));
@@ -375,7 +396,7 @@
 }
 
 .landing-card-slot {
-  width: calc(433 * var(--u));
+  width: calc(470 * var(--u));
   height: calc(577 * var(--u));
 }
 
@@ -411,7 +432,7 @@
   position: absolute;
   left: calc(46 * var(--u));
   top: calc(402 * var(--u));
-  width: calc(333 * var(--u));
+  width: calc(370 * var(--u));
   display: flex;
   flex-direction: column;
   gap: calc(24 * var(--u));
@@ -431,12 +452,6 @@
   font-weight: var(--font-weight-regular);
   letter-spacing: var(--letter-spacing-body-b1);
   color: var(--color-font-helper-text);
-}
-
-/* 시안에서 첫 카드 설명만 20px·Medium 이다 */
-.landing-card-slot:first-child .landing-card-text {
-  font-size: calc(20 * var(--u));
-  font-weight: var(--font-weight-medium);
 }
 
 /* 카드는 링크가 아니라서 마우스를 올릴 때만 떠오른다 */

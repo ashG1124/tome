@@ -6,7 +6,7 @@ import { fadeUpOnEnter, gsap, unitOf, useLandingMotion } from './motion';
 const CARDS = [
   { number: 'ON-12a', title: 'ON-13a', text: 'ON-14a', glyph: 'landing-glyph-mywork.svg' },
   { number: 'ON-12b', title: 'ON-13b', text: 'ON-14b', glyph: 'landing-glyph-remix.svg' },
-  { number: 'ON-12c', title: 'ON-13c', text: 'ON-14c', glyph: 'landing-glyph-derive.svg' },
+  { number: 'ON-12c', title: 'ON-23c', text: 'ON-14c', glyph: 'landing-glyph-derive.svg' },
 ] as const;
 
 /** Three ways to work(3330:206270). 제목·문단은 페이드업, 카드 3장은 차례로 나타난다. 카드는 링크가 아니라 마우스를 올릴 때만 반응한다. */
