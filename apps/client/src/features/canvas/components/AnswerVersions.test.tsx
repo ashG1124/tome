@@ -127,3 +127,39 @@ it('replaces the default answer footer without repeating the version label', () 
   );
   expect(screen.getAllByText('Answer 01')).toHaveLength(1);
 });
+it('shows the chip and stacks up to two earlier versions behind the card', () => {
+  const third = { ...first, id: 'third', number: 3 };
+  const fourth = { ...first, id: 'fourth', number: 4 };
+  const all = [fourth, third, second, first];
+  const { container, rerender } = render(
+    <AnswerVersions
+      answer={fourth}
+      answers={all}
+      labels={labels}
+      onSelect={vi.fn()}
+      onPin={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Answer 04').className).toContain('canvas-answer-chip');
+  expect(container.querySelectorAll('.canvas-answer-layer')).toHaveLength(2);
+  rerender(
+    <AnswerVersions
+      answer={second}
+      answers={all}
+      labels={labels}
+      onSelect={vi.fn()}
+      onPin={vi.fn()}
+    />,
+  );
+  expect(container.querySelectorAll('.canvas-answer-layer')).toHaveLength(1);
+  rerender(
+    <AnswerVersions
+      answer={first}
+      answers={all}
+      labels={labels}
+      onSelect={vi.fn()}
+      onPin={vi.fn()}
+    />,
+  );
+  expect(container.querySelectorAll('.canvas-answer-layer')).toHaveLength(0);
+});

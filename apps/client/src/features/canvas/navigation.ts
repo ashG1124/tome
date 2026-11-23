@@ -1,4 +1,4 @@
-import type { AnswerSummary } from '@tome/shared';
+import type { AnswerSummary, NodeComment } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { createContext, type ContextType } from 'react';
@@ -22,6 +22,7 @@ export const CanvasNavigation = createContext<{
     pin: (answerId: string, pinned: boolean) => Promise<void>;
     canComment: (setId: string, answerId: string, nodeId: string) => boolean;
     comment: (setId: string, answerId: string, nodeId: string) => void;
+    listComments?: (answerId: string) => Promise<readonly NodeComment[]>;
   };
   remix?: CanvasRemixOptions;
   remixDisabled?: boolean;

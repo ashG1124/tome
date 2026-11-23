@@ -110,11 +110,6 @@
   border: 0;
   background: transparent;
 }
-.canvas-answer-versions [aria-live='polite'] {
-  flex: 1;
-  text-align: center;
-  font: var(--text-body-b1-m);
-}
 .canvas-comment-corner {
   width: calc(var(--size-icon-empty) + var(--space-gap-4));
   height: calc(var(--size-icon-empty) + var(--space-gap-4));
@@ -175,4 +170,84 @@
 }
 .canvas-history-pin-fixture .canvas-answer-versions > :not([data-answer-pin]) {
   display: none;
+}
+
+/* 답변 카드 stacking (Figma 3182:174875) — 사진 위 칩·핀, 뒤 이전 버전 2장(0.9배씩), 오른쪽 ^ v */
+.canvas-card--answer {
+  z-index: 0;
+}
+.canvas-answer-footer:has(> .canvas-answer-versions) {
+  display: contents;
+}
+.canvas-card--answer .canvas-answer-versions {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  pointer-events: none;
+}
+.canvas-card--answer .canvas-answer-versions > * {
+  pointer-events: auto;
+}
+.canvas-answer-chip {
+  display: none;
+}
+.canvas-card--answer .canvas-answer-chip {
+  position: absolute;
+  top: var(--space-padding-6);
+  left: var(--space-padding-6);
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-padding-3) var(--space-padding-7);
+  border-radius: var(--radius-max);
+  background: var(--color-shadow-medium);
+  color: var(--color-font-on-fill);
+  font: var(--text-body-b1-m);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.canvas-card--answer .canvas-answer-versions button[data-answer-pin] {
+  position: absolute;
+  top: var(--space-padding-6);
+  right: var(--space-padding-6);
+}
+.canvas-card--answer .canvas-answer-steps {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-padding-3));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-5);
+  transform: translateY(-50%);
+}
+.canvas-answer-steps button {
+  padding: 0;
+  color: var(--color-font-disable);
+}
+.canvas-answer-steps button:not(:disabled) {
+  color: var(--color-font-sub-text);
+}
+.canvas-answer-layer {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: var(--canvas-preview-radius);
+  background: var(--color-gray-20);
+  box-shadow: var(--shadow-preview);
+  transform-origin: top center;
+  pointer-events: none;
+}
+.canvas-answer-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.canvas-answer-layer[data-depth='1'] {
+  z-index: -1;
+  transform: translateY(-7.5%) scale(0.9);
+}
+.canvas-answer-layer[data-depth='2'] {
+  z-index: -2;
+  transform: translateY(-15%) scale(0.81);
 }

@@ -7,9 +7,10 @@ import { AppHeader, ErrorNotice, Flash, Icon, type FlashKind } from '../../share
 import { FLASH_MS, flashFromState } from './flash';
 import { columnsFor, opensToLeft } from './layout';
 import { NewProjectCell } from './NewProjectCell';
+import { RecentWork } from './RecentWork';
 import { ShelfCard } from './ShelfCard';
 import { ShelfGrid } from './ShelfGrid';
-import { applyOrder, moveCard, sortShelf } from './shelf';
+import { applyOrder, latestEdited, moveCard, sortShelf } from './shelf';
 
 /**
  * 서가 한 줄의 칸 수를 잰다. 창 크기가 바뀌면 다시 잰다(ResizeObserver 가 없으면 1칸).
@@ -63,6 +64,7 @@ export function HomePage() {
   if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   const shelf = applyOrder(sortShelf(projects.data?.projects ?? []), order);
+  const recent = latestEdited(shelf);
 
   // 화면 순서를 먼저 바꾸고 저장한다. 저장이 실패하면 원래 자리로 되돌리고 E-03 을 보여 준다.
   const reorder = (from: number, to: number) => {
@@ -149,6 +151,7 @@ export function HomePage() {
           ) : null}
         </div>
       </section>
+      {recent ? <RecentWork key={recent.id} project={recent} /> : null}
     </div>
   );
 }

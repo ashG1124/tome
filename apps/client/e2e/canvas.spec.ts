@@ -91,7 +91,9 @@ test('progress, completion, keyboard navigation and three stacked sets', async (
   await page.screenshot({ path: info.outputPath('01-start.png'), fullPage: true });
   await expect(page.locator('[data-canvas-card$=":e1"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath('02-middle.png'), fullPage: true });
-  await expect(page.getByRole('status')).toHaveText('Step 5 of 5 done');
+  await expect(
+    page.getByRole('region', { name: 'Generation canvas' }).getByRole('status'),
+  ).toHaveText('Step 5 of 5 done');
   await expect(page.locator('.canvas-image')).toBeVisible();
   await page.screenshot({ path: info.outputPath('03-complete.png'), fullPage: true });
   const prompt = page.locator('[data-canvas-card$=":prompt"]');
@@ -103,7 +105,9 @@ test('progress, completion, keyboard navigation and three stacked sets', async (
   for (let count = 2; count <= 3; count++) {
     await generate(page);
     await expect(page.locator('.canvas-image')).toHaveCount(count);
-    await expect(page.getByRole('status')).toHaveText('Step 5 of 5 done');
+    await expect(
+      page.getByRole('region', { name: 'Generation canvas' }).getByRole('status'),
+    ).toHaveText('Step 5 of 5 done');
     await expect(page.locator('[data-canvas-card$=":v1"]')).toHaveCount(count);
   }
   await expect(page.locator('.workspace-canvas')).not.toHaveAttribute('aria-busy', 'true');
@@ -122,7 +126,9 @@ test('retries one failed step while earlier results remain', async ({ page }, in
   await page.screenshot({ path: info.outputPath('retry-before.png'), fullPage: true });
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.locator('.canvas-image')).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Step 5 of 5 done');
+  await expect(
+    page.getByRole('region', { name: 'Generation canvas' }).getByRole('status'),
+  ).toHaveText('Step 5 of 5 done');
   await expect(page.locator('[data-canvas-card$=":e1"]')).toHaveCount(1);
   await expect(page.getByRole('alert')).toHaveCount(0);
   const calls = await advanceCalls(page);

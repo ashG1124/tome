@@ -1,6 +1,6 @@
 import { createBrowserRouter, redirect, type RouteObject } from 'react-router';
 import { hasSession } from '../shared/api';
-import { AgoraHomePage, AgoraProjectPage, TopicPage } from '../pages/agora';
+import { AgoraHomePage, AgoraProjectPage, TopicListPage, TopicPage } from '../pages/agora';
 import { ConsentPage } from '../pages/consent';
 import { EnterPage } from '../pages/enter';
 import { ProfilePage } from '../pages/profile';
@@ -29,6 +29,7 @@ export const routes: RouteObject[] = [
       { path: '/projects/:id', loader: requireSession, element: <WorkspacePage /> },
       { path: '/creators/:id', loader: requireSession, element: <ProfilePage /> },
       { path: '/agora', loader: requireSession, element: <AgoraHomePage /> },
+      { path: '/agora/topics', loader: requireSession, element: <TopicListPage /> },
       { path: '/agora/topics/:id', loader: requireSession, element: <TopicPage /> },
       { path: '/agora/projects/:id', loader: requireSession, element: <AgoraProjectPage /> },
       { path: '*', loader: () => redirect('/') },

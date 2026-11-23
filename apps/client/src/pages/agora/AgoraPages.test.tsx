@@ -17,6 +17,7 @@ import { resetFake, setFakeConsented } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
 import { AgoraHomePage } from './AgoraHomePage';
 import { AgoraProjectPage } from './AgoraProjectPage';
+import { TopicListPage } from './TopicListPage';
 import { TopicPage } from './TopicPage';
 
 const person = (n: number, name: string): CreatorSummary => ({
@@ -64,6 +65,7 @@ function renderAt(path: string) {
   const router = createMemoryRouter(
     [
       { path: '/agora', element: <AgoraHomePage /> },
+      { path: '/agora/topics', element: <TopicListPage /> },
       { path: '/agora/topics/:id', element: <TopicPage /> },
       { path: '/agora/projects/:id', element: <AgoraProjectPage /> },
       { path: '/projects/:id', element: <p>workspace</p> },
@@ -305,5 +307,37 @@ describe('가짜 서버 그대로(shared/api 아고라 가짜 응답)', () => {
     renderAt(`/agora/projects/${FAKE_AGORA_IDS.noCover}`);
     fireEvent.click(await screen.findByRole('button', { name: COPY['A-05'] }));
     expect((await screen.findByRole('alert')).textContent).toContain(COPY['S-06']);
+  });
+});
+
+describe('TopicListPage', () => {
+  const HOME: AgoraHomeResponse = {
+    recommended: [],
+    risingCreators: [],
+    hotTopics: [
+      { topic: TOPIC.topic, projects: TOPIC.projects },
+      {
+        topic: { id: '1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9', title: 'Warm Task Lighting' },
+        projects: [card(5, 'Lamp')],
+      },
+    ],
+  };
+
+  it('아고라 홈의 핫토픽을 모두 늘어놓고 누르면 그 주제로 간다', async () => {
+    vi.spyOn(api, 'getAgoraHome').mockResolvedValue(HOME);
+    const router = renderAt('/agora/topics');
+    expect(await screen.findByRole('heading', { level: 1, name: COPY['A-01'] })).toBeTruthy();
+    const link = await screen.findByRole('link', { name: 'Warm Task Lighting' });
+    expect(screen.getByRole('link', { name: 'Urban Trail' })).toBeTruthy();
+    fireEvent.click(link);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/agora/topics/${HOME.hotTopics[1]?.topic.id}`),
+    );
+  });
+
+  it('핫토픽이 없으면 S-02 를 보여 준다', async () => {
+    vi.spyOn(api, 'getAgoraHome').mockResolvedValue({ ...HOME, hotTopics: [] });
+    renderAt('/agora/topics');
+    expect((await screen.findByRole('status')).textContent).toBe(COPY['S-02']);
   });
 });

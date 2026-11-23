@@ -155,6 +155,13 @@ export const COPY = {
   'CV-18':
     'Use Left and Right to move between steps, Up and Down within a step, and Home or End to move to the first or last node.',
   'CV-19': 'Generation started.',
+  // Figma 정합(#166): 임시 ID — 단계 안 그룹 소제목(시안 Work Space-My work 3924:67090)
+  'CV-20': 'Keywords',
+  'CV-21': 'Data type',
+  'CV-22': 'Search priority',
+  'CV-23': 'Sentence supporting the answer',
+  'CV-24': 'Verification criteria',
+  'CV-25': 'Discrepancies',
   // ---- 리믹스 패널(#41): 확정 ID(#128). RX-01~04 는 Figma 원문(Control bar 1720:80619, 제목 2513:226457),
   // RX-05~08 은 Figma에 없는 낭독용 이름
   'RX-01': 'Remix with',
@@ -177,6 +184,9 @@ export const COPY = {
   'A-08': 'Post',
   'A-09': 'Recommended Project',
   'A-10': 'Rising Creator',
+  // Figma 정합(#168): 임시 ID. 홈 좌하단 Recent Work 알약 이름(1226:78124)과 열린 카드 머리글(1185:58872)
+  'RW-01': 'Recent Work',
+  'RW-02': 'Recent work',
   // ---- 노드 편집(#31): 확정 ID(#128).
   'NE-01': 'Edit node',
   'NE-02': 'Weighting',
@@ -327,6 +337,14 @@ export const CANVAS_COPY = {
   sample: COPY['C-06'],
   sampleDescription: COPY['C-07'],
   started: COPY['CV-19'],
+  groups: {
+    keywords: COPY['CV-20'],
+    dataType: COPY['CV-21'],
+    priority: COPY['CV-22'],
+    evidence: COPY['CV-23'],
+    criteria: COPY['CV-24'],
+    mismatch: COPY['CV-25'],
+  },
 } as const;
 
 export const NODE_EDITOR_COPY = {
