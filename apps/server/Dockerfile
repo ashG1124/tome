@@ -37,6 +37,10 @@ RUN mkdir /app && chown node:node /app
 WORKDIR /app
 COPY --from=build --chown=node:node /prod /app
 COPY --from=build --chown=node:node /app/apps/server/dist /app/dist
+# 배포 커밋 해시(build-info/version.txt)를 이미지에 넣는다(#177). 서버 코드가 그대로인 배포에서도
+# 이미지가 달라져야 컨테이너가 새로 교체된다. 매번 바뀌는 값이라 캐시를 해치지 않게 맨 뒤에 둔다.
+# 로컬 docker build 처럼 파일이 없어도 .gitkeep 때문에 폴더째 복사가 깨지지 않는다.
+COPY --chown=node:node apps/server/build-info /app/build-info
 USER node
 EXPOSE 3000
 # 마이그레이션은 컨테이너에서 돌리지 않는다. 배포 전에 direct 주소로 따로 실행한다
