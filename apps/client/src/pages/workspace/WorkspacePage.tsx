@@ -235,8 +235,8 @@ export function WorkspacePage() {
         </div>
       ) : null}
       {bar ? (
-        <div className="fixed inset-x-0 bottom-[var(--space-padding-8)] flex justify-center px-[var(--grid-margin)]">
-          <div className="flex w-[calc(var(--size-prompt-width)+var(--size-icon-menu-button)+var(--space-gap-4))] max-w-full items-center gap-[var(--space-gap-4)]">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[var(--space-padding-8)] flex justify-center px-[var(--grid-margin)]">
+          <div className="pointer-events-auto flex w-[calc(var(--size-prompt-width)+var(--size-icon-menu-button)+var(--space-gap-4))] max-w-full items-center gap-[var(--space-gap-4)]">
             {/* 첨부(클립) 버튼은 자리만 둔다. 동작은 첨부 기능(T11)에서. */}
             <span
               aria-hidden="true"

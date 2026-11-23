@@ -90,8 +90,7 @@
   background: var(--color-font-disable);
 }
 
-.node-edit-panel,
-.node-preview-panel {
+.node-edit-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-gap-4);
@@ -127,8 +126,7 @@
   gap: var(--space-gap-4);
 }
 
-.node-edit-panel button:not([role='tab']):not([role='switch']),
-.node-preview-panel button {
+.node-edit-panel button:not([role='tab']):not([role='switch']) {
   color: inherit;
   background: var(--color-background-default);
   border: var(--stroke-weight-light) solid var(--color-border-input);
@@ -138,14 +136,12 @@
   cursor: pointer;
 }
 
-.node-edit-panel button:disabled,
-.node-preview-panel button:disabled {
+.node-edit-panel button:disabled {
   color: var(--color-font-disable);
   cursor: not-allowed;
 }
 
-.node-edit-panel button:focus-visible,
-.node-preview-panel button:focus-visible {
+.node-edit-panel button:focus-visible {
   outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
   outline-offset: var(--focus-outline-offset);
 }
@@ -317,49 +313,6 @@
   box-shadow: var(--shadow-floating);
 }
 
-.node-preview-panel {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  flex-shrink: 0;
-  gap: calc(var(--space-gap-4) / 2);
-}
-
-.node-preview-image {
-  position: relative;
-  isolation: isolate;
-  aspect-ratio: calc(var(--canvas-answer-width) / var(--canvas-answer-height));
-  width: 100%;
-  height: auto;
-  box-shadow: var(--shadow-preview);
-}
-
-.node-preview-image[hidden] {
-  display: none;
-}
-
-.node-preview-toolbar .node-preview-apply {
-  min-height: var(--font-size-h1);
-  padding: 0 var(--space-padding-6);
-  border: 0;
-  border-radius: var(--radius-max);
-  background: var(--color-fill-card);
-}
-
-.node-preview-toolbar .node-preview-toggle {
-  display: flex;
-  align-items: center;
-  border: 0;
-  padding: 0;
-  min-width: var(--space-padding-8);
-}
-
-.node-preview-panel > [role='status'] {
-  padding-inline: var(--space-padding-7);
-  font: var(--text-body-b2-r);
-  color: var(--color-font-sub-text);
-}
-
 .node-edit-pad-layout {
   position: relative;
   display: block;
@@ -448,18 +401,6 @@
   min-height: calc(var(--font-size-c2) * var(--line-height-default) * 2);
 }
 
-.node-preview-image.canvas-gradient {
-  background-image: none;
-}
-
-.node-preview-toolbar strong {
-  flex: 1;
-  font: var(--text-body-b1-m);
-  display: flex;
-  align-items: center;
-  gap: var(--space-padding-2);
-}
-
 .node-edit-dial-values [data-empty='true'] {
   visibility: hidden;
 }
@@ -502,21 +443,6 @@
   );
 }
 
-.node-preview-toolbar {
-  display: flex;
-  align-items: center;
-  min-height: calc(var(--size-input-height) + var(--space-gap-4) - var(--stroke-weight-light));
-  box-sizing: border-box;
-  padding-inline: var(--space-padding-6) calc(var(--space-padding-6) - var(--stroke-weight-bold));
-  gap: var(--space-padding-3);
-  border: var(--stroke-weight-light) solid var(--color-fill-card);
-  border-radius: var(--radius-max);
-  background: var(--color-background-default);
-  box-shadow: var(--shadow-preview);
-  backdrop-filter: blur(var(--blur-background));
-  color: var(--color-font-sub-text);
-}
-
 .node-edit-description,
 .node-edit-keyword [role='tab'],
 .node-edit-axis,
@@ -531,4 +457,193 @@
 
 .node-edit-control:focus-within .node-edit-axis {
   background: var(--color-background-default);
+}
+
+/* ---- Figma 정합(#169): Preview 패널. 시안 preview 1192:64346 — 닫힘 알약 190×59, 열림 카드 440×280 + 알약 폭 100% */
+.canvas-preview-dock {
+  position: absolute;
+  z-index: 2;
+  left: var(--space-padding-8);
+  bottom: var(--space-padding-8);
+  width: var(--canvas-answer-width);
+  max-width: calc(100% - var(--space-padding-8) * 2);
+  pointer-events: none;
+}
+
+.canvas-preview-dock > * {
+  pointer-events: auto;
+}
+
+.node-preview-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-gap-4) / 2);
+  width: 100%;
+  min-width: 0;
+  color: var(--color-font-main-text);
+  font: var(--text-body-b1-m);
+  letter-spacing: var(--letter-spacing-default);
+}
+
+.node-preview-image {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: calc(var(--canvas-answer-width) / var(--canvas-answer-height));
+  overflow: hidden;
+  border-radius: var(--canvas-preview-radius);
+  box-shadow: var(--shadow-preview);
+  /* 이미지가 없을 때의 투명 체크무늬 자리 */
+  background-color: var(--color-background-default);
+  background-image: conic-gradient(
+    var(--color-fill-card) 25%,
+    var(--color-background-weak) 0 50%,
+    var(--color-fill-card) 0 75%,
+    var(--color-background-weak) 0
+  );
+  background-size: calc(var(--size-icon-empty) * 1.75) calc(var(--size-icon-empty) * 1.75);
+}
+
+.node-preview-image[hidden] {
+  display: none;
+}
+
+.node-preview-image.canvas-gradient {
+  background-image: none;
+}
+
+.node-preview-nav {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--space-padding-3);
+  pointer-events: none;
+}
+
+.node-preview-nav button {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-font-helper-text);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.node-preview-nav button:disabled {
+  color: var(--color-font-disable);
+  cursor: not-allowed;
+}
+
+.node-preview-toolbar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-gap-3);
+  width: calc(var(--canvas-answer-width) * 190 / 440);
+  height: calc(var(--size-input-height) + var(--space-gap-4) - var(--stroke-weight-light));
+  padding-inline: var(--space-padding-6) calc(var(--space-padding-6) - var(--stroke-weight-bold));
+  border: var(--stroke-weight-light) solid var(--color-fill-card);
+  border-radius: var(--radius-max);
+  background: color-mix(in srgb, var(--color-background-default) 50%, transparent);
+  box-shadow: var(--shadow-preview);
+  backdrop-filter: blur(var(--blur-background));
+  color: var(--color-font-main-text);
+}
+
+.node-preview-panel[data-open='true'] .node-preview-toolbar {
+  width: 100%;
+}
+
+.node-preview-panel[data-status='generating'] .node-preview-toolbar {
+  border-color: var(--color-fill-point);
+}
+
+.node-preview-panel[data-open='true'] .node-preview-toolbar {
+  border-color: var(--color-fill-card);
+}
+
+.node-preview-toolbar button {
+  display: flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.node-preview-toolbar button:disabled {
+  color: var(--color-font-disable);
+  cursor: not-allowed;
+}
+
+.node-preview-toolbar .node-preview-toggle {
+  flex: 1;
+  gap: var(--space-padding-2);
+  padding: 0;
+  min-width: 0;
+  border-radius: var(--radius-max);
+}
+
+.node-preview-toolbar strong {
+  font-weight: inherit;
+}
+
+.node-preview-dot {
+  width: calc(var(--space-padding-2) * 1.5);
+  height: calc(var(--space-padding-2) * 1.5);
+  margin-top: calc(var(--space-padding-2) * -1.5);
+  border-radius: var(--radius-max);
+  background: var(--color-fill-point);
+}
+
+.node-preview-toolbar .node-preview-apply {
+  height: var(--size-input-height);
+  padding: 0 var(--space-padding-6);
+  border-radius: var(--radius-max);
+  background: var(--color-shadow-weak);
+  color: var(--color-font-sub-text);
+}
+
+.node-preview-toolbar .node-preview-chevron {
+  padding: 0;
+}
+
+.node-preview-toolbar button:focus-visible,
+.node-preview-nav button:focus-visible,
+.node-preview-alert button:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.node-preview-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+  padding: var(--space-padding-3) var(--space-padding-6);
+  border-radius: var(--radius-input);
+  background: var(--color-background-default);
+  box-shadow: var(--shadow-preview);
+  font: var(--text-body-b2-r);
+}
+
+.node-preview-alert button {
+  border: var(--stroke-weight-light) solid var(--color-border-input);
+  border-radius: var(--radius-input);
+  background: var(--color-background-default);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 빈 알림 칸(Flash)은 자리를 차지하지 않게 한다. 글이 들어오면 :empty 가 풀려 보통 자리로 돌아온다. */
+.node-preview-panel > [role='status']:empty {
+  position: absolute;
 }
