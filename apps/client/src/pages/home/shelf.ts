@@ -11,6 +11,17 @@ export function sortShelf(projects: readonly ProjectSummary[]): ProjectSummary[]
   return [...projects].sort((a, b) => a.shelfPosition - b.shelfPosition);
 }
 
+/** 가장 최근에 편집한 프로젝트 하나. 프로젝트가 없으면 null. */
+export function latestEdited(projects: readonly ProjectSummary[]): ProjectSummary | null {
+  let latest: ProjectSummary | null = null;
+  for (const project of projects) {
+    if (latest === null || Date.parse(project.lastEditedAt) > Date.parse(latest.lastEditedAt)) {
+      latest = project;
+    }
+  }
+  return latest;
+}
+
 /** 파생작이면 derive, 리믹스 상대가 있으면 remix, 나머지는 my-work. */
 export function shelfCardType(project: ProjectSummary): ShelfCardType {
   if (project.kind === 'derive') return 'derive';

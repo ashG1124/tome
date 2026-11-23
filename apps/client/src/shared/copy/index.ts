@@ -177,6 +177,9 @@ export const COPY = {
   'A-08': 'Post',
   'A-09': 'Recommended Project',
   'A-10': 'Rising Creator',
+  // Figma 정합(#168): 임시 ID. 홈 좌하단 Recent Work 알약 이름(1226:78124)과 열린 카드 머리글(1185:58872)
+  'RW-01': 'Recent Work',
+  'RW-02': 'Recent work',
   // ---- 노드 편집(#31): 확정 ID(#128).
   'NE-01': 'Edit node',
   'NE-02': 'Weighting',
