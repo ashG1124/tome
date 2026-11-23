@@ -46,14 +46,27 @@ export function isMotionOff(search: string): boolean {
   return new URLSearchParams(search).get('motion') === 'off';
 }
 
-/** 최종 판정: 움직임 줄이기·?motion=off·느린 PC 중 하나라도 해당하면 정지 화면 모드 */
+/**
+ * 주소의 `?motion=on`(전시 운영자용)인지.
+ * 켜져 있으면 느린 PC 판정(프레임 간격 재기)을 하지 않고 연출 모드로 고정한다.
+ * 단, 움직임 줄이기와 `?motion=off` 가 더 먼저다.
+ */
+export function isMotionOn(search: string): boolean {
+  return new URLSearchParams(search).get('motion') === 'on';
+}
+
+/**
+ * 최종 판정. 우선순위: 움직임 줄이기 > ?motion=off > ?motion=on > 느린 PC.
+ * `?motion=on` 이면 느린 PC 여부(slow)는 보지 않는다.
+ */
 export function decideStoryMode(input: {
   search: string;
   reducedMotion: boolean;
   slow: boolean;
 }): StoryMode {
-  if (input.reducedMotion || input.slow || isMotionOff(input.search)) return 'static';
-  return 'motion';
+  if (input.reducedMotion || isMotionOff(input.search)) return 'static';
+  if (isMotionOn(input.search)) return 'motion';
+  return input.slow ? 'static' : 'motion';
 }
 
 /** 한 번 느리다고 판정되면 이 방문(페이지를 다시 열기 전) 동안 유지한다. */
