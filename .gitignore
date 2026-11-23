@@ -29,6 +29,9 @@ yarn.lock
 # 시안 비교 결과물
 apps/client/design-check/results/
 
+# 배포 때 CI 가 쓰는 커밋 해시 파일(이미지에 들어간다). 폴더는 .gitkeep 으로 유지한다.
+apps/server/build-info/version.txt
+
 # Prisma 가 생성하는 클라이언트
 apps/server/src/generated/
 

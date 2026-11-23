@@ -17,7 +17,8 @@ type WorkerEnv = {
   R2_BUCKET: string;
   R2_ACCESS_KEY_ID: string;
   R2_SECRET_ACCESS_KEY: string;
-  // 배포할 때 `--var APP_VERSION:<커밋 해시>`로 넣는다. /health 의 version 으로 보인다.
+  // 배포할 때 `--var APP_VERSION:<커밋 해시>`로 넣는다. /health 의 version 은 이미지 안 build-info/version.txt 를 먼저 쓰고,
+  // 그 파일이 없을 때만 이 값을 쓴다. 변수만 바뀌면 이미지가 같아 컨테이너가 교체되지 않기 때문이다(#177).
   APP_VERSION?: string;
   // 운영 시간표(KST, JSON). 이 시간 안에만 cron 이 서버를 깨운다. 형식은 worker/wake.ts.
   // Worker 에서만 쓰므로 컨테이너(envVars)로는 넘기지 않는다.
