@@ -8,7 +8,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import type { CanvasRemixOptions } from '../remix-model';
-import type { PromptSet } from '@tome/shared';
+import type { PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
 import {
   buildCanvas,
   keyboardTarget,
@@ -66,6 +66,8 @@ export interface GenerationCanvasProps {
   generation?: GenerationView;
   labels: CanvasLabels;
   geometry: CanvasGeometry;
+  /** 파생 프로젝트면 원작 답변 카드를 위에 더한다. */
+  derivedFrom?: WorkspaceDerivedFrom;
   announcement?: string;
   editor?: CanvasEditorConnection;
   history?: CanvasHistoryConnection;
@@ -78,6 +80,7 @@ function CanvasContent({
   generation,
   labels,
   geometry,
+  derivedFrom,
   announcement,
   editor,
   history,
@@ -96,9 +99,9 @@ function CanvasContent({
     };
   }, []);
   const graph = useMemo(
-    () => buildCanvas(sets, generation, labels, geometry),
+    () => buildCanvas(sets, generation, labels, geometry, derivedFrom),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fontsReady 는 배치 재계산 신호다.
-    [sets, generation, labels, geometry, fontsReady],
+    [sets, generation, labels, geometry, derivedFrom, fontsReady],
   );
   const flow = useReactFlow<CanvasNode, Edge>();
   const initialized = useNodesInitialized();

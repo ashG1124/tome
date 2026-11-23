@@ -182,6 +182,20 @@ cases.push({
   width: 301,
   height: 60,
 });
+// 파생 화면(#176): 원작자 머리글. 글자 위치·크기·연한 색을 시안 잘라낸 그림(160×44)과 맞춘다.
+cases.push({
+  id: 'canvas/origin-heading',
+  ref: 'design-ref/components/answer-origin/origin-heading__1679-15197.png',
+  width: 160,
+  height: 44,
+  // 실측: diffRatio 19.74%·largestBlob 632 → max 20.2%(+0.5%p), maxBlob 700. 글자 위치·크기는 시안과 같다.
+  allowedDiff: {
+    max: 0.202,
+    maxBlob: 700,
+    reason:
+      '글자색 진하게(시안 연한 회색 → --color-font-helper-text #6A7281, 글자 대비 4.5:1)와 글자 테두리 렌더링 차이',
+  },
+});
 for (const [index, angle] of [270, 237.53, 180, 122.47, 90, 57.53, 0, 302.47].entries()) {
   const number = String(index + 1).padStart(2, '0');
   cases.push({

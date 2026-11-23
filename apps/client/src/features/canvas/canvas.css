@@ -483,3 +483,75 @@
 .react-flow__node:is(:hover, :focus-within) .canvas-comment-text {
   display: -webkit-box;
 }
+
+/* ---- Figma 정합(#176): 파생 2열. 시안 Work Space-Derive 1679:15197 */
+/* 답변 카드 머리글은 카드 위 가운데. 원작자 머리글은 연한 글자색 */
+.canvas-heading[data-variant='answer'],
+.canvas-heading[data-variant='origin'] {
+  justify-content: center;
+  font: var(--text-subtitle-st2-m);
+  letter-spacing: var(--letter-spacing-default);
+}
+.canvas-heading[data-variant='answer'] strong,
+.canvas-heading[data-variant='origin'] strong {
+  font: inherit;
+}
+.canvas-heading[data-variant='origin'] {
+  color: var(--color-font-helper-text);
+}
+.canvas-heading[data-variant='answer'] {
+  color: var(--color-font-main-text);
+}
+/* 원작 카드: 읽기 전용, 그림 위에 배경색 0.6 흐림 */
+.canvas-card--origin {
+  padding: 0;
+  border: 0;
+  background: var(--color-background-default);
+  box-shadow: var(--shadow-preview);
+}
+.canvas-origin-slot {
+  position: relative;
+}
+.canvas-origin-veil {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-background-default) 60%, transparent);
+  pointer-events: none;
+}
+.canvas-card--origin .canvas-answer-chip {
+  position: absolute;
+  top: var(--space-padding-6);
+  left: var(--space-padding-6);
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-padding-3) var(--space-padding-7);
+  border-radius: var(--radius-max);
+  background: var(--color-shadow-medium);
+  color: var(--color-font-on-fill);
+  font: var(--text-body-b1-m);
+  white-space: nowrap;
+}
+/* 원작 답변이 없을 때의 빈 자리: 체크무늬 */
+.canvas-origin-slot[data-empty] {
+  background: repeating-conic-gradient(
+      var(--color-gray-20) 0 25%,
+      var(--color-background-default) 0 50%
+    )
+    0 0 / calc(var(--space-padding-6) * 2) calc(var(--space-padding-6) * 2);
+}
+.canvas-origin-deleted {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--color-font-sub-text);
+  font: var(--text-subtitle-st2-m);
+  letter-spacing: var(--letter-spacing-default);
+}
+/* 원작으로 가는 연결선은 회색, 내 답변으로 가는 선은 기본(주황) */
+.generation-canvas .react-flow__edge.canvas-edge--origin .react-flow__edge-path {
+  stroke: var(--color-border-input);
+}

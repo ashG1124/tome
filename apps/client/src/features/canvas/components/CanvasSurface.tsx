@@ -28,6 +28,29 @@ function AnswerImage({ url, label }: { url: string; label: string }) {
   );
 }
 
+/** 원작 답변 카드. 원작 그림 위에 흐림 오버레이를 덮은 읽기 전용 카드다(시안 Work Space-Derive 1679:15197). */
+function OriginAnswer({ data }: { data: CardData }) {
+  const origin = data.origin;
+  const answer = origin?.answer;
+  const deleted = !origin || origin.title === null || origin.creator === null;
+  return (
+    <div className="canvas-image-slot canvas-origin-slot" data-empty={!answer || undefined}>
+      {answer && !deleted ? (
+        <>
+          <AnswerImage key={answer.imageUrl} url={answer.imageUrl} label={data.label} />
+          <span className="canvas-answer-chip">{data.labels.answer(answer.number)}</span>
+        </>
+      ) : null}
+      {deleted ? (
+        <p className="canvas-origin-deleted" role="status">
+          {data.label}
+        </p>
+      ) : null}
+      <span className="canvas-origin-veil" aria-hidden="true" />
+    </div>
+  );
+}
+
 export function GenerationImage({ generating = true }: { generating?: boolean }) {
   return (
     <div
@@ -72,6 +95,7 @@ export function CanvasSurface({
     <article
       {...rest}
       className={`canvas-card canvas-card--${data.kind} ${modifiers}`.trim()}
+      data-readonly={data.kind === 'origin' || undefined}
       data-enabled={data.output ? String(data.output.enabled) : undefined}
       aria-label={data.label}
       aria-busy={data.state === 'running' || undefined}
@@ -111,6 +135,7 @@ export function CanvasSurface({
           }
         />
       ) : null}
+      {data.kind === 'origin' ? <OriginAnswer data={data} /> : null}
       {data.kind === 'answer' ? (
         <>
           <div className={`canvas-image-slot${pending ? ' canvas-gradient' : ''}`}>
