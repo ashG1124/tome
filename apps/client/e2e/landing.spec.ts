@@ -51,13 +51,13 @@ test('Tab 키로 로고 → 메뉴 → Get Started 에 닿고 포커스 테두�
     );
     if (await cta.evaluate((el) => el === document.activeElement)) break;
   }
-  expect(names).toEqual(['TÓME', 'My Work', 'Remix', 'Derive', 'Identity', 'Get Started']);
+  expect(names).toEqual(['TÓME', 'My Work', 'Remix', 'Derive', 'Get Started']);
   await expect(cta).toBeFocused();
   await expect(cta).toHaveCSS('outline-style', 'solid');
 });
 
 test('맨 위로 버튼을 누르면 맨 위로 올라가고 포커스가 로고 링크로 간다', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?motion=on');
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.getByRole('button', { name: 'Back to top' }).click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
@@ -70,11 +70,14 @@ test.describe('움직임 줄이기', () => {
   test('연출 없이 정지 상태로 그려진다', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'TÓME' })).toBeVisible();
+    // 연출을 켜지 않는다: 정지 화면 모드이고, 챕터를 고정(pin)하는 틀이 없다
+    await expect(page.locator('[data-story-mode="static"]')).toHaveCount(1);
+    expect(await page.locator('.pin-spacer').count()).toBe(0);
     // 히어로 이미지·로고가 처음부터 보이는 상태이고 transform 이 걸려 있지 않다
     const states = await page.evaluate(() => {
       const tile = document.querySelector('[data-hero-tile]') as HTMLElement;
       const enter = document.querySelector('[data-hero-enter]') as HTMLElement;
-      const logo = document.querySelector('[data-hero-logo-in]') as HTMLElement;
+      const logo = document.querySelector('[data-hero-logo]') as HTMLElement;
       return [tile, enter, logo].map((el) => {
         const style = getComputedStyle(el);
         return { opacity: style.opacity, transform: style.transform };
@@ -102,7 +105,9 @@ const SHOTS = process.env.STORY_SHOTS;
 async function chapterSpans(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('[data-chapter]')].map((chapter) => {
-      const stage = chapter.querySelector<HTMLElement>('[data-stage]') as HTMLElement;
+      const stage = chapter.querySelector<HTMLElement>(
+        '.mw-stage, .rx-stage, .dv-stage',
+      ) as HTMLElement;
       const top = chapter.getBoundingClientRect().top + window.scrollY;
       return {
         name: chapter.dataset.chapter as string,
@@ -137,7 +142,7 @@ test.describe('스크롤 스토리', () => {
       if (message.type() === 'error') errors.push(message.text());
     });
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto('/');
+    await page.goto('/?motion=on');
     await expect(page.locator('[data-story-mode="motion"]')).toHaveCount(1);
     const spans = await chapterSpans(page);
     expect(spans.map((span) => span.name)).toEqual(['mywork', 'remix', 'derive']);
@@ -152,8 +157,11 @@ test.describe('스크롤 스토리', () => {
         // 고정 구간 안에서는 화면 한 장이 위에 붙어 있다
         const stageTop = await page.evaluate(
           (name) =>
-            document.querySelector(`[data-chapter="${name}"] [data-stage]`)?.getBoundingClientRect()
-              .top,
+            document
+              .querySelector(
+                `[data-chapter="${name}"] .mw-stage, [data-chapter="${name}"] .rx-stage, [data-chapter="${name}"] .dv-stage`,
+              )
+              ?.getBoundingClientRect().top,
           span.name,
         );
         expect(Math.abs(stageTop ?? 999)).toBeLessThanOrEqual(2);
@@ -180,48 +188,11 @@ test.describe('스크롤 스토리', () => {
     await context.close();
   });
 
-  test('Tab 으로 Try Remix 버튼에 가면 보이는 자리로 스크롤되고, Enter 로 Remix with 패널 단계로 간다', async ({
-    browser,
-  }) => {
-    test.setTimeout(60_000);
-    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
-    const page = await context.newPage();
-    await page.goto('/');
-    const bubble = page.getByRole('button', { name: 'Try Remix!' });
-    await expect(bubble).toHaveCount(1);
-    await page.getByRole('link', { name: 'Get Started' }).focus();
-    await page.keyboard.press('Tab');
-    await expect(bubble).toBeFocused();
-    await page.waitForTimeout(1200);
-    await expect(bubble).toBeInViewport();
-    const opacity = Number(await bubble.evaluate((el) => getComputedStyle(el).opacity));
-    expect(opacity).toBeGreaterThan(0.9);
-    if (SHOTS) await page.screenshot({ path: `${SHOTS}/story-remix-tab-focus.png` });
-    const before = await page.evaluate(() => window.scrollY);
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before + 100);
-    // 패널 단계: Remix with 패널 그림이 보이는 상태
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() =>
-            Number(
-              getComputedStyle(document.querySelector('[data-shot="frameF"]') as HTMLElement)
-                .opacity,
-            ),
-          ),
-        { timeout: 10_000 },
-      )
-      .toBeGreaterThan(0.95);
-    if (SHOTS) await page.screenshot({ path: `${SHOTS}/story-remix-after-enter.png` });
-    await context.close();
-  });
-
   test('스페이스·PageDown 만으로 스토리를 지나 푸터의 맨 위로 버튼까지 갈 수 있다', async ({
     page,
   }) => {
     test.setTimeout(120_000);
-    await page.goto('/');
+    await page.goto('/?motion=on');
     const top = page.getByRole('button', { name: 'Back to top' });
     for (let i = 0; i < 120; i++) {
       await page.keyboard.press(i % 2 === 0 ? 'PageDown' : 'Space');
@@ -239,7 +210,7 @@ test.describe('스크롤 스토리', () => {
     test.setTimeout(90_000);
     const context = await browser.newContext({ viewport: { width: 1536, height: 960 } });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/?motion=on');
     const spans = await chapterSpans(page);
     for (const span of spans) {
       for (const fraction of [0.05, 0.5, 0.95]) {
@@ -254,36 +225,40 @@ test.describe('스크롤 스토리', () => {
     await context.close();
   });
 
-  test('롤링 줄은 끝없이 흐르고, 마우스를 올린 줄만 멈춘다', async ({ page }) => {
+  test('DERIVE 의 세 줄은 스크롤에 따라 움직이고, 처음 위치(왼쪽·가운데·오른쪽 방향)가 서로 다르다', async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
-    await page.goto('/');
+    await page.goto('/?motion=on');
     const spans = await chapterSpans(page);
     const derive = spans[2];
     if (!derive) throw new Error('장이 없다');
-    await scrollToY(page, derive.top + derive.pinLength * 0.03);
-    const offset = (kind: string) =>
-      page.evaluate((name) => {
-        const track = document.querySelector(`[data-roll-row="${name}"] [data-roll-track]`);
-        return new DOMMatrix(getComputedStyle(track as Element).transform).m41;
-      }, kind);
-    const first = { projects: await offset('projects'), creators: await offset('creators') };
+    const offsets = () =>
+      page.evaluate(() =>
+        ['.dv-r1', '.dv-r2', '.dv-r3'].map((row) => {
+          const track = document.querySelector(`${row} .dv-trk`);
+          return new DOMMatrix(getComputedStyle(track as Element).transform).m41;
+        }),
+      );
+    // 줄은 스크롤로 움직인다(시간이 흘러도 스크롤을 멈추면 그 자리에 있다)
+    await scrollToY(page, derive.top + derive.pinLength * 0.005);
+    await page.waitForTimeout(1500);
+    const first = await offsets();
+    await scrollToY(page, derive.top + derive.pinLength * 0.12);
+    await page.waitForTimeout(1500);
+    const second = await offsets();
+    expect(second[0]).toBeLessThan(first[0] ?? 0); // 위 줄은 왼쪽으로 온다
+    expect(second[1]).toBeLessThan(first[1] ?? 0); // 가운데 줄도 왼쪽으로 온다
+    expect(second[2]).toBeGreaterThan(first[2] ?? 0); // 아래 줄은 반대 방향(오른쪽)
     await page.waitForTimeout(600);
-    const second = { projects: await offset('projects'), creators: await offset('creators') };
-    expect(second.projects).toBeLessThan(first.projects); // 왼쪽으로 흐른다
-    expect(second.creators).toBeGreaterThan(first.creators); // 가운데 줄은 반대 방향
-    await page.locator('[data-roll-row="projects"]').hover();
-    const held = await offset('projects');
-    const creatorBefore = await offset('creators');
-    await page.waitForTimeout(600);
-    expect(await offset('projects')).toBe(held); // 올린 줄은 멈춘다
-    expect(await offset('creators')).not.toBe(creatorBefore); // 다른 줄은 계속 흐른다
+    expect(await offsets()).toEqual(second); // 스크롤을 멈추면 줄도 멈춘다
   });
 
   test('새로고침하면 맨 위에서 다시 시작하고, 뒤로 가기도 맨 위에서 시작한다', async ({ page }) => {
     test.setTimeout(60_000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto('/');
+    await page.goto('/?motion=on');
     const spans = await chapterSpans(page);
     await scrollToY(page, (spans[1]?.top ?? 0) + 800);
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(3000);
@@ -304,7 +279,7 @@ test.describe('스크롤 스토리', () => {
     test.setTimeout(240_000);
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/?motion=on');
     await page.waitForLoadState('load');
     const spans = await chapterSpans(page);
     const first = spans[0];
@@ -356,8 +331,9 @@ test.describe('스크롤 스토리', () => {
 async function expectStaticStory(page: Page, url: string, shotName: string) {
   await page.goto(url);
   await expect(page.locator('[data-story-mode="static"]')).toHaveCount(1);
-  // pin 이 없다: 고정 틀(pin-spacer)이 만들어지지 않는다
-  expect(await page.locator('.pin-spacer').count()).toBe(0);
+  // 스토리 안에 pin 이 없다: 고정 틀(pin-spacer)이 만들어지지 않는다.
+  // (Volumes 배너의 pin 은 스토리 밖이고 움직임 줄이기에서만 꺼진다. 위 '움직임 줄이기' 테스트가 페이지 전체로 확인한다)
+  expect(await page.locator('[data-story-mode] .pin-spacer').count()).toBe(0);
   const order = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('[data-chapter]')].map((chapter) => ({
       name: chapter.dataset.chapter,
@@ -367,19 +343,26 @@ async function expectStaticStory(page: Page, url: string, shotName: string) {
   expect(order.map((item) => item.name)).toEqual(['mywork', 'remix', 'derive']);
   expect(order[0]?.top).toBeLessThan(order[1]?.top ?? 0);
   expect(order[1]?.top).toBeLessThan(order[2]?.top ?? 0);
-  // 모든 앱 화면 그림이 처음부터 보이는 상태(투명도·변형 없음)다
+  // 단계별 최종 그림(MY WORK·REMIX 틀 안 화면, DERIVE 두 단계)이 처음부터 보이는 상태(투명도·변형 없음)다
+  await expect(page.locator('.mw-still-frame')).toHaveCount(2);
+  await expect(page.locator('.dv-still-step')).toHaveCount(2);
   const states = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('.story-static [data-shot]')].map((el) => {
+    [...document.querySelectorAll<HTMLElement>('.mw-still-frame, .dv-still-step')].map((el) => {
       const style = getComputedStyle(el);
       return { opacity: style.opacity, transform: style.transform };
     }),
   );
-  expect(states.length).toBeGreaterThan(8);
   for (const state of states) expect(state).toEqual({ opacity: '1', transform: 'none' });
   const widths = await windowWidths(page);
   expect(widths.scroll).toBeLessThanOrEqual(widths.inner);
-  // 롤링 띠는 멈춰 있다(복제본 없음)
-  expect(await page.locator('[data-roll-clone]').count()).toBe(0);
+  // 줄은 움직이지 않는다(스크롤 연출이 없어 이동 변형이 걸리지 않는다)
+  const rowTransforms = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.dv-trk')].map(
+      (el) => getComputedStyle(el).transform,
+    ),
+  );
+  expect(rowTransforms).toHaveLength(3);
+  for (const transform of rowTransforms) expect(transform).toBe('none');
   if (SHOTS) {
     // 이미지가 지연 로딩이라 위에서 아래로 한 번 훑어 모두 불러온 뒤 찍는다
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -388,12 +371,14 @@ async function expectStaticStory(page: Page, url: string, shotName: string) {
       await page.waitForTimeout(60);
     }
     await page.waitForFunction(() =>
-      [...document.querySelectorAll<HTMLImageElement>('.story img')]
+      [...document.querySelectorAll<HTMLImageElement>('[data-story-mode] img')]
         // 줄 가장자리 밖에 가려진 카드 그림은 지연 로딩이라 불러오지 않는다
         .filter((img) => img.getBoundingClientRect().left < window.innerWidth)
         .every((img) => img.complete),
     );
-    await page.locator('.story').screenshot({ path: `${SHOTS}/story-static-${shotName}.png` });
+    await page
+      .locator('[data-story-mode]')
+      .screenshot({ path: `${SHOTS}/story-static-${shotName}.png` });
   }
 }
 

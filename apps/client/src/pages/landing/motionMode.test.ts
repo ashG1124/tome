@@ -4,6 +4,7 @@ import {
   decideStoryMode,
   frameDeltas,
   isMotionOff,
+  isMotionOn,
   isSlowDevice,
   MIN_SAMPLES,
   SLOW_FRAME_MS,
@@ -53,5 +54,30 @@ describe('스토리 정지 화면 모드 판정', () => {
     expect(decideStoryMode({ ...base, reducedMotion: true })).toBe('static');
     expect(decideStoryMode({ ...base, slow: true })).toBe('static');
     expect(decideStoryMode({ ...base, search: '?motion=off' })).toBe('static');
+  });
+
+  it('?motion=on 만 연출 고정으로 본다', () => {
+    expect(isMotionOn('?motion=on')).toBe(true);
+    expect(isMotionOn('?a=1&motion=on')).toBe(true);
+    expect(isMotionOn('?motion=off')).toBe(false);
+    expect(isMotionOn('')).toBe(false);
+  });
+
+  it('?motion=on 이면 느린 PC 여도 motion 으로 고정한다', () => {
+    const on = { search: '?motion=on', reducedMotion: false, slow: true };
+    expect(decideStoryMode(on)).toBe('motion');
+    expect(decideStoryMode({ ...on, slow: false })).toBe('motion');
+  });
+
+  it('움직임 줄이기는 ?motion=on 보다 먼저라 static 이다', () => {
+    expect(decideStoryMode({ search: '?motion=on', reducedMotion: true, slow: false })).toBe(
+      'static',
+    );
+  });
+
+  it('?motion=off 는 ?motion=on 보다 먼저라 static 이다', () => {
+    expect(decideStoryMode({ search: '?motion=off', reducedMotion: false, slow: false })).toBe(
+      'static',
+    );
   });
 });
