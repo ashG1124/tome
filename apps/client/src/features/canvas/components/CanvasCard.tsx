@@ -132,6 +132,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           className="canvas-node-tool nodrag nopan nowheel"
           data-open={editing || commenting || undefined}
           role="group"
+          onFocus={() => navigation.focus(id)}
         >
           <div className="canvas-node-tool-bar">
             {canComment ? (

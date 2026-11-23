@@ -83,6 +83,8 @@ for (const viewport of [
       'aria-pressed',
       'true',
     );
+    // 첫 화면은 4·5단계 쪽으로 확대돼 있다. 포커스하면 캔버스가 노드를 화면 안으로 옮기니, 그 뒤에 누른다.
+    await corner.focus();
     await corner.click();
     await expect(panel.getByText(body, { exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Delete', exact: true }).focus();
@@ -91,7 +93,10 @@ for (const viewport of [
     await expect(input).toBeFocused();
     await page.screenshot({ path: info.outputPath('03-comment-deleted.png'), fullPage: true });
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Next version' }).click();
+    // 코멘트를 보던 중이라 캔버스가 k1 쪽에 있다. 포커스하면 답변 카드가 다시 화면 안으로 온다.
+    const next = page.getByRole('button', { name: 'Next version' });
+    await next.focus();
+    await next.click();
     await expect(versions.locator('[aria-live=polite]')).toHaveText('Answer 02');
     await expect(page.getByRole('button', { name: 'Next version' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Pin answer', exact: true })).toHaveAttribute(
@@ -124,6 +129,7 @@ test('one version disables both chevrons and editing remains available', async (
   await expect(page.getByRole('button', { name: 'Next version' })).toBeDisabled();
   await page.screenshot({ path: info.outputPath('04-single-version.png'), fullPage: true });
   const edit = page.locator('[data-id$=":k1"]').getByRole('button', { name: 'Edit node' });
+  await edit.focus();
   await edit.click();
   await expect(page.locator('.canvas-editor-panels')).toBeVisible();
   await expect(page.locator('.node-edit-panel')).toBeVisible();
