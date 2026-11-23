@@ -8,6 +8,7 @@ import {
   useStoreApi,
   type Edge,
 } from '@xyflow/react';
+import type { CanvasRemixOptions } from '../remix-model';
 import type { PromptSet } from '@tome/shared';
 import {
   buildCanvas,
@@ -39,6 +40,8 @@ export interface GenerationCanvasProps {
   announcement?: string;
   editor?: CanvasEditorConnection;
   history?: CanvasHistoryConnection;
+  remix?: CanvasRemixOptions;
+  remixDisabled?: boolean;
 }
 
 function CanvasContent({
@@ -49,6 +52,8 @@ function CanvasContent({
   announcement,
   editor,
   history,
+  remix,
+  remixDisabled,
 }: GenerationCanvasProps) {
   const graph = useMemo(
     () => buildCanvas(sets, generation, labels, geometry),
@@ -154,8 +159,8 @@ function CanvasContent({
     [flow, focus, geometry.nodeWidth, geometry.nodeHeight],
   );
   const navigation = useMemo(
-    () => ({ active: activeIds, focus, move, editor, history }),
-    [activeIds, focus, move, editor, history],
+    () => ({ active: activeIds, focus, move, editor, history, remix, remixDisabled }),
+    [activeIds, focus, move, editor, history, remix, remixDisabled],
   );
 
   return (

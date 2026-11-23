@@ -17,6 +17,7 @@ import { IconMenu } from './IconMenu';
 import { pageIdFromSearch, pageMenu } from './pageMenu';
 import { PromptBar, type PromptSubmit } from './PromptBar';
 import { promptBarInfo } from './prompt';
+import { useRemixConnections } from './remix/useRemixConnections';
 import { RemixPanel } from './remix/RemixPanel';
 import { WorkspaceHeader } from './WorkspaceHeader';
 
@@ -29,6 +30,7 @@ export function WorkspacePage() {
     queryFn: () => api.getWorkspace(id, requestedPage),
   });
   const queryClient = useQueryClient();
+  const remix = useRemixConnections(workspace.data);
   // 페이지 추가·세트 만들기가 실패했을 때의 오류(다음 시도에서 지운다)
   const [actionError, setActionError] = useState<unknown>(null);
   const addingPage = useRef(false);
@@ -179,6 +181,11 @@ export function WorkspacePage() {
           />
         </div>
       ) : null}
+      {remix?.error ? (
+        <div className="relative z-10 px-[var(--space-padding-8)]">
+          <ErrorNotice message={COPY[errorCopyKey(remix.error)]} onRetry={remix.retry} />
+        </div>
+      ) : null}
       {actionError !== null ? (
         <div className="relative z-10 px-[var(--space-padding-8)]">
           <ErrorNotice message={COPY[errorCopyKey(actionError)]} />
@@ -187,7 +194,7 @@ export function WorkspacePage() {
       {/* 가운데 생성 캔버스(#26, 프런트 B). 세트·단계 진행·답변 카드는 캔버스가 그리고, 이 화면은 자리와 데이터만 넘긴다.
           페이지를 바꾸면(?page=) 캔버스는 그 페이지 세트로 새로 그린다. */}
       {workspace.data ? (
-        <WorkspaceCanvas projectId={id} pageId={pageId} workspace={workspace.data} />
+        <WorkspaceCanvas projectId={id} pageId={pageId} workspace={workspace.data} remix={remix} />
       ) : null}
       {menu ? (
         <div className="fixed top-[var(--space-padding-8)] right-[var(--space-padding-8)]">

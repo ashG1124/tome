@@ -1,4 +1,4 @@
-import type { Answer, Node } from '@tome/shared';
+import type { Answer, Node, Connection } from '@tome/shared';
 import { KeywordEditor } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
 import { CanvasSurface, GenerationImage } from './components/CanvasSurface';
@@ -6,6 +6,8 @@ import { CANVAS_HISTORY_COPY, COPY, CANVAS_COPY, NODE_EDITOR_COPY } from '../../
 import { AnswerVersions } from './components/AnswerVersions';
 import './canvas.css';
 import './history.css';
+import { ConnectionPopover } from './components/ConnectionPopover';
+import './remix.css';
 
 export const canvasDesignFixtures = {
   keyword: () => (
@@ -118,6 +120,30 @@ export const canvasHistoryDesignFixtures = {
         labels={CANVAS_HISTORY_COPY.versions}
         onSelect={() => {}}
         onPin={async () => {}}
+      />
+    </div>
+  ),
+};
+
+const designConnection: Connection = {
+  id: '00000000-0000-4000-8000-000000000127',
+  nodeId: 'design-keyword',
+  predictedAction: 'Lean on evidence',
+  sentence: 'Leaned on evidence 7 of 10 times',
+  status: 'shown',
+};
+export const remixDesignFixtures = {
+  closed: () => (
+    <div
+      style={{
+        width: 'var(--canvas-node-surface-height)',
+        height: 'var(--canvas-node-surface-height)',
+      }}
+    >
+      <ConnectionPopover
+        answerId="design-answer"
+        connection={designConnection}
+        onDismiss={async () => {}}
       />
     </div>
   ),
