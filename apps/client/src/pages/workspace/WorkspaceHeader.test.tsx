@@ -27,6 +27,16 @@ describe('WorkspaceHeader', () => {
     expect(screen.getByRole('heading', { name: 'Neon street at night' })).toBeTruthy();
   });
 
+  it('새 프로젝트의 기본 제목(Untitled)은 눈에 안 보이게 숨기고 낭독기용으로만 남긴다', () => {
+    renderAt('Untitled');
+    expect(screen.getByRole('heading', { name: 'Untitled' }).className).toContain('sr-only');
+  });
+
+  it('제목이 생기면 보인다', () => {
+    renderAt('Neon street at night');
+    expect(screen.getByRole('heading').className).not.toContain('sr-only');
+  });
+
   it('제목을 불러오는 중이면 임시 문구를 보인다', () => {
     renderAt(undefined);
     expect(screen.getByRole('heading', { name: SKELETON_COPY.workspace })).toBeTruthy();

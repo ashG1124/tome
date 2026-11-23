@@ -266,7 +266,8 @@ describe('AgoraHomePage', () => {
     const topics = screen.getByRole('region', { name: COPY['A-01'] });
     const bundle = within(topics).getByRole('link', { name: /Urban Trail/ });
     expect(bundle.getAttribute('href')).toBe(`/agora/topics/${TOPIC.topic.id}`);
-    expect(bundle.textContent).toContain('+16');
+    // 응답에 주제 전체 프로젝트 수가 없으므로 "+N" 은 보이지 않는다
+    expect(bundle.textContent).not.toMatch(/\+\d/);
   });
 
   it('게시물이 하나도 없으면 S-02', async () => {

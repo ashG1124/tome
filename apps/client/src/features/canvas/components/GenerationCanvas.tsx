@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
-  Panel,
   ReactFlow,
   ReactFlowProvider,
   useNodesInitialized,
@@ -28,6 +27,33 @@ import {
 
 import '@xyflow/react/dist/style.css';
 import '../canvas.css';
+
+/** 첫 화면: 가장 최근 세트의 마지막 두 단계(4·5)와 답변 카드가 보이게 확대(zoom 1 이하)한다. 맞는 노드가 없으면 null. */
+function recentView(
+  nodes: readonly CanvasNode[],
+  sets: readonly PromptSet[],
+  width: number,
+  height: number,
+) {
+  const latest = [...sets].sort((a, b) => b.position - a.position)[0];
+  if (!latest || width <= 0 || height <= 0) return null;
+  const picked = nodes.filter((node) => node.data.setId === latest.id && node.data.column >= 4);
+  if (picked.length === 0) return null;
+  const left = Math.min(...picked.map((node) => node.position.x));
+  const right = Math.max(
+    ...picked.map(
+      (node) => node.position.x + (node.measured?.width ?? Number(node.style?.width ?? 0)),
+    ),
+  );
+  const top = Math.min(...picked.map((node) => node.position.y));
+  if (right <= left) return null;
+  const zoom = Math.min(1, (width * 0.92) / (right - left));
+  return {
+    zoom,
+    x: (width - (right - left) * zoom) / 2 - left * zoom,
+    y: height * 0.16 - top * zoom,
+  };
+}
 
 const NODE_TYPES = { card: CanvasCard };
 const EDGE_TYPES = {};
@@ -109,9 +135,25 @@ function CanvasContent({
   useEffect(() => {
     if (initialized && !fitted.current && graph.nodes.length) {
       fitted.current = true;
-      void flow.fitView({ padding: 0.12, minZoom: 0.3, maxZoom: 0.8 });
+      const { width, height } = store.getState();
+      const view = recentView(flow.getNodes(), sets, width, height);
+      if (view) void flow.setViewport(view);
+      else void flow.fitView({ padding: 0.12, minZoom: 0.3, maxZoom: 0.8 });
     }
-  }, [initialized, flow, graph.nodes.length]);
+  }, [initialized, flow, store, sets, graph.nodes.length]);
+
+  // 키보드로도 확대·축소할 수 있게 한다(화면 버튼을 없앤 대신). 입력칸 안에서는 글자 입력이 먼저다.
+  const zoomByKey = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === '+' || event.key === '=') void flow.zoomIn();
+      else if (event.key === '-') void flow.zoomOut();
+      else if (event.key === '0') void flow.fitView({ padding: 0.12 });
+    },
+    [flow],
+  );
 
   const focus = useCallback(
     (id: string) => {
@@ -165,7 +207,12 @@ function CanvasContent({
 
   return (
     <CanvasNavigation.Provider value={navigation}>
-      <div className="generation-canvas" role="region" aria-label={labels.title}>
+      <div
+        className="generation-canvas"
+        role="region"
+        aria-label={labels.title}
+        onKeyDown={zoomByKey}
+      >
         <div className="canvas-sr-only" role="status" aria-live="polite" aria-atomic="true">
           {announcement}
         </div>
@@ -182,6 +229,7 @@ function CanvasContent({
           minZoom={0.2}
           maxZoom={1.5}
           panOnScroll
+          proOptions={{ hideAttribution: true }}
           ariaLabelConfig={{
             'node.a11yDescription.default': labels.instructions,
             'node.a11yDescription.keyboardDisabled': labels.instructions,
@@ -189,27 +237,7 @@ function CanvasContent({
             'controls.zoomOut.ariaLabel': labels.zoomOut,
             'controls.fitView.ariaLabel': labels.fit,
           }}
-        >
-          {sets.length > 0 ? (
-            <Panel position="bottom-right">
-              <div className="canvas-controls">
-                <button
-                  type="button"
-                  aria-label={labels.zoomOut}
-                  onClick={() => void flow.zoomOut()}
-                >
-                  −
-                </button>
-                <button type="button" onClick={() => void flow.fitView({ padding: 0.12 })}>
-                  {labels.fit}
-                </button>
-                <button type="button" aria-label={labels.zoomIn} onClick={() => void flow.zoomIn()}>
-                  +
-                </button>
-              </div>
-            </Panel>
-          ) : null}
-        </ReactFlow>
+        ></ReactFlow>
       </div>
     </CanvasNavigation.Provider>
   );
