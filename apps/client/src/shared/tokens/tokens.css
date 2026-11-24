@@ -467,4 +467,5 @@
   --size-connection-dot: 6px; /* 디자인 변수 없음, 원값 6px — 말풍선 쪽 표시 점 (1705:20755) */
   --opacity-connection-dot-off: 0.5; /* 디자인 변수 없음, 원값 50% — 지금 쪽이 아닌 점 (1705:20755) */
   --shadow-connection-drop: 0 0 4px var(--color-shadow-weak); /* 원값 drop-shadow 0 0 4 — 열린 Connection 전체 (1708:20784) */
+  --size-prompt-remix-chip: 40px; /* 디자인 변수 없음, 원값 32 + 여백 4×2 — 프롬프트 바 리믹스 상대 칩 높이 (4898:93346) */
 }

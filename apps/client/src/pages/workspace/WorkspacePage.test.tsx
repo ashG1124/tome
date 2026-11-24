@@ -242,8 +242,10 @@ describe('WorkspacePage 리믹스(#41)', () => {
     expect(screen.getByRole('button', { name: COPY['RX-05'] }).getAttribute('aria-expanded')).toBe(
       'false',
     );
-    const handle = screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) });
-    expect(handle.hasAttribute('data-remix-handle')).toBe(true);
+    const handles = screen
+      .getAllByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) })
+      .filter((button) => button.hasAttribute('data-remix-handle'));
+    expect(handles).toHaveLength(1);
   });
 
   it('후보가 0명이면(S-04) 리믹스 없이도 프롬프트로 일반 생성을 할 수 있다', async () => {

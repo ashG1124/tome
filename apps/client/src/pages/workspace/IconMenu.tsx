@@ -86,6 +86,8 @@ function RemixButton({ slot }: { slot: RemixSlot }) {
     if (!open && !showPill) return;
     const closeOnOutside = (event: PointerEvent) => {
       if (wrap.current === null || wrap.current.contains(event.target as Node)) return;
+      // 프롬프트 바의 리믹스 칩은 스스로 패널을 열고 닫는다(바깥 누름으로 닫았다가 다시 열지 않게)
+      if (event.target instanceof Element && event.target.closest('[data-remix-opener]')) return;
       if (open) onClose();
       else setPeek(false);
     };

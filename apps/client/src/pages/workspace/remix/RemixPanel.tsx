@@ -16,7 +16,7 @@ export type RemixPerson = Pick<CreatorSummary, 'displayName' | 'avatarUrl'>;
  * 둥근 사진. 사진 주소가 있으면 사진을, 없거나 못 받으면 이름 머리글자를 그린다.
  * 장식이라 이름은 옆 글자가 읽힌다. 테두리·바탕은 쓰는 곳이 정한다.
  */
-function PersonPhoto({ person, className }: { person: RemixPerson; className: string }) {
+export function PersonPhoto({ person, className }: { person: RemixPerson; className: string }) {
   return (
     <span
       aria-hidden="true"
