@@ -299,6 +299,9 @@ export const COPY = {
   'RC-04': 'Apply is not available yet.',
   'RC-05': 'Hiding connection…',
   'RC-06': 'Applied',
+  // Connection Apply(#151): 임시 ID. Figma에 없는 공통 상태(비활성 이유 한 줄) 문구
+  'RC-07': 'Only connections from your current partner can be applied.',
+  'RC-08': 'Nothing to change on this node.',
   // Figma 재정합(#187): 임시 ID. AGS-03·04·05·06 은 헤더 검색창 원문(1226:81056, 1226:81058~81061). AGS-01·02·07·08 은 Figma에 없는 접근성·빈 결과 문구
   'AGS-01': 'No results.',
   'AGS-02': 'Results',
@@ -314,6 +317,7 @@ export const COPY = {
   'FG-01': 'Hello, {name}. What shall we get started on?', // 프롬프트 바 자리 문구 1187:61881
   'FG-02': 'Find a creator', // 리믹스 검색칸 자리 문구 1720:80397
   'FG-03': 'Voice input', // 마이크 낭독 이름(시안에는 글자 없음)
+  'FG-04': 'Start a new project with {name}', // 리믹스 상대가 있는 빈 페이지의 프롬프트 바 자리 문구 4898:93350 (#198)
 } as const;
 
 export type CopyKey = keyof typeof COPY;

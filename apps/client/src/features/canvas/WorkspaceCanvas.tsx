@@ -33,6 +33,8 @@ import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistory';
 import type { NodeCommentsApi } from './hooks/useNodeComments';
 import type { CanvasRemixOptions } from './remix-model';
+import { applyConnection } from './connection-apply';
+import { useConnectionApply, type PendingConnectionApply } from './hooks/useConnectionApply';
 import './history.css';
 
 /** 시안 전체 화면 수치(#185-W). 기본 지오메트리 토큰 위에 덮어쓴다. */
@@ -104,6 +106,9 @@ function EditorSession({
   onPreviewOpenChange,
   onPreviewAutoOpen,
   closing = false,
+  appliedIds,
+  pendingApply,
+  onPendingApplied,
 }: {
   base: Answer;
   /** 지금 펼친 노드. 노드를 접어도 세션(고친 값·미리보기)은 남는다. */
@@ -122,10 +127,14 @@ function EditorSession({
   onPreviewAutoOpen: () => void;
   /** 펼친 노드가 접히는 중 */
   closing?: boolean;
+  /** 리믹스 Connection Apply(#151): revise 에 실을 id 와, 노드 값에 반영할 Apply 한 건 */
+  appliedIds: () => readonly string[];
+  pendingApply?: PendingConnectionApply;
+  onPendingApplied: () => void;
 }) {
   const labels = { ...NODE_EDITOR_COPY, ...options.labels };
   const client = useQueryClient();
-  const [requests] = useState(() => createEditorRequests(base, client));
+  const [requests] = useState(() => createEditorRequests(base, client, appliedIds));
   const request = useRef(options.requestPreview);
   useLayoutEffect(() => {
     request.current = options.requestPreview;
@@ -154,6 +163,22 @@ function EditorSession({
       onPreviewAutoOpen();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 상태가 바뀔 때만 연다.
   }, [previewStatus]);
+  // 말풍선 Apply 를 노드 값에 반영한다. 값이 바뀌면 미리보기가 저절로 만들어진다.
+  // 세션이 막 열린 때는 마운트가 끝난 뒤(마이크로태스크) 반영해야 미리보기 예약이 정리 단계에서 지워지지 않는다.
+  const { replace, snapshot } = editor;
+  useEffect(() => {
+    if (!pendingApply) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      const next = applyConnection(snapshot, pendingApply);
+      if (next) replace(next);
+      onPendingApplied();
+    });
+    return () => {
+      active = false;
+    };
+  }, [pendingApply, snapshot, replace, onPendingApplied]);
   const snapshotNodes = editor.snapshot.nodes;
   useEffect(() => {
     onDraft({ setId: base.setId, nodes: snapshotNodes });
@@ -321,6 +346,20 @@ function PageCanvas({
     pageId,
     generationWorkspace,
   );
+  const connectionApply = useConnectionApply({
+    sets,
+    remix,
+    sessionSet,
+    draft,
+    blocked: busy || editingBusy,
+    start: (setId) => {
+      setCommentTarget(undefined);
+      setStacked(false);
+      if (sessionSet !== setId) setDraft(undefined);
+      if (selected && selected.setId !== setId) setSelected(undefined);
+      setSessionSet(setId);
+    },
+  });
   const redirect = authRedirectTarget(error ?? loadError ?? versions.error);
   const generatedAnswer = generation?.steps.find((step) => step.answer)?.answer;
   const latestAnswer = sets.find((set) => set.id === generation?.setId)?.latestAnswer;
@@ -371,7 +410,7 @@ function PageCanvas({
       {geometry ? (
         <GenerationCanvas
           sets={sets}
-          remix={remix}
+          remix={connectionApply.remix}
           remixDisabled={busy || editingBusy}
           generation={displayedGeneration}
           labels={CANVAS_COPY}
@@ -490,6 +529,9 @@ function PageCanvas({
           nodeId={selected?.setId === sessionSet ? selected.nodeId : undefined}
           slot={selected?.setId === sessionSet ? slot : null}
           onDraft={setDraft}
+          appliedIds={connectionApply.appliedIds}
+          pendingApply={connectionApply.pending}
+          onPendingApplied={connectionApply.done}
           onComment={
             history && historyApi && selected && !busy && !editingBusy
               ? () => {

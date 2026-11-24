@@ -4,6 +4,7 @@ import type { Connection } from '@tome/shared';
 import { afterEach, expect, it, vi } from 'vitest';
 import { COPY } from '../../../shared/copy';
 import { CanvasNavigation } from '../navigation';
+import type { CanvasRemixOptions } from '../remix-model';
 import { ConnectionPopover } from './ConnectionPopover';
 afterEach(cleanup);
 const connection: Connection = {
@@ -105,4 +106,61 @@ it('locks duplicate dismissals, keeps evidence on failure and allows retry', asy
     ).toBeNull(),
   );
   expect(dismiss).toHaveBeenLastCalledWith('answer', connection);
+});
+
+function withRemix(
+  applyStateFor: CanvasRemixOptions['applyStateFor'],
+  requestApply = vi.fn(),
+  onApply = vi.fn().mockResolvedValue(undefined),
+) {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <CanvasNavigation.Provider
+        value={{
+          active: {},
+          focus: () => {},
+          move: () => {},
+          remix: {
+            connectionsByAnswer: {},
+            onApply,
+            onDismiss: vi.fn(),
+            applyStateFor,
+            requestApply,
+          },
+        }}
+      >
+        <ConnectionPopover answerId="answer" connection={connection} onDismiss={vi.fn()} />
+      </CanvasNavigation.Provider>
+    </QueryClientProvider>,
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: `${COPY['RC-01']}: ${connection.predictedAction}` }),
+  );
+  return { requestApply, onApply };
+}
+it('Apply (#151): records the Connection and asks the canvas to apply it once even on double click', async () => {
+  const { requestApply, onApply } = withRemix(() => 'ready');
+  const apply = screen.getByRole('button', { name: COPY['RC-02'] }) as HTMLButtonElement;
+  expect(apply.disabled).toBe(false);
+  expect(screen.queryByText(COPY['RC-04'])).toBeNull();
+  fireEvent.click(apply);
+  fireEvent.click(apply);
+  await waitFor(() => expect(requestApply).toHaveBeenCalledTimes(1));
+  expect(onApply).toHaveBeenCalledTimes(1);
+  expect(requestApply).toHaveBeenCalledWith('answer', connection);
+});
+it('Apply (#151): previous-partner, no-change and applied states lock Apply with a reason', () => {
+  withRemix(() => 'stale');
+  expect((screen.getByRole('button', { name: COPY['RC-02'] }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  expect(screen.getByText(COPY['RC-07'])).toBeTruthy();
+  cleanup();
+  withRemix(() => 'no-change');
+  expect(screen.getByText(COPY['RC-08'])).toBeTruthy();
+  cleanup();
+  withRemix(() => 'applied');
+  const applied = screen.getByRole('button', { name: COPY['RC-06'] }) as HTMLButtonElement;
+  expect(applied.disabled).toBe(true);
+  expect(applied.getAttribute('aria-describedby')).toBeNull();
 });

@@ -18,6 +18,8 @@ export interface CanvasRemix {
   partnerFor: (
     connection: Connection,
   ) => Pick<CreatorSummary, 'displayName' | 'avatarUrl'> | undefined;
+  /** 지금 상대가 낸 Connection 인지. 예전 상대 것은 서버가 Apply 를 거절하므로 캔버스가 Apply 를 막는다(#151) */
+  isCurrent: (connection: Connection) => boolean;
   error?: unknown;
   retry: () => void;
 }
@@ -135,6 +137,7 @@ export function useRemixConnections(
       if (!owners.has(connection.id)) owners.set(connection.id, target.partnerId);
   });
   return {
+    isCurrent: (connection) => owners.get(connection.id) === partnerId,
     partnerFor: (connection) =>
       partner !== undefined && owners.get(connection.id) === partner.id ? partner : undefined,
     connectionsByAnswer: Object.fromEntries(

@@ -1,10 +1,20 @@
 import { memo, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { Connection } from '@tome/shared';
-import { COPY } from '../../../shared/copy';
+import { COPY, type CopyKey } from '../../../shared/copy';
 import { errorCopyKey, useApiImage } from '../../../shared/api';
 import { Icon } from '../../../shared/ui';
 import { CanvasNavigation } from '../navigation';
 import type { ConnectionPartner } from '../remix-model';
+import type { ConnectionApplyState } from '../connection-apply';
+
+/** Apply 가 잠긴 이유 한 줄. 누를 수 있거나 이미 반영됐으면(버튼 글자가 Applied) 없다. */
+const APPLY_REASON: Record<ConnectionApplyState, CopyKey | null> = {
+  ready: null,
+  applied: null,
+  stale: 'RC-07',
+  'no-change': 'RC-08',
+  unavailable: 'RC-04',
+};
 import '../remix.css';
 
 export interface ConnectionPopoverProps {
@@ -43,10 +53,16 @@ export const ConnectionPopover = memo(function ConnectionPopover({
   disabled = false,
   onDismiss,
 }: ConnectionPopoverProps) {
-  const partner = useContext(CanvasNavigation).remix?.partnerFor?.(connection);
+  const remix = useContext(CanvasNavigation).remix;
+  const partner = remix?.partnerFor?.(connection);
+  // Apply 상태(#151). 캔버스가 정해 주지 않으면 잠근다(RC-04).
+  const applyState: ConnectionApplyState =
+    remix?.applyStateFor?.(answerId, connection) ??
+    (connection.status === 'applied' ? 'applied' : 'unavailable');
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<0 | 1>(0);
   const [pending, setPending] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [error, setError] = useState<unknown>();
   const [dismissed, setDismissed] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -110,6 +126,25 @@ export const ConnectionPopover = memo(function ConnectionPopover({
       if (mounted.current) setPending(false);
     }
   };
+  // Apply: 연타해도 한 번만. 고른 Connection 을 기록하고 편집 세션에서 노드 값을 바꿔 미리보기를 만든다.
+  const apply = async () => {
+    if (lock.current || disabled || applyState !== 'ready') return;
+    lock.current = true;
+    setApplying(true);
+    setError(undefined);
+    try {
+      await remix?.onApply(answerId, connection);
+      remix?.requestApply?.(answerId, connection);
+      // Apply 버튼이 "Applied"(잠김)로 바뀌므로 포커스를 말풍선 글 버튼으로 옮겨 잃지 않게 한다
+      pager.current?.focus({ preventScroll: true });
+    } catch (failure) {
+      if (mounted.current) setError(failure);
+    } finally {
+      lock.current = false;
+      if (mounted.current) setApplying(false);
+    }
+  };
+  const reason = APPLY_REASON[applyState];
   if (dismissed || connection.status === 'dismissed') return null;
   return (
     <div
@@ -153,9 +188,11 @@ export const ConnectionPopover = memo(function ConnectionPopover({
             </div>
           ) : null}
           {/* Apply 가 잠긴 이유 한 줄(공통 비활성 규칙). 시안에는 없는 공통 상태다 */}
-          <p id={`${id}-apply-wait`} className="canvas-connection-note">
-            {connection.status === 'applied' ? COPY['RC-06'] : COPY['RC-04']}
-          </p>
+          {reason !== null ? (
+            <p id={`${id}-apply-wait`} className="canvas-connection-note">
+              {COPY[reason]}
+            </p>
+          ) : null}
           <div className="canvas-connection-row">
             <span className="canvas-connection-hook" data-hook="start" aria-hidden="true" />
             <div className="canvas-connection-message">
@@ -178,10 +215,12 @@ export const ConnectionPopover = memo(function ConnectionPopover({
               <button
                 type="button"
                 className="canvas-connection-pill"
-                disabled
-                aria-describedby={`${id}-apply-wait`}
+                disabled={applyState !== 'ready' || applying || pending || disabled}
+                aria-busy={applying || undefined}
+                aria-describedby={reason !== null ? `${id}-apply-wait` : undefined}
+                onClick={() => void apply()}
               >
-                {connection.status === 'applied' ? COPY['RC-06'] : COPY['RC-02']}
+                {applyState === 'applied' ? COPY['RC-06'] : COPY['RC-02']}
               </button>
               <button
                 type="button"

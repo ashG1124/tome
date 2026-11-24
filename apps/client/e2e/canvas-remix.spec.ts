@@ -36,7 +36,7 @@ for (const size of [
   { width: 1920, height: 1080 },
   { width: 1536, height: 960 },
 ]) {
-  test(`shows evidence, hides persistently and keeps Apply pending at ${size.width}`, async ({
+  test(`shows evidence, hides persistently and offers Apply at ${size.width}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(size);
@@ -58,10 +58,11 @@ for (const size of [
     await expect(
       panel.getByText('Leaned on evidence 7 of 10 times', { exact: true }),
     ).toBeVisible();
-    await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
-    await expect(panel.getByText('Apply is not available yet.', { exact: true })).toBeVisible();
+    // 지금 상대의 것이고 바꿀 값이 있으니 Apply 를 누를 수 있다(잠긴 이유 줄이 없다)
+    await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+    await expect(panel.locator('.canvas-connection-note')).toHaveCount(0);
     await page.screenshot({
-      path: info.outputPath('02-evidence-and-pending-apply.png'),
+      path: info.outputPath('02-evidence-and-apply.png'),
       fullPage: true,
     });
     const rect = await panel.boundingBox();
@@ -169,4 +170,102 @@ test('Connection sits on the node top-left corner and its bubble keeps the corne
   expect(Math.abs(b.x - (t.x + 30 * scale))).toBeLessThan(2);
   expect(Math.abs(b.y - t.y)).toBeLessThan(2);
   expect(b.x + b.width).toBeLessThanOrEqual(1536);
+});
+
+test('Apply → node value → preview → Apply the fix makes a new version and marks it applied (#151)', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1536, height: 960 });
+  const { answerId } = await prepare(page, true);
+  await page
+    .getByRole('button', { name: /^Connection:/ })
+    .first()
+    .click();
+  const panel = page.getByRole('region', { name: 'Connection', exact: true });
+  await panel.getByRole('button', { name: 'Apply', exact: true }).dblclick();
+  await expect(panel.getByRole('button', { name: 'Applied', exact: true })).toBeDisabled();
+  const fix = page.getByRole('button', { name: 'Apply the fix', exact: true });
+  await expect(fix).toBeEnabled({ timeout: 20_000 });
+  await page.screenshot({ path: info.outputPath('07-apply-preview.png') });
+  const revisions = await page.evaluate(() => {
+    const store = JSON.parse(localStorage.getItem('tome.fake.store.v2') ?? '{}') as {
+      jobs: { revision?: { appliedConnectionIds?: string[] } }[];
+    };
+    return store.jobs.flatMap((job) => (job.revision ? [job.revision.appliedConnectionIds] : []));
+  });
+  // 연타해도 revise 는 한 번이고, 고른 Connection id 를 실었다
+  expect(revisions).toHaveLength(1);
+  expect(revisions[0]).toHaveLength(1);
+  await fix.click();
+  // 새 버전이 확정되면 미리보기 세션이 끝나 Apply the fix 는 다시 잠긴다
+  await expect(fix).toBeDisabled();
+  await expect
+    .poll(async () =>
+      page.evaluate(async (id) => {
+        const path = '/src/shared/api/index.ts';
+        const { api } = await import(/* @vite-ignore */ path);
+        return (await api.listConnections(id)).connections.map(
+          (connection: { status: string }) => connection.status,
+        );
+      }, answerId),
+    )
+    .toContain('applied');
+  await page.screenshot({ path: info.outputPath('08-new-version.png') });
+});
+
+test('Connections kept from a previous partner cannot be applied (#151)', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 960 });
+  await prepare(page, true);
+  const triggers = page.getByRole('button', { name: /^Connection:/ });
+  await expect(triggers).toHaveCount(2);
+  await page.getByRole('button', { name: 'Remix', exact: true }).click();
+  await page.getByRole('button', { name: /^Mara/ }).click();
+  await expect(triggers).toHaveCount(4);
+  const panel = page.getByRole('region', { name: 'Connection', exact: true });
+  let stale = 0;
+  for (let index = 0; index < 4; index += 1) {
+    await triggers.nth(index).click();
+    await expect(panel).toBeVisible();
+    const reason = panel.getByText('Only connections from your current partner can be applied.');
+    if (await reason.isVisible()) {
+      stale += 1;
+      await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
+    }
+    await page.keyboard.press('Escape');
+  }
+  expect(stale).toBe(2);
+});
+
+test('empty page with a partner shows the partner chip and "Start a new project with" (4898:93342)', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.addInitScript(() => {
+    localStorage.setItem('tome.token', 'fake-token');
+    localStorage.setItem('tome.fake.consented', '1');
+  });
+  await page.goto('/projects/0b8c1f5e-3c1d-4f6a-8a9b-1d2e3f4a5b6c');
+  await expect(page.getByRole('region', { name: 'Generation canvas' })).toBeVisible();
+  const projectId = await page.evaluate(async () => {
+    const path = '/src/shared/api/index.ts';
+    const { api } = await import(/* @vite-ignore */ path);
+    const candidates = (await api.getRemixCandidates('rising')).creators;
+    return (await api.createProject({ remixPartnerId: candidates[0].id })).project.id;
+  });
+  await page.goto(`/projects/${projectId}`);
+  const chip = page.locator('[data-remix-opener]');
+  await expect(chip).toHaveAccessibleName('Remix with Lind');
+  await expect(page.locator('textarea')).toHaveAttribute(
+    'placeholder',
+    'Start a new project with Lind',
+  );
+  const box = (await chip.boundingBox())!;
+  expect(Math.round(box.width)).toBe(40);
+  expect(Math.round(box.height)).toBe(40);
+  await page.screenshot({ path: info.outputPath('09-prompt-remix.png') });
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('group', { name: 'Remix with' })).toBeVisible();
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-expanded', 'false');
 });
