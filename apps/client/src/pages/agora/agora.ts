@@ -3,14 +3,15 @@ import {
   type AgoraComment,
   type AgoraHomeResponse,
   type AgoraProjectCard,
+  type CreatorSummary,
   type DerivedFrom,
   type TopicResponse,
 } from '@tome/shared';
-import { matchesQuery, type AgoraSearch } from '../../shared/ui';
+import { matchesQuery } from '../../shared/ui';
 import { ApiRequestError, errorCopyKey, NetworkError } from '../../shared/api';
 import type { CopyKey } from '../../shared/copy';
 
-// 아고라(홈·핫토픽 목록·프로젝트 상세)가 같이 쓰는 계산. 화면 없이 테스트한다.
+// 아고라(세 탭 화면·핫토픽·프로젝트 상세)가 같이 쓰는 계산. 화면 없이 테스트한다.
 
 /**
  * 좋아요·댓글 수 표시. 1000 이상은 시안처럼 "1.2k", 100만 이상은 "1.2m".
@@ -111,45 +112,26 @@ export function isTopicEmpty(topic: TopicResponse): boolean {
   return topic.projects.length === 0;
 }
 
-// ---- 헤더 검색(새 API 없이, 이미 받은 데이터를 거른다)
+// ---- 헤더 검색(새 API 없이, 지금 탭 화면이 이미 받은 데이터를 거른다, #214)
 
 type HotTopicEntry = AgoraHomeResponse['hotTopics'][number];
 
-/** 카드가 검색에 맞는지: Project 는 제목, Creator 는 작성자 이름. Topic 대상은 카드가 아니라 주제 제목으로 가른다. */
-function cardMatches(card: AgoraProjectCard, search: AgoraSearch): boolean {
-  if (search.scope === 'project') return matchesQuery(card.title, search.q);
-  if (search.scope === 'creator') return matchesQuery(card.author.displayName, search.q);
-  return false;
-}
+const titleMatches = (q: string) => (card: AgoraProjectCard) => matchesQuery(card.title, q);
 
-/** 핫토픽 묶음 거르기. Topic 은 주제 제목으로 묶음째, Project·Creator 는 맞는 프로젝트만 남기고 하나도 없으면 묶음을 뺀다. */
-export function filterTopicEntries(
-  entries: readonly HotTopicEntry[],
-  search: AgoraSearch,
-): HotTopicEntry[] {
-  if (search.q === '') return [...entries];
-  if (search.scope === 'topic') {
-    return entries.filter((entry) => matchesQuery(entry.topic.title, search.q));
-  }
-  return entries
-    .map((entry) => ({ ...entry, projects: entry.projects.filter((c) => cardMatches(c, search)) }))
-    .filter((entry) => entry.projects.length > 0);
-}
-
-/** 아고라 홈 거르기. 검색어가 있으면 대상에 맞지 않는 구역은 비운다(Rising Creator 는 Creator 대상일 때만). */
-export function filterAgoraHome(home: AgoraHomeResponse, search: AgoraSearch): AgoraHomeResponse {
-  if (search.q === '') return home;
+/**
+ * Project 탭(아고라 홈) 거르기: 프로젝트 제목으로 추천 카드와 핫토픽 묶음 안의 프로젝트를 거른다.
+ * 창작자 줄은 검색 중에는 비운다(창작자 이름 검색은 Creator 탭이 맡는다). 맞는 프로젝트가 없는 묶음은 뺀다.
+ */
+export function filterAgoraHome(home: AgoraHomeResponse, q: string): AgoraHomeResponse {
+  if (q === '') return home;
+  const matches = titleMatches(q);
   return {
-    recommended: home.recommended.filter((card) => cardMatches(card, search)),
-    risingCreators:
-      search.scope === 'creator'
-        ? home.risingCreators.filter((creator) => matchesQuery(creator.displayName, search.q))
-        : [],
-    newCreators:
-      search.scope === 'creator'
-        ? home.newCreators.filter((creator) => matchesQuery(creator.displayName, search.q))
-        : [],
-    hotTopics: filterTopicEntries(home.hotTopics, search),
+    recommended: home.recommended.filter(matches),
+    risingCreators: [],
+    newCreators: [],
+    hotTopics: home.hotTopics
+      .map((entry) => ({ ...entry, projects: entry.projects.filter(matches) }))
+      .filter((entry) => entry.projects.length > 0),
   };
 }
 
@@ -158,11 +140,31 @@ export function agoraHomeResultCount(home: AgoraHomeResponse): number {
   return home.recommended.length + home.risingCreators.length + home.hotTopics.length;
 }
 
-/** 핫토픽 한 화면의 프로젝트 거르기. Topic 대상이면 주제 제목이 맞을 때만 모두 보인다. */
-export function filterTopicProjects(topic: TopicResponse, search: AgoraSearch): AgoraProjectCard[] {
-  if (search.q === '') return topic.projects;
-  if (search.scope === 'topic') {
-    return matchesQuery(topic.topic.title, search.q) ? topic.projects : [];
-  }
-  return topic.projects.filter((card) => cardMatches(card, search));
+/** Creator 탭 거르기: 창작자 이름으로 */
+export function filterCreators(creators: readonly CreatorSummary[], q: string): CreatorSummary[] {
+  return creators.filter((creator) => matchesQuery(creator.displayName, q));
+}
+
+/** Creator 탭이 빈 상태인지: 공개 프로젝트가 있는 창작자가 한 명도 없으면 S-02 */
+export function isCreatorsEmpty(home: AgoraHomeResponse): boolean {
+  return home.risingCreators.length === 0 && home.newCreators.length === 0;
+}
+
+/** Topic 탭 거르기: 주제 제목으로 묶음째 */
+export function filterTopicEntries(entries: readonly HotTopicEntry[], q: string): HotTopicEntry[] {
+  return entries.filter((entry) => matchesQuery(entry.topic.title, q));
+}
+
+/** 핫토픽 한 화면(Topic 탭 아래) 거르기: 이 주제의 프로젝트를 제목으로 */
+export function filterTopicProjects(topic: TopicResponse, q: string): AgoraProjectCard[] {
+  return topic.projects.filter(titleMatches(q));
+}
+
+/**
+ * 핫토픽 묶음 "+N"(5170:135885): 묶음에 보이는 표지(최대 4장) 밖에 남은 이 주제의 공개 프로젝트 수.
+ * 0 이면 표시하지 않는다.
+ */
+export function topicExtraCount(entry: HotTopicEntry): number {
+  const shown = Math.min(TOPIC_TILE_COUNT, entry.projects.length);
+  return Math.max(0, entry.projectCount - shown);
 }

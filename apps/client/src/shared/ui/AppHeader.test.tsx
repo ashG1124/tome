@@ -1,15 +1,16 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { COPY } from '../copy';
 import { AppHeader, type AppHeaderSection } from './AppHeader';
 
-function renderHeader(current: AppHeaderSection | null) {
+function renderHeader(current: AppHeaderSection | null, path = '/') {
   const router = createMemoryRouter(
     [{ path: '*', element: <AppHeader current={current} profileTo="/creators/me-1" /> }],
-    { initialEntries: ['/'] },
+    { initialEntries: [path] },
   );
   render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe('AppHeader', () => {
@@ -62,19 +63,42 @@ describe('AppHeader', () => {
     );
   });
 
-  it('Figma 변형: TOME 은 검색창만, AGORA 는 검색창+필터, ETC 는 검색창이 없다', () => {
+  it('Figma 변형: TOME 은 검색창만, AGORA 는 검색창+탭, ETC 는 검색창이 없다', () => {
     renderHeader('tome');
     expect(screen.getByRole('search', { name: COPY['AGS-07'] })).toBeTruthy();
     expect(screen.getByRole('searchbox').getAttribute('placeholder')).toBe(COPY['AGS-03']);
-    expect(screen.queryByRole('button', { name: COPY['AGS-04'] })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: COPY['AT-03'] })).toBeNull();
+    expect(screen.queryByRole('link', { name: COPY['AGS-04'] })).toBeNull();
   });
 
-  it('AGORA 변형은 Project/Creator/Topic 필터를 두고 Project 가 기본 선택이다', () => {
-    renderHeader('agora');
-    const pressed = [COPY['AGS-04'], COPY['AGS-05'], COPY['AGS-06']].map((name) =>
-      screen.getByRole('button', { name }).getAttribute('aria-pressed'),
+  it.each([
+    ['/agora', 0, 'page'],
+    ['/agora/creators', 1, 'page'],
+    ['/agora/topics', 2, 'page'],
+    // 탭 아래 화면: 핫토픽은 Topic, 프로젝트 상세는 Project 가 고른 탭(aria-current="true")
+    ['/agora/topics/t-1', 2, 'true'],
+    ['/agora/projects/p-1', 0, 'true'],
+  ] as const)('AGORA 변형 %s 에서는 %i 번째 탭만 aria-current=%s', (path, index, current) => {
+    renderHeader('agora', path);
+    const tabs = within(screen.getByRole('navigation', { name: COPY['AT-03'] })).getAllByRole(
+      'link',
     );
-    expect(pressed).toEqual(['true', 'false', 'false']);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      COPY['AGS-04'],
+      COPY['AGS-05'],
+      COPY['AGS-06'],
+    ]);
+    expect(tabs.map((tab) => tab.getAttribute('aria-current'))).toEqual(
+      [0, 1, 2].map((i) => (i === index ? current : null)),
+    );
+  });
+
+  it('탭 링크는 탭 화면 주소이고 지금 검색어를 그대로 가져간다', () => {
+    renderHeader('agora', '/agora?q=lind');
+    const href = (name: string) => screen.getByRole('link', { name }).getAttribute('href');
+    expect(href(COPY['AGS-04'])).toBe('/agora?q=lind');
+    expect(href(COPY['AGS-05'])).toBe('/agora/creators?q=lind');
+    expect(href(COPY['AGS-06'])).toBe('/agora/topics?q=lind');
   });
 
   it('ETC 변형에는 검색창이 없다', () => {

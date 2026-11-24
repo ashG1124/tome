@@ -8,8 +8,8 @@ import { AgoraFrame, SearchStatus } from './AgoraFrame';
 import { ProjectTile } from './ProjectTile';
 
 /**
- * 핫토픽(3099:130540): 가운데 "Hot Topic"과 주제 제목, 아래 3열(간격 20) 프로젝트 카드.
- * 헤더 검색어가 있으면 이 주제의 프로젝트를 제목·작성자 이름으로 거른다.
+ * 핫토픽(3099:130540): 가운데 "Hot Topic"과 주제 제목, 아래 3열(간격 20) 프로젝트 카드. 헤더에서는 Topic 탭 아래 화면이다.
+ * 헤더 검색어가 있으면 이 주제의 프로젝트를 제목으로 거른다.
  */
 export function TopicPage() {
   const { id = '' } = useParams();
@@ -20,7 +20,7 @@ export function TopicPage() {
   if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   const empty = topic.data !== undefined && isTopicEmpty(topic.data);
-  const projects = topic.data ? filterTopicProjects(topic.data, search) : [];
+  const projects = topic.data ? filterTopicProjects(topic.data, search.q) : [];
   return (
     <AgoraFrame busy={topic.isPending}>
       <div className="px-[var(--space-header-x)] pb-[var(--space-agora-topic-bottom)]">

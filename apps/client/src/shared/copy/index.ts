@@ -311,6 +311,11 @@ export const COPY = {
   'AGS-06': 'Topic',
   'AGS-07': 'Search',
   'AGS-08': 'Search in',
+  // 아고라 탭 화면(#214): 임시 ID — 문구 표에 옮길 때 확정. Creator 탭은 Figma 프레임이 없는 화면이라 AT-01 은 A-10 과 짝을 맞춘 구역 제목,
+  // AT-02 는 핫토픽 묶음 "+N"(5170:135885)의 낭독 문장({count} 자리), AT-03 은 헤더 탭 묶음의 낭독 이름
+  'AT-01': 'New Creator',
+  'AT-02': '{count} more projects',
+  'AT-03': 'Agora sections',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
   // Figma 재정합(#186): 임시 ID. 시안 문구 그대로, 이름 자리는 {name}.

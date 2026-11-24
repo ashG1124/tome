@@ -1,11 +1,14 @@
-import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { COPY } from '../copy';
 import { Icon } from './Icon';
 import {
   AGORA_SEARCH_SCOPES,
+  AGORA_TAB_PATHS,
   agoraSearchQuery,
-  parseAgoraSearch,
+  agoraTabHref,
+  agoraTabOfPath,
+  isLiveFilterPath,
   type AgoraSearchScope,
 } from './agora-search';
 
@@ -15,57 +18,59 @@ const SCOPE_COPY = {
   topic: COPY['AGS-06'],
 } as const satisfies Record<AgoraSearchScope, string>;
 
-/** 입력하는 대로 같은 화면에서 거르는 아고라 화면(홈·핫토픽 목록·핫토픽). 그 밖의 화면은 Enter 로 아고라에 가서 적용한다. */
-function isLiveFilterPath(pathname: string): boolean {
-  return (
-    pathname === '/agora' || pathname === '/agora/topics' || pathname.startsWith('/agora/topics/')
-  );
+/** 탭 링크로 화면을 옮겼다는 표시(주소 state). 새 화면의 헤더가 고른 탭에 포커스를 돌려준다. */
+const TAB_FOCUS_STATE = 'agoraTabFocus';
+
+function cameFromTab(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && TAB_FOCUS_STATE in state;
 }
 
 const FOCUS_RING =
   'focus-visible:outline-2! focus-visible:outline-offset-[var(--focus-outline-offset)]! focus-visible:outline-solid! focus-visible:outline-[color:var(--color-border-input)]!';
 
 /**
- * 헤더 검색창(Figma 1226:81052): 돋보기·입력칸·(아고라 변형에서만) Project/Creator/Topic 필터.
- * 새 API 없이, 아고라 화면이 이미 받은 데이터를 제목·창작자 이름으로 거른다. 검색어는 주소 쿼리(?q=…&in=…)에 둔다.
+ * 헤더 검색창(Figma 1226:81052): 돋보기·입력칸·(아고라 변형에서만) Project/Creator/Topic 탭.
+ * 탭은 화면을 옮기는 링크다(/agora · /agora/creators · /agora/topics, #214). 검색어(?q=…)는 탭을 옮겨도 그대로 가져가고,
+ * 새 API 없이 지금 탭 화면이 이미 받은 데이터를 거른다.
  */
 export function HeaderSearch({ withFilters }: { withFilters: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const live = isLiveFilterPath(location.pathname);
-  const fromUrl = parseAgoraSearch(params);
-  const [value, setValue] = useState(fromUrl.q);
-  const [scope, setScope] = useState<AgoraSearchScope>(fromUrl.scope);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const groupId = useId();
+  const tab = agoraTabOfPath(location.pathname);
+  const fromUrl = (params.get('q') ?? '').trim();
+  const [value, setValue] = useState(fromUrl);
+  const selectedRef = useRef<HTMLAnchorElement>(null);
 
   // 주소가 바깥에서 바뀌면(뒤로 가기 등) 입력칸도 따라간다. 내가 입력해서 바뀐 주소와 같으면 건드리지 않는다.
-  const [seen, setSeen] = useState({ q: fromUrl.q, scope: fromUrl.scope });
-  if (seen.q !== fromUrl.q || seen.scope !== fromUrl.scope) {
-    setSeen({ q: fromUrl.q, scope: fromUrl.scope });
-    if (value.trim() !== fromUrl.q) setValue(fromUrl.q);
-    setScope(fromUrl.scope);
+  const [seen, setSeen] = useState(fromUrl);
+  if (seen !== fromUrl) {
+    setSeen(fromUrl);
+    if (value.trim() !== fromUrl) setValue(fromUrl);
   }
 
-  const apply = (nextValue: string, nextScope: AgoraSearchScope) => {
+  // 탭을 눌러 화면이 바뀌면 헤더가 새로 그려져 포커스가 사라진다. 키보드로 고른 탭에 포커스를 돌려준다.
+  useEffect(() => {
+    if (cameFromTab(location.state)) selectedRef.current?.focus({ preventScroll: true });
+  }, [location.key, location.state]);
+
+  const apply = (nextValue: string) => {
     setValue(nextValue);
-    setScope(nextScope);
     if (!live) return;
-    const next = new URLSearchParams(agoraSearchQuery({ q: nextValue, scope: nextScope }));
-    setParams(next, { replace: true });
+    setParams(new URLSearchParams(agoraSearchQuery(nextValue).slice(1)), { replace: true });
   };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (live || value.trim() === '') return;
-    void navigate(`/agora${agoraSearchQuery({ q: value, scope })}`);
+    void navigate(agoraTabHref(tab ?? 'project', value));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape' && value !== '') {
       event.preventDefault();
-      apply('', scope);
+      apply('');
     }
   };
 
@@ -84,12 +89,11 @@ export function HeaderSearch({ withFilters }: { withFilters: boolean }) {
         <span className="sr-only">{COPY['AGS-07']}</span>
         <Icon name="header-search" size={24} className="text-[color:var(--color-font-sub-text)]" />
         <input
-          ref={inputRef}
           type="search"
           value={value}
           placeholder={COPY['AGS-03']}
           autoComplete="off"
-          onChange={(event) => apply(event.target.value, scope)}
+          onChange={(event) => apply(event.target.value)}
           onKeyDown={onKeyDown}
           className={[
             // 입력칸 안쪽 검은 사각형은 없앤다(전역 :focus-visible 이 레이어 밖이라 ! 로 이긴다). 포커스는 바깥 알약 테두리가 보여 준다
@@ -101,36 +105,39 @@ export function HeaderSearch({ withFilters }: { withFilters: boolean }) {
         />
       </label>
       {withFilters ? (
-        <div
-          role="group"
-          aria-labelledby={groupId}
+        <nav
+          aria-label={COPY['AT-03']}
           className="ml-[var(--space-gap-4)] flex shrink-0 items-center gap-[var(--space-gap-4)]"
         >
-          <span id={groupId} className="sr-only">
-            {COPY['AGS-08']}
-          </span>
           {AGORA_SEARCH_SCOPES.map((item) => {
-            const selected = item === scope;
+            const selected = item === tab;
+            // 탭 화면 그 자체면 page, 그 탭 아래 화면(핫토픽·프로젝트 상세)이면 true
+            const current = selected
+              ? location.pathname.replace(/\/+$/, '') === AGORA_TAB_PATHS[item]
+                ? 'page'
+                : 'true'
+              : undefined;
             return (
-              <button
+              <Link
                 key={item}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => apply(value, item)}
+                ref={selected ? selectedRef : undefined}
+                to={agoraTabHref(item, value)}
+                state={{ [TAB_FOCUS_STATE]: true }}
+                aria-current={current}
                 className={[
-                  'inline-flex h-[var(--size-header-filter-height)] cursor-pointer items-center rounded-[var(--radius-max)] border border-solid',
+                  'inline-flex h-[var(--size-header-filter-height)] items-center rounded-[var(--radius-max)] border border-solid',
                   '[font:var(--text-body-b1-r)] [font-weight:var(--font-weight-medium)]',
                   FOCUS_RING,
                   selected
                     ? 'border-[color:var(--color-border-default)] bg-[color:var(--color-background-default)] px-[var(--space-padding-6)] text-[color:var(--color-font-strong)]'
-                    : 'border-transparent bg-transparent px-0 text-[color:var(--color-font-sub-text)]',
+                    : 'border-transparent bg-transparent px-0 text-[color:var(--color-font-sub-text)] hover:text-[color:var(--color-font-strong)]',
                 ].join(' ')}
               >
                 {SCOPE_COPY[item]}
-              </button>
+              </Link>
             );
           })}
-        </div>
+        </nav>
       ) : null}
     </form>
   );
