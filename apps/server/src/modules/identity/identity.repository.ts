@@ -27,6 +27,20 @@ const CREATOR_SELECT = {
 } satisfies Prisma.CreatorSelect;
 export type IdentityCreatorRow = Prisma.CreatorGetPayload<{ select: typeof CREATOR_SELECT }>;
 
+/** 프로젝트 목록(최근 순)에서 소유자를 처음 나온 순서대로 한 번씩만 남긴다. */
+function uniqueOwners(
+  rows: { ownerId: string; owner: IdentityCreatorRow }[],
+): IdentityCreatorRow[] {
+  const seen = new Set<string>();
+  const owners: IdentityCreatorRow[] = [];
+  for (const row of rows) {
+    if (seen.has(row.ownerId)) continue;
+    seen.add(row.ownerId);
+    owners.push(row.owner);
+  }
+  return owners;
+}
+
 @Injectable()
 export class IdentityRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -51,6 +65,40 @@ export class IdentityRepository {
       orderBy: [{ seedOrder: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
       select: CREATOR_SELECT,
     });
+  }
+
+  /**
+   * 이 창작자를 리믹스 상대로 고른 다른 창작자들(자기 자신·삭제·숨김 프로젝트 제외).
+   * 사람마다 가장 최근 프로젝트 하나로 세어, 최근 순으로 돌려준다.
+   */
+  async listRemixers(creatorId: string): Promise<IdentityCreatorRow[]> {
+    const rows = await this.prisma.project.findMany({
+      where: {
+        remixPartnerId: creatorId,
+        ownerId: { not: creatorId },
+        deletedAt: null,
+        hiddenAt: null,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { ownerId: true, owner: { select: CREATOR_SELECT } },
+    });
+    return uniqueOwners(rows);
+  }
+
+  /** 이 창작자의 프로젝트에서 파생해 간 다른 창작자들(자기 자신·삭제·숨김 파생작 제외). 최근 순. */
+  async listDerivers(creatorId: string): Promise<IdentityCreatorRow[]> {
+    const rows = await this.prisma.project.findMany({
+      where: {
+        kind: 'derive',
+        derivedFrom: { ownerId: creatorId },
+        ownerId: { not: creatorId },
+        deletedAt: null,
+        hiddenAt: null,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { ownerId: true, owner: { select: CREATOR_SELECT } },
+    });
+    return uniqueOwners(rows);
   }
 
   /** 소유한 프로젝트(삭제·숨김 제외). */

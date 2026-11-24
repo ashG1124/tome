@@ -71,6 +71,19 @@ const EMPTY_AXES: IdentityAxes = {
   direction: null,
 };
 
+type Reach = Pick<CreatorProfileResponse, 'remixedBy' | 'derivedBy'>;
+const NO_REACH: Reach = {
+  remixedBy: { count: 0, creators: [] },
+  derivedBy: { count: 0, creators: [] },
+};
+/** 머리글 "Remixed by N"·"Derived by N". 나는 다른 창작자 둘이 리믹스하고 한 명이 파생해 간 상태다. */
+const REACH: Record<string, Reach> = {
+  [FAKE_CREATOR.id]: {
+    remixedBy: { count: 2, creators: [...FAKE_OTHER_CREATORS] },
+    derivedBy: { count: 1, creators: [FAKE_OTHER_CREATORS[0]!] },
+  },
+};
+
 function knownCreator(id: string): CreatorSummary {
   if (id === FAKE_CREATOR.id) return FAKE_CREATOR;
   const other = FAKE_OTHER_CREATORS.find((creator) => creator.id === id);
@@ -139,6 +152,7 @@ export function fakeCreatorProfile(
     creator,
     works: [...works],
     identity: noRecord || isHidden(id, identityCase) ? null : snapshotOf(id, identityCase),
+    ...(REACH[id] ?? NO_REACH),
   };
 }
 
