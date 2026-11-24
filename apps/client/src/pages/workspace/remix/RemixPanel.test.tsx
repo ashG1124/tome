@@ -53,7 +53,7 @@ afterEach(() => {
 });
 
 describe('RemixPanel', () => {
-  it('"Remix with" 묶음 안에 Rising·Favorite 탭과 후보(이름·한 줄 소개)를 보여 준다. 검색칸은 없다', async () => {
+  it('"Remix with" 묶음 안에 Rising·Favorite 탭과 후보(이름·한 줄 소개)를 보여 준다. 검색칸이 있다', async () => {
     setup();
     const group = screen.getByRole('group', { name: COPY['RX-01'] });
     const tabs = within(group).getAllByRole('tab');
@@ -61,8 +61,11 @@ describe('RemixPanel', () => {
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     expect((await row('Lind')).textContent).toContain('Quiet shapes, loud colors.');
     expect(await row('Mara')).toBeTruthy();
-    expect(screen.queryByRole('searchbox')).toBeNull();
-    expect(screen.queryByRole('textbox')).toBeNull();
+    // 검색칸은 목록의 이름·소개를 이 화면 안에서만 거른다
+    const search = screen.getByRole('searchbox', { name: COPY['FG-02'] });
+    fireEvent.change(search, { target: { value: 'mara' } });
+    expect(screen.queryByRole('button', { name: /^Lind/ })).toBeNull();
+    expect(await row('Mara')).toBeTruthy();
   });
 
   it('후보를 누르면 그 사람 id 로 onChoose 를 부른다', async () => {

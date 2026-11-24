@@ -77,7 +77,10 @@ for (const viewport of [
 
     await page.reload();
     await expect(versions.locator('[aria-live=polite]')).toHaveText('Answer 02');
-    await page.getByRole('button', { name: 'Previous version' }).click();
+    // 첫 화면(시안 My work)에서 ^ v 는 화면 오른쪽 밖이다. 포커스하면 캔버스가 답변 카드를 화면 안으로 옮긴다.
+    const previousButton = page.getByRole('button', { name: 'Previous version' });
+    await previousButton.focus();
+    await previousButton.click();
     await expect(versions.locator('[aria-live=polite]')).toHaveText('Answer 01');
     await expect(page.getByRole('button', { name: 'Unpin answer' })).toHaveAttribute(
       'aria-pressed',

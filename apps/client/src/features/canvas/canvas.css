@@ -555,3 +555,168 @@
 .generation-canvas .react-flow__edge.canvas-edge--origin .react-flow__edge-path {
   stroke: var(--color-border-input);
 }
+
+/* ---- Figma 전체 화면 재정합(#186): 시안 My work 1679:10955·3924:67090, Derive 1679:15197 ---- */
+/* 점 격자 + 흰 타원 비네트 (BG 1679:10956) */
+.generation-canvas {
+  background-color: var(--color-dot-pattern);
+  background-image:
+    radial-gradient(
+      ellipse var(--canvas-figma-bg-radius-x) var(--canvas-figma-bg-radius-y) at 50% 50%,
+      rgb(255 255 255 / 0),
+      var(--color-background-default)
+    ),
+    radial-gradient(
+      circle,
+      var(--color-dot) calc(var(--size-dot) / 2),
+      transparent calc(var(--size-dot) / 2)
+    );
+  background-size:
+    100% 100%,
+    var(--size-dot-gap) var(--size-dot-gap);
+}
+/* 단계 알약 1226:69439: 크림 바탕 + 연보라 광, 그림자 없음 */
+.canvas-step-pill {
+  padding-right: calc(var(--space-padding-6) - var(--stroke-weight-light));
+  border-color: var(--color-step-pill-border);
+  background-color: var(--color-fill-brand-weak);
+  background-image: radial-gradient(
+    ellipse at 50% 50%,
+    color-mix(in srgb, var(--color-background-default) 20%, transparent) 48%,
+    color-mix(in srgb, var(--color-step-pill-glow) 20%, transparent)
+  );
+  box-shadow: none;
+}
+.canvas-step-handle {
+  width: var(--size-pill-handle-width);
+}
+.canvas-step-number {
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+.canvas-step-pill strong {
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+.canvas-step[data-step='1'] .canvas-step-pill {
+  height: var(--canvas-figma-step-pill-height-first);
+}
+.canvas-step-badge {
+  position: relative;
+  flex: none;
+  width: var(--size-icon-empty);
+  height: var(--size-icon-empty);
+  margin-left: auto;
+  border-radius: var(--radius-max);
+  background: var(--color-node-line);
+}
+.canvas-step-badge::before,
+.canvas-step-badge::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--space-padding-8);
+  height: var(--stroke-weight-bold);
+  background: var(--color-background-default);
+  transform: translate(-50%, -50%);
+}
+.canvas-step-badge::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.canvas-step[data-step='1'] .canvas-step-pill strong {
+  min-width: 0;
+}
+/* 그룹 소제목 1679:11623: 14px, 본문색, 높이 21 */
+.canvas-heading[data-variant='group'] {
+  height: var(--size-canvas-label);
+  color: var(--color-font-main-text);
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+/* 회색 노드 카드: 한 줄 높이 61 = 글 27 + 안쪽 16×2 + 테두리 1×2 */
+.canvas-card--output {
+  min-height: 0;
+  padding-block: var(--space-padding-6);
+}
+.canvas-card--evidence .canvas-node-line {
+  gap: var(--space-gap-2);
+}
+/* 노드 옆 도구 1187:62180: 폭 40 */
+.canvas-node-tool {
+  padding-left: var(--space-padding-4);
+}
+.canvas-node-tool-bar {
+  box-sizing: border-box;
+  width: var(--size-node-tool);
+  padding: calc(var(--space-padding-2) - var(--stroke-weight-light));
+  gap: var(--space-padding-3);
+  align-items: center;
+}
+.canvas-node-tool-button {
+  padding: var(--space-padding-2);
+}
+/* 답변 머리글(파생) 1679:17831·1720:100994: 20px, 카드 폭, 카드 위 12 */
+.canvas-heading[data-variant='answer'],
+.canvas-heading[data-variant='origin'] {
+  font: var(--text-subtitle-st1-m);
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+.canvas-heading[data-variant='origin'] {
+  color: var(--color-font-disable);
+}
+.canvas-heading[data-variant='answer'] {
+  color: var(--color-font-sub-text);
+}
+/* 답변 카드 1226:70281: 520×340, 모서리 20, 테두리 1(그림 위), 그림은 꽉 채움 */
+.canvas-card--answer,
+.canvas-card--origin {
+  border: 0;
+  border-radius: var(--radius-node);
+}
+.canvas-card--answer .canvas-image-slot,
+.canvas-card--origin .canvas-image-slot {
+  position: relative;
+  box-sizing: border-box;
+  height: var(--canvas-figma-answer-height);
+  aspect-ratio: auto;
+  border-radius: var(--radius-node);
+}
+.canvas-card--answer .canvas-image-slot::after,
+.canvas-card--origin .canvas-image-slot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.canvas-card--answer .canvas-image,
+.canvas-card--origin .canvas-image {
+  object-fit: cover;
+}
+.canvas-card--origin .canvas-answer-chip {
+  top: var(--space-answer-chip-edge);
+  left: var(--space-answer-chip-edge);
+  padding: var(--space-padding-4) var(--space-padding-7);
+  font: var(--text-body-b1-m);
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+.canvas-origin-veil {
+  border-radius: inherit;
+}
+/* 시안에는 노드끼리 잇는 선이 없다. 부모 관계 데이터는 두되 화면에서는 숨긴다. */
+.generation-canvas .react-flow__edge.canvas-edge--parent {
+  display: none;
+}
+.generation-canvas .react-flow {
+  --xy-edge-stroke-width-default: var(--stroke-weight-default);
+}
+/* 연결점: 시안에는 단계 알약 좌우, 질문 노드 오른쪽, 답변 카드 왼쪽에만 10×10 점이 있다 */
+.generation-canvas .react-flow__handle {
+  opacity: 0;
+}
+.generation-canvas .react-flow__handle:is(.canvas-step-dot, .canvas-answer-dot) {
+  opacity: 1;
+  width: var(--space-padding-4);
+  height: var(--space-padding-4);
+  border: 0;
+  background: var(--color-node-line);
+}

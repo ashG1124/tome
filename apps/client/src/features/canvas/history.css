@@ -251,3 +251,43 @@
   z-index: -2;
   transform: translateY(-15%) scale(0.81);
 }
+
+/* ---- Figma 전체 화면 재정합(#186): 답변 카드 stacking 1679:11606 / 3182:174875 ---- */
+/* 칩 1226:70283: 44 높이(글 24 + 위아래 10), 카드 안 17.5 */
+.canvas-card--answer .canvas-answer-chip {
+  top: var(--space-answer-chip-edge);
+  left: var(--space-answer-chip-edge);
+  padding: var(--space-padding-4) var(--space-padding-7);
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+/* 핀 1226:69621: 44 원, 칩 줄 오른쪽 끝(카드 안쪽 18.5) */
+.canvas-card--answer .canvas-answer-versions button[data-answer-pin] {
+  top: var(--space-answer-chip-edge);
+  right: calc(var(--space-answer-chip-edge) + var(--stroke-weight-light));
+  width: var(--size-answer-pin);
+  height: var(--size-answer-pin);
+}
+/* ^ v 1226:70468: 카드 오른쪽 바깥 12, 세로 가운데, 40×40 두 칸 */
+.canvas-card--answer .canvas-answer-steps {
+  left: calc(100% + var(--space-gap-4));
+  gap: 0;
+}
+.canvas-card--answer .canvas-answer-steps button {
+  width: var(--size-answer-arrow);
+  height: var(--size-answer-arrow);
+  color: var(--color-font-helper-text);
+}
+.canvas-card--answer .canvas-answer-steps button:disabled {
+  opacity: 0.3;
+}
+/* 뒤 카드: 앞 장의 0.9배씩, 오른쪽 위로 밀린다(+26/-25, +49/-50). 위쪽 왼쪽이 기준 */
+.canvas-answer-layer {
+  border-radius: var(--radius-node);
+  transform-origin: top left;
+}
+.canvas-answer-layer[data-depth='1'] {
+  transform: translate(5%, -7.3529%) scale(0.9);
+}
+.canvas-answer-layer[data-depth='2'] {
+  transform: translate(9.4231%, -14.7059%) scale(0.81);
+}

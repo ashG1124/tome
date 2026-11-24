@@ -61,4 +61,24 @@ describe('AppHeader', () => {
       false,
     );
   });
+
+  it('Figma 변형: TOME 은 검색창만, AGORA 는 검색창+필터, ETC 는 검색창이 없다', () => {
+    renderHeader('tome');
+    expect(screen.getByRole('search', { name: COPY['AGS-07'] })).toBeTruthy();
+    expect(screen.getByRole('searchbox').getAttribute('placeholder')).toBe(COPY['AGS-03']);
+    expect(screen.queryByRole('button', { name: COPY['AGS-04'] })).toBeNull();
+  });
+
+  it('AGORA 변형은 Project/Creator/Topic 필터를 두고 Project 가 기본 선택이다', () => {
+    renderHeader('agora');
+    const pressed = [COPY['AGS-04'], COPY['AGS-05'], COPY['AGS-06']].map((name) =>
+      screen.getByRole('button', { name }).getAttribute('aria-pressed'),
+    );
+    expect(pressed).toEqual(['true', 'false', 'false']);
+  });
+
+  it('ETC 변형에는 검색창이 없다', () => {
+    renderHeader(null);
+    expect(screen.queryByRole('search')).toBeNull();
+  });
 });

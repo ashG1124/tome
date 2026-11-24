@@ -110,7 +110,8 @@ describe('TopicPage', () => {
   it('프로젝트가 없으면 S-02 를 보여 준다', async () => {
     vi.spyOn(api, 'getTopic').mockResolvedValue({ ...TOPIC, projects: [] });
     renderAt(`/agora/topics/${TOPIC.topic.id}`);
-    expect((await screen.findByRole('status')).textContent).toBe(COPY['S-02']);
+    expect(await screen.findByText(COPY['S-02'])).toBeTruthy();
+    expect(screen.getByText(COPY['S-02']).getAttribute('role')).toBe('status');
     expect(screen.queryAllByRole('link', { name: /Urban/ })).toHaveLength(0);
   });
 });
@@ -338,6 +339,100 @@ describe('TopicListPage', () => {
   it('핫토픽이 없으면 S-02 를 보여 준다', async () => {
     vi.spyOn(api, 'getAgoraHome').mockResolvedValue({ ...HOME, hotTopics: [] });
     renderAt('/agora/topics');
-    expect((await screen.findByRole('status')).textContent).toBe(COPY['S-02']);
+    expect((await screen.findByText(COPY['S-02'])).getAttribute('role')).toBe('status');
+  });
+});
+
+describe('헤더 검색(새 API 없이 이미 받은 데이터를 거른다)', () => {
+  const HOME: AgoraHomeResponse = {
+    recommended: [card(1, 'Cyber-cympathy'), card(2, 'Lifestyle furniture')],
+    risingCreators: [{ ...person(40, 'Lind'), bio: 'Global Implementation Manager' }],
+    hotTopics: [
+      { topic: TOPIC.topic, projects: [card(3, 'Urban Commuter'), card(4, 'Trail Accent')] },
+    ],
+  };
+  const status = () => screen.getAllByRole('status').find((el) => el.textContent !== '');
+
+  beforeEach(() => {
+    vi.spyOn(api, 'getAgoraHome').mockResolvedValue(HOME);
+  });
+
+  it('Project(기본)는 프로젝트 제목으로 거르고, 결과 수를 role=status 로 알린다', async () => {
+    renderAt('/agora?q=lifestyle');
+    expect(await screen.findByRole('link', { name: /Lifestyle furniture/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Cyber-cympathy/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: COPY['A-10'] })).toBeNull();
+    expect(screen.queryByRole('region', { name: COPY['A-01'] })).toBeNull();
+    expect(status()?.textContent).toBe(`${COPY['AGS-02']}: 1`);
+  });
+
+  it('Creator 는 창작자 이름으로 거른다(Rising Creator 와 작성자)', async () => {
+    renderAt('/agora?q=lind&in=creator');
+    const rising = await screen.findByRole('region', { name: COPY['A-10'] });
+    expect(within(rising).getByRole('link', { name: /Lind/ })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: COPY['A-09'] })).toBeNull();
+  });
+
+  it('Creator 는 카드 작성자 이름으로도 거른다', async () => {
+    renderAt('/agora?q=author%203&in=creator');
+    const topics = await screen.findByRole('region', { name: COPY['A-01'] });
+    expect(within(topics).getByRole('link', { name: /Urban Trail/ })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: COPY['A-10'] })).toBeNull();
+    expect(screen.queryByRole('region', { name: COPY['A-09'] })).toBeNull();
+  });
+
+  it('Topic 은 주제 제목으로 묶음째 거른다', async () => {
+    renderAt('/agora?q=urban&in=topic');
+    const topics = await screen.findByRole('region', { name: COPY['A-01'] });
+    expect(within(topics).getByRole('link', { name: /Urban Trail/ })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: COPY['A-09'] })).toBeNull();
+    expect(status()?.textContent).toBe(`${COPY['AGS-02']}: 1`);
+  });
+
+  it('결과가 없으면 No results. 를 보여 준다', async () => {
+    renderAt('/agora?q=zzzz');
+    expect(await screen.findByText(COPY['AGS-01'])).toBeTruthy();
+    expect(screen.queryByRole('region', { name: COPY['A-09'] })).toBeNull();
+  });
+
+  it('입력하면 주소 쿼리가 바뀌고 같은 화면에서 바로 거른다. Esc 로 지운다', async () => {
+    const router = renderAt('/agora');
+    const input = await screen.findByRole('searchbox', { name: COPY['AGS-07'] });
+    await screen.findByRole('link', { name: /Cyber-cympathy/ });
+    fireEvent.change(input, { target: { value: 'cyber' } });
+    await waitFor(() => expect(router.state.location.search).toBe('?q=cyber'));
+    expect(screen.queryByRole('link', { name: /Lifestyle furniture/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: COPY['AGS-05'] }));
+    await waitFor(() => expect(router.state.location.search).toBe('?q=cyber&in=creator'));
+    expect(screen.getByRole('button', { name: COPY['AGS-05'] }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: COPY['AGS-04'] }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect((input as HTMLInputElement).value).toBe('');
+  });
+
+  it('아고라 상세처럼 거를 목록이 없는 화면에서는 Enter 로 아고라에 가서 같은 검색을 적용한다', async () => {
+    vi.spyOn(api, 'getAgoraProject').mockResolvedValue(DETAIL);
+    const router = renderAt(`/agora/projects/${DETAIL.project.id}`);
+    const input = await screen.findByRole('searchbox', { name: COPY['AGS-07'] });
+    fireEvent.click(screen.getByRole('button', { name: COPY['AGS-05'] }));
+    fireEvent.change(input, { target: { value: 'lind' } });
+    expect(router.state.location.pathname).toBe(`/agora/projects/${DETAIL.project.id}`);
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/agora'));
+    expect(router.state.location.search).toBe('?q=lind&in=creator');
+  });
+
+  it('핫토픽 화면에서는 이 주제의 프로젝트를 제목으로 거른다', async () => {
+    vi.spyOn(api, 'getTopic').mockResolvedValue(TOPIC);
+    renderAt(`/agora/topics/${TOPIC.topic.id}?q=high-vis`);
+    expect(await screen.findByRole('link', { name: /High-Vis Trail Accent/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Urban Commuter/ })).toBeNull();
   });
 });
