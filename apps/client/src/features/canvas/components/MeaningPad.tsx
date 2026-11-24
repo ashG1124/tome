@@ -33,14 +33,21 @@ export const MeaningPad = memo(function MeaningPad({
   const coordinates = padCoordinates(value);
   const span = LIMITS.PAD_MAX - LIMITS.PAD_MIN;
   const style = {
-    '--pad-x': `${((value.x - LIMITS.PAD_MIN) / span) * 100}%`,
-    '--pad-y': `${((LIMITS.PAD_MAX - value.y) / span) * 100}%`,
+    // 0~1 비율. 동그라미 반지름만큼 안쪽 범위에서 움직인다(node-edit.css .node-edit-pad-marker, #204)
+    '--pad-x': String((value.x - LIMITS.PAD_MIN) / span),
+    '--pad-y': String((LIMITS.PAD_MAX - value.y) / span),
   } as CSSProperties;
   const update = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     if (!box.width || !box.height) return;
-    const x = coordinate((event.clientX - box.left) / box.width);
-    const y = coordinate(1 - (event.clientY - box.top) / box.height);
+    // 동그라미가 움직이는 범위(가장자리에서 반지름만큼 안쪽)에 맞춰 누른 위치를 값으로 바꾼다
+    const marker =
+      event.currentTarget.querySelector<HTMLElement>('.node-edit-pad-marker')?.offsetWidth ?? 0;
+    const spanX = box.width - marker > 0 ? box.width - marker : box.width;
+    const spanY = box.height - marker > 0 ? box.height - marker : box.height;
+    const inset = spanX === box.width ? 0 : marker / 2;
+    const x = coordinate((event.clientX - box.left - inset) / spanX);
+    const y = coordinate(1 - (event.clientY - box.top - inset) / spanY);
     if (x !== value.x || y !== value.y) onChange({ ...value, x, y });
   };
   const release = (event: PointerEvent<HTMLDivElement>) => {

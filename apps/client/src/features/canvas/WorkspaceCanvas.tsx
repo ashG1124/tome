@@ -27,7 +27,7 @@ import { GenerationCanvas } from './components/GenerationCanvas';
 import { NodeEditPanel, type NodeEditorLabels } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
 import { createEditorRequests, useNodeEditor } from './hooks/useNodeEditor';
-import { canEditNode } from './edit-model';
+import { SNAP_KINDS, canEditNode } from './edit-model';
 import { NodeComments, type NodeCommentLabels } from './components/NodeComments';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistory';
@@ -302,7 +302,8 @@ function PageCanvas({
   const closeTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   const opener = useRef<HTMLElement | null>(null);
-  /** 펼친 노드를 접는다. 접히는 애니메이션이 끝난 뒤 편집을 닫는다. */
+  const openKind = useRef<string | undefined>(undefined);
+  /** 펼친 노드를 접는다. 접히는 애니메이션이 끝난 뒤 편집을 닫는다(움직이지 않는 노드는 바로). */
   const closeEditor = useCallback((restoreFocus: boolean) => {
     window.clearTimeout(closeTimer.current);
     const finish = () => {
@@ -310,7 +311,7 @@ function PageCanvas({
       setSelected(undefined);
       if (restoreFocus) opener.current?.focus({ preventScroll: true });
     };
-    const duration = expandDuration();
+    const duration = SNAP_KINDS.has(openKind.current ?? '') ? 0 : expandDuration();
     if (duration <= 0) {
       finish();
       return;
@@ -494,6 +495,7 @@ function PageCanvas({
                     // 다른 세트의 노드를 열면 그 세트로 세션을 옮긴다(앞 세트의 Apply 전 값은 버린다).
                     if (sessionSet !== setId) setDraft(undefined);
                     setSessionSet(setId);
+                    openKind.current = kind;
                     setSelected({ setId, nodeId, kind });
                   },
                 }

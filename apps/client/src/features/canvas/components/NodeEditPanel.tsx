@@ -2,7 +2,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent 
 import * as RadixSwitch from '@radix-ui/react-switch';
 import type { Node, NodeSnapshot } from '@tome/shared';
 import { Icon, Tabs } from '../../../shared/ui';
-import { canEditNode, nodePad, nodeWeight } from '../edit-model';
+import { SNAP_KINDS, canEditNode, nodePad, nodeWeight } from '../edit-model';
 import { WeightDial } from './WeightDial';
 import { MeaningPad } from './MeaningPad';
 import '../node-edit.css';
@@ -51,7 +51,7 @@ function expandMotion(element: Element): { duration: number; easing: string } | 
  * 닫힌 카드 높이(--node-closed-height)에서 내용 높이로 늘어나고, 접힐 때 다시 그 높이로 줄어든다.
  * 높이가 0까지 내려가지 않아 제목 글자가 사라졌다 나타나지 않는다. React Flow 가 매 프레임 높이를 재서 아래 노드도 함께 밀린다.
  */
-function useExpandHeight(closing: boolean) {
+function useExpandHeight(closing: boolean, enabled: boolean) {
   const body = useRef<HTMLDivElement>(null);
   const closedHeight = () => {
     const element = body.current;
@@ -62,17 +62,18 @@ function useExpandHeight(closing: boolean) {
   };
   useLayoutEffect(() => {
     const element = body.current;
-    if (!element || typeof element.animate !== 'function') return;
+    if (!enabled || !element || typeof element.animate !== 'function') return;
     const motion = expandMotion(element);
     const from = closedHeight();
     if (!motion || !from) return;
     const to = element.scrollHeight;
     const animation = element.animate([{ height: `${from}px` }, { height: `${to}px` }], motion);
     return () => animation.cancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 펼칠 때 한 번만 움직인다.
   }, []);
   useLayoutEffect(() => {
     const element = body.current;
-    if (!closing || !element || typeof element.animate !== 'function') return;
+    if (!enabled || !closing || !element || typeof element.animate !== 'function') return;
     const motion = expandMotion(element);
     const to = closedHeight();
     if (!motion || !to) return;
@@ -81,7 +82,7 @@ function useExpandHeight(closing: boolean) {
       { ...motion, fill: 'forwards' },
     );
     return () => animation.cancel();
-  }, [closing]);
+  }, [closing, enabled]);
   return body;
 }
 
@@ -291,7 +292,8 @@ export const NodeEditPanel = memo(function NodeEditPanel({
   closing = false,
 }: NodeEditPanelProps) {
   const root = useRef<HTMLElement>(null);
-  const bodyRef = useExpandHeight(closing);
+  // 제목이 없는 노드(근거·우선순위)는 펼쳐도 높이가 거의 같아 움직이지 않는다(#204).
+  const bodyRef = useExpandHeight(closing, !SNAP_KINDS.has(node.kind));
   useEffect(() => {
     root.current
       ?.querySelector<HTMLElement>(
