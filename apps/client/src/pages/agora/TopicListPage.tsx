@@ -8,9 +8,9 @@ import { AgoraFrame, SearchStatus } from './AgoraFrame';
 import { TopicBundle } from './TopicBundle';
 
 /**
- * 핫토픽 전체 목록(Topic List 3190:179268): 393×308 묶음을 3열(간격 20)로 늘어놓는다.
- * Figma 에는 이 프레임 단독 배치만 있어 헤더 아래 위치는 홈 구역과 같게(왼쪽 18, 제목 y 124) 두고 제목 "Hot Topic" 을 붙였다.
- * 새 API 없이 아고라 홈 응답의 hotTopics 를 그대로 쓴다. 헤더 검색어가 있으면 거른다.
+ * 아고라 Topic 탭 = 핫토픽 전체 목록(/agora/topics, Topic List 3190:179268): 393×308 묶음을 가로·세로 간격 20 으로 늘어놓는다.
+ * Figma 에는 1299 폭 예시(3열)만 있어, 1728 화면에서는 칸 크기·간격을 그대로 두고 화면 폭만큼 열을 늘린다(1536 은 3열, 1728·1920 은 4열).
+ * 헤더 아래 위치는 홈 구역과 같다(왼쪽 18, 제목 y 124). 새 API 없이 아고라 홈 응답의 hotTopics 를 쓰고, 검색어는 주제 제목으로 거른다.
  */
 export function TopicListPage() {
   const home = useQuery({ queryKey: ['agora-home'], queryFn: api.getAgoraHome });
@@ -20,7 +20,7 @@ export function TopicListPage() {
   if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   const all = home.data?.hotTopics ?? [];
-  const topics = filterTopicEntries(all, search);
+  const topics = filterTopicEntries(all, search.q);
   return (
     <AgoraFrame busy={home.isPending}>
       <div className="px-[var(--space-agora-content-x)] pt-[var(--space-padding-8)] pb-[var(--space-agora-bottom)]">
@@ -40,7 +40,7 @@ export function TopicListPage() {
           </p>
         ) : null}
         {topics.length > 0 ? (
-          <ul className="m-0 grid list-none grid-cols-[repeat(3,var(--size-agora-topic-width))] gap-[var(--grid-gutter)] p-0">
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,var(--size-agora-topic-width))] gap-[var(--grid-gutter)] p-0">
             {topics.map((entry) => (
               <li key={entry.topic.id}>
                 <TopicBundle entry={entry} />

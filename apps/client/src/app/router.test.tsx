@@ -34,6 +34,8 @@ describe('라우트', () => {
     '/projects/abc',
     '/creators/abc',
     '/agora',
+    '/agora/creators',
+    '/agora/topics',
     '/agora/topics/abc',
     '/agora/projects/abc',
   ])('세션이 없으면 %s 에서 /enter 로 간다', async (path) => {

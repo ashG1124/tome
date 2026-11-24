@@ -12,7 +12,7 @@ import { NewProjectCell } from '../../src/pages/home/NewProjectCell';
 import { ShelfCard } from '../../src/pages/home/ShelfCard';
 import { COPY } from '../../src/shared/copy';
 import { RemixLabel } from '../../src/pages/workspace/remix/RemixPanel';
-import { CreatorPill } from '../../src/pages/agora/AgoraHomePage';
+import { CreatorPill } from '../../src/pages/agora/CreatorPill';
 import { AppHeader, Flash, Tabs, TitleInput } from '../../src/shared/ui';
 import { LandingFooter, LandingScale } from '../../src/pages/landing';
 

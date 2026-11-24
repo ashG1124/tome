@@ -13,10 +13,16 @@ import {
   deriveFailure,
   derivedFromView,
   formatCommentDate,
+  filterAgoraHome,
+  filterCreators,
+  filterTopicEntries,
+  filterTopicProjects,
   formatCount,
   isAgoraEmpty,
+  isCreatorsEmpty,
   isTopicEmpty,
   TOPIC_TILE_COUNT,
+  topicExtraCount,
   topicTiles,
 } from './agora';
 
@@ -157,7 +163,12 @@ describe('deriveFailure', () => {
 });
 
 describe('빈 상태', () => {
-  const emptyHome: AgoraHomeResponse = { recommended: [], risingCreators: [], hotTopics: [] };
+  const emptyHome: AgoraHomeResponse = {
+    recommended: [],
+    risingCreators: [],
+    newCreators: [],
+    hotTopics: [],
+  };
 
   it('게시된 프로젝트가 하나도 없으면 아고라가 빈 것으로 본다(크리에이터만 있어도)', () => {
     expect(isAgoraEmpty(emptyHome)).toBe(true);
@@ -165,7 +176,9 @@ describe('빈 상태', () => {
     expect(
       isAgoraEmpty({
         ...emptyHome,
-        hotTopics: [{ topic: { id: card(9).id, title: 'Urban Trail' }, projects: [] }],
+        hotTopics: [
+          { topic: { id: card(9).id, title: 'Urban Trail' }, projects: [], projectCount: 0 },
+        ],
       }),
     ).toBe(true);
   });
@@ -175,7 +188,13 @@ describe('빈 상태', () => {
     expect(
       isAgoraEmpty({
         ...emptyHome,
-        hotTopics: [{ topic: { id: card(9).id, title: 'Urban Trail' }, projects: [card(1)] }],
+        hotTopics: [
+          {
+            topic: { id: card(9).id, title: 'Urban Trail' },
+            projects: [card(1)],
+            projectCount: 1,
+          },
+        ],
       }),
     ).toBe(false);
   });
@@ -184,5 +203,71 @@ describe('빈 상태', () => {
     const topic: TopicResponse = { topic: { id: card(9).id, title: 'Urban Trail' }, projects: [] };
     expect(isTopicEmpty(topic)).toBe(true);
     expect(isTopicEmpty({ ...topic, projects: [card(1)] })).toBe(false);
+  });
+});
+
+describe('탭별 검색(#214)', () => {
+  const lind: CreatorSummary = {
+    ...AUTHOR,
+    id: `${AUTHOR.id.slice(0, -2)}21`,
+    displayName: 'Lind',
+  };
+  const urban = { id: card(9).id, title: 'Urban Trail' };
+  const lamp = { id: card(8).id, title: 'Warm Task Lighting' };
+  const home: AgoraHomeResponse = {
+    recommended: [card(1), card(2)],
+    risingCreators: [AUTHOR, lind],
+    newCreators: [lind],
+    hotTopics: [
+      { topic: urban, projects: [card(1), card(3)], projectCount: 9 },
+      { topic: lamp, projects: [card(4)], projectCount: 1 },
+    ],
+  };
+
+  it('Project 탭: 프로젝트 제목으로 거르고, 검색 중에는 창작자 줄을 비운다', () => {
+    expect(filterAgoraHome(home, '')).toBe(home);
+    const shown = filterAgoraHome(home, 'project 1');
+    expect(shown.recommended.map((c) => c.title)).toEqual(['Project 1']);
+    expect(shown.risingCreators).toEqual([]);
+    expect(shown.newCreators).toEqual([]);
+    expect(shown.hotTopics.map((e) => e.topic.title)).toEqual(['Urban Trail']);
+    expect(shown.hotTopics[0]?.projects.map((c) => c.title)).toEqual(['Project 1']);
+    // 거른 묶음도 주제 전체 수는 그대로 둔다
+    expect(shown.hotTopics[0]?.projectCount).toBe(9);
+  });
+
+  it('Creator 탭: 창작자 이름으로(대소문자 무시)', () => {
+    expect(filterCreators(home.risingCreators, 'LIN').map((c) => c.displayName)).toEqual(['Lind']);
+    expect(filterCreators(home.risingCreators, '')).toHaveLength(2);
+    expect(filterCreators(home.newCreators, 'judy')).toEqual([]);
+  });
+
+  it('Creator 탭은 라이징·새 창작자가 모두 없을 때만 비어 있다', () => {
+    expect(isCreatorsEmpty(home)).toBe(false);
+    expect(isCreatorsEmpty({ ...home, risingCreators: [] })).toBe(false);
+    expect(isCreatorsEmpty({ ...home, risingCreators: [], newCreators: [] })).toBe(true);
+  });
+
+  it('Topic 탭: 주제 제목으로 묶음째, 핫토픽 화면은 프로젝트 제목으로', () => {
+    expect(filterTopicEntries(home.hotTopics, 'warm').map((e) => e.topic.title)).toEqual([
+      'Warm Task Lighting',
+    ]);
+    expect(filterTopicEntries(home.hotTopics, 'project')).toEqual([]);
+    const topic: TopicResponse = { topic: urban, projects: [card(1), card(3)] };
+    expect(filterTopicProjects(topic, '3').map((c) => c.title)).toEqual(['Project 3']);
+    expect(filterTopicProjects(topic, 'urban')).toEqual([]);
+  });
+});
+
+describe('topicExtraCount ("+N")', () => {
+  const topic = { id: card(9).id, title: 'Urban Trail' };
+  it('보이는 표지(최대 4장) 밖에 남은 공개 프로젝트 수, 없으면 0', () => {
+    const six = Array.from({ length: 6 }, (_, i) => card(i));
+    expect(topicExtraCount({ topic, projects: six, projectCount: 20 })).toBe(16);
+    expect(topicExtraCount({ topic, projects: six.slice(0, 4), projectCount: 4 })).toBe(0);
+    expect(topicExtraCount({ topic, projects: six.slice(0, 2), projectCount: 2 })).toBe(0);
+    expect(topicExtraCount({ topic, projects: six.slice(0, 2), projectCount: 5 })).toBe(3);
+    // 서버가 실수로 작은 수를 줘도 음수가 되지 않는다
+    expect(topicExtraCount({ topic, projects: six, projectCount: 1 })).toBe(0);
   });
 });

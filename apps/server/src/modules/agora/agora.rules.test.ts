@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { mimeOfKey, rankCreators, rankProjects, scoreOf, utcDayRange } from './agora.rules';
+import {
+  mimeOfKey,
+  rankCreators,
+  rankNewCreators,
+  rankProjects,
+  scoreOf,
+  utcDayRange,
+} from './agora.rules';
 
 const day = (n: number) => new Date(Date.UTC(2026, 10, n));
 
@@ -52,5 +59,19 @@ describe('helpers', () => {
     expect(mimeOfKey('answers/x/full.jpg')).toBe('image/jpeg');
     expect(mimeOfKey('answers/x/full.png')).toBe('image/png');
     expect(mimeOfKey('weird')).toBe('image/png');
+  });
+});
+
+describe('rankNewCreators', () => {
+  const n = (id: string, posted: number) => ({ creatorId: id, firstPostedAt: day(posted) });
+
+  it('orders by first public post, newest first', () => {
+    const ranked = rankNewCreators([n('a', 1), n('b', 9), n('c', 4)]);
+    expect(ranked.map((x) => x.creatorId)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('breaks ties by id and keeps an empty list empty', () => {
+    expect(rankNewCreators([n('b', 2), n('a', 2)]).map((x) => x.creatorId)).toEqual(['a', 'b']);
+    expect(rankNewCreators([])).toEqual([]);
   });
 });

@@ -14,7 +14,7 @@ interface ProjectTileProps {
 
 /**
  * 아고라 프로젝트 카드. 사진 아래쪽에 그늘(0 → 70%)을 깔고 흰 글자로 제목을 둔다. 카드 전체가 상세로 가는 링크다.
- * topic: 550×359 비율, 왼쪽 25·아래 28 안쪽, 제목 22 + 간격 12 + 지표 줄(3099:130542).
+ * topic: 550×359 비율, 왼쪽 25·아래 28 안쪽, 제목 22(폭 418 까지) + 간격 12 + 지표 줄(3099:130542).
  * derivative: 높이 213, 왼쪽 22·아래 23 안쪽, 사진 36 + 간격 6 + 제목 20(3099:130841).
  * 좋아요는 누르는 기능이 없어 숫자만 보여 준다. 숫자는 "1.2k"처럼 줄이고, 화면 읽기 프로그램에는 이름과 함께 읽힌다.
  */
@@ -40,7 +40,7 @@ export function ProjectTile({ card, variant }: ProjectTileProps) {
           <AuthorAvatar creator={card.author} sizeClass="size-[var(--size-avatar-card)]" />
         ) : null}
         <span
-          className={`truncate tracking-[var(--letter-spacing-heading-h1)] ${isTopic ? '[font:var(--text-heading-h2)]' : '[font:var(--text-subtitle-st1-sb)]'}`}
+          className={`truncate tracking-[var(--letter-spacing-heading-h1)] ${isTopic ? 'max-w-[var(--size-agora-topic-text-width)] [font:var(--text-heading-h2)]' : '[font:var(--text-subtitle-st1-sb)]'}`}
         >
           {card.title}
         </span>
