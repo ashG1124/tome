@@ -227,7 +227,7 @@ describe('WorkspacePage', () => {
 });
 
 describe('WorkspacePage 리믹스(#41)', () => {
-  it('리믹스 버튼 → 후보 고르기 → 제목에 상대가 붙고, 패널이 닫히며 "Remix with 이름" 알약이 남는다', async () => {
+  it('리믹스 버튼 → 후보 고르기 → 제목에 상대가 붙고, 패널이 닫히며 "Remix with 이름" 손잡이가 남는다', async () => {
     const spy = vi.spyOn(api, 'setRemixPartner');
     renderWorkspace();
     fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
@@ -242,7 +242,8 @@ describe('WorkspacePage 리믹스(#41)', () => {
     expect(screen.getByRole('button', { name: COPY['RX-05'] }).getAttribute('aria-expanded')).toBe(
       'false',
     );
-    expect(screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) })).toBeTruthy();
+    const handle = screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) });
+    expect(handle.hasAttribute('data-remix-handle')).toBe(true);
   });
 
   it('후보가 0명이면(S-04) 리믹스 없이도 프롬프트로 일반 생성을 할 수 있다', async () => {

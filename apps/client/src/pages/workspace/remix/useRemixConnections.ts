@@ -1,5 +1,5 @@
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import type { Connection, Id, WorkspaceResponse } from '@tome/shared';
+import type { Connection, CreatorSummary, Id, WorkspaceResponse } from '@tome/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, useSessionStore } from '../../../shared/api';
 
@@ -14,6 +14,10 @@ export interface CanvasRemix {
   onApply: (answerId: Id, connection: Connection) => Promise<void>;
   /** 숨기기: 서버에 dismiss 하고 그 답변의 목록을 다시 받는다 */
   onDismiss: (answerId: Id, connection: Connection) => Promise<void>;
+  /** 말풍선 사진: 지금 상대가 낸 Connection 이면 그 사람, 예전 상대 것이면 undefined(이름·사진을 모른다) */
+  partnerFor: (
+    connection: Connection,
+  ) => Pick<CreatorSummary, 'displayName' | 'avatarUrl'> | undefined;
   error?: unknown;
   retry: () => void;
 }
@@ -123,7 +127,16 @@ export function useRemixConnections(
   );
 
   if (partnerId === undefined) return undefined;
+  const partner = workspace?.project.remixPartner;
+  // 어떤 상대의 목록에서 받은 Connection 인지(상대를 바꿔도 예전 것은 남는다, ADR-023)
+  const owners = new Map<Id, Id>();
+  requests.forEach((target, index) => {
+    for (const connection of lists[index]?.data?.connections ?? [])
+      if (!owners.has(connection.id)) owners.set(connection.id, target.partnerId);
+  });
   return {
+    partnerFor: (connection) =>
+      partner !== undefined && owners.get(connection.id) === partner.id ? partner : undefined,
     connectionsByAnswer: Object.fromEntries(
       answerIds.map((answerId) => [
         answerId,

@@ -84,6 +84,19 @@ describe('useRemixConnections', () => {
     );
   });
 
+  it('말풍선 사진용 상대: 지금 상대가 낸 Connection 이면 그 사람, 모르는 것이면 undefined', async () => {
+    const workspace = await workspaceWithAnswer(LIND.id);
+    const answerId = workspace.sets[0]?.latestAnswer?.id ?? '';
+    const { result } = renderHook(() => useRemixConnections(workspace), { wrapper });
+    await waitFor(() =>
+      expect(result.current?.connectionsByAnswer[answerId]?.length).toBeGreaterThan(0),
+    );
+    const first = result.current?.connectionsByAnswer[answerId]?.[0];
+    if (first === undefined) throw new Error('Connection 이 없다');
+    expect(result.current?.partnerFor(first)?.displayName).toBe(LIND.displayName);
+    expect(result.current?.partnerFor(connection('unknown', 'shown'))).toBeUndefined();
+  });
+
   it('Apply 로 고른 Connection id 를 답변별로 모으고, 같은 것을 두 번 골라도 한 번만 둔다', async () => {
     const workspace = await workspaceWithAnswer(LIND.id);
     const answerId = workspace.sets[0]?.latestAnswer?.id ?? '';

@@ -3,7 +3,10 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { COPY, type CopyKey } from '../../shared/copy';
 import { Icon } from '../../shared/ui';
 import type { PageMenu } from './pageMenu';
-import { RemixLabel } from './remix/RemixPanel';
+import { RemixLabel, type RemixPerson } from './remix/RemixPanel';
+
+/** 접힌 손잡이 안 화살표 한 변(px). 시안 2513:225785 의 12.706 */
+const HANDLE_ARROW_SIZE = 12.706;
 
 export interface FinishSlot {
   enabled: boolean;
@@ -14,8 +17,11 @@ export interface FinishSlot {
 
 export interface RemixSlot {
   open: boolean;
-  /** 지금 리믹스 상대 이름. 패널이 닫혀 있으면 버튼 왼쪽에 "Remix with 이름" 알약으로 보인다 */
-  partnerName: string | undefined;
+  /**
+   * 지금 리믹스 상대(이름·사진). 패널이 닫혀 있으면 버튼 왼쪽에 접힌 손잡이가 보이고,
+   * 손잡이를 누르면 "Remix with 이름" 알약이 펼쳐진다
+   */
+  partner: RemixPerson | undefined;
   panelId: string;
   onOpen: () => void;
   onClose: () => void;
@@ -51,23 +57,49 @@ function circle(selected: boolean): string {
 
 /**
  * 리믹스 버튼(Icon Menu remix 1185:59842). 누르면 왼쪽에 "Remix with" 패널이 열리고, 버튼은 진한 면이 된다.
- * 닫혀 있고 상대가 있으면 왼쪽에 흰 "Remix with 이름" 알약(Control done 1720:80415)을 두고, 누르면 다시 연다.
- * Esc·바깥 클릭으로 닫히고, 닫힐 때 포커스가 패널 안에 있었으면 리믹스 버튼으로 돌아온다.
+ * 닫혀 있고 상대가 있으면 버튼 왼쪽에 접힌 손잡이(remix_change 2513:226126, Remix 03)를 둔다.
+ * 손잡이를 누르면 흰 "Remix with 이름" 알약(Control done 1720:80415, Remix 04)이 펼쳐지고, 알약을 누르면 패널을 다시 연다.
+ * 패널·알약은 Esc·바깥 클릭으로 닫히고, 닫힐 때 포커스가 그 안에 있었으면 리믹스 버튼(알약은 손잡이)으로 돌아온다.
  */
 function RemixButton({ slot }: { slot: RemixSlot }) {
-  const { open, onOpen, onClose } = slot;
+  const { open, onOpen, onClose, partner } = slot;
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const handle = useRef<HTMLButtonElement>(null);
+  const pill = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(open);
+  // 손잡이를 눌러 알약을 펼쳤는지. 패널이 열리면 다시 접힌다.
+  const [peek, setPeek] = useState(false);
+  const showPill = peek && !open && partner !== undefined;
+  const refocusHandle = useRef(false);
+
+  const openPanel = () => {
+    setPeek(false);
+    onOpen();
+  };
+  const foldPill = (refocus: boolean) => {
+    refocusHandle.current = refocus;
+    setPeek(false);
+  };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !showPill) return;
     const closeOnOutside = (event: PointerEvent) => {
-      if (wrap.current !== null && !wrap.current.contains(event.target as Node)) onClose();
+      if (wrap.current === null || wrap.current.contains(event.target as Node)) return;
+      if (open) onClose();
+      else setPeek(false);
     };
     document.addEventListener('pointerdown', closeOnOutside);
     return () => document.removeEventListener('pointerdown', closeOnOutside);
-  }, [open, onClose]);
+  }, [open, showPill, onClose]);
+
+  useEffect(() => {
+    if (showPill) pill.current?.focus();
+    else if (refocusHandle.current) {
+      refocusHandle.current = false;
+      handle.current?.focus();
+    }
+  }, [showPill]);
 
   useEffect(() => {
     if (wasOpen.current && !open) {
@@ -82,9 +114,13 @@ function RemixButton({ slot }: { slot: RemixSlot }) {
     <div
       ref={wrap}
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && open) {
+        if (event.key !== 'Escape') return;
+        if (open) {
           event.stopPropagation();
           onClose();
+        } else if (showPill) {
+          event.stopPropagation();
+          foldPill(true);
         }
       }}
       className="relative flex items-center"
@@ -93,14 +129,33 @@ function RemixButton({ slot }: { slot: RemixSlot }) {
         <div className="absolute top-0 right-[calc(100%+var(--space-remix-panel-gap))]">
           {slot.panel}
         </div>
-      ) : slot.partnerName !== undefined ? (
+      ) : showPill ? (
         <button
+          ref={pill}
           type="button"
           aria-expanded={false}
-          onClick={onOpen}
-          className="absolute top-0 right-[calc(100%+var(--space-remix-panel-gap))] w-[var(--size-remix-panel-width)] cursor-pointer rounded-[var(--radius-max)] border-0 bg-transparent p-0"
+          onClick={openPanel}
+          className="absolute top-0 right-[calc(100%+var(--space-remix-panel-gap))] flex cursor-pointer rounded-[var(--radius-max)] border-0 bg-transparent p-0"
         >
-          <RemixLabel partner={slot.partnerName} open={false} />
+          <RemixLabel partner={partner} open={false} />
+        </button>
+      ) : partner !== undefined ? (
+        // 접힌 손잡이(2513:225784): 높이 34, DIM 면, 왼쪽 화살표. 누르면 "Remix with 이름" 알약이 펼쳐진다
+        <button
+          ref={handle}
+          type="button"
+          data-remix-handle=""
+          aria-label={`${COPY['RX-01']} ${partner.displayName}`}
+          aria-expanded={false}
+          onClick={() => setPeek(true)}
+          className={[
+            'absolute top-1/2 right-[calc(100%+var(--space-remix-handle-gap))] box-border flex h-[var(--size-remix-handle-height)] -translate-y-1/2',
+            'cursor-pointer items-center rounded-[var(--radius-max)] border-0 p-[var(--space-remix-handle-padding)]',
+            'bg-[color:var(--color-background-dim)] text-[color:var(--color-font-on-fill)] shadow-[var(--shadow-remix-handle)]',
+          ].join(' ')}
+        >
+          {/* 시안 화살표 모양은 large_arrow_left(1187:63769)와 같다 */}
+          <Icon name="large-arrow-left" size={HANDLE_ARROW_SIZE} />
         </button>
       ) : null}
       <button
@@ -109,7 +164,7 @@ function RemixButton({ slot }: { slot: RemixSlot }) {
         aria-label={COPY['RX-05']}
         aria-expanded={open}
         aria-controls={open ? slot.panelId : undefined}
-        onClick={open ? onClose : onOpen}
+        onClick={open ? onClose : openPanel}
         className={circle(open)}
       >
         <Icon name="glyph-remix" />
