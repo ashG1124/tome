@@ -14,9 +14,9 @@ import { useApiImage } from '../../shared/api';
 
 /** 카드 종류별 글리프 이름(브랜드 그림 파일) */
 const TYPE_GLYPH: Record<ShelfCardType, string> = {
-  'my-work': 'glyph-mywork',
-  remix: 'glyph-remix',
-  derive: 'glyph-derive',
+  'my-work': 'card-mywork',
+  remix: 'card-remix',
+  derive: 'card-stack',
 };
 const TYPE_LABEL: Record<ShelfCardType, CopyKey> = {
   'my-work': 'H-03a',
@@ -84,6 +84,8 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
           'transition-[width] duration-[250ms] ease-out motion-reduce:transition-none',
           'group-focus-within:z-10 group-focus-within:w-[var(--size-shelf-card-width-open)]',
           'group-hover:z-10 group-hover:w-[var(--size-shelf-card-width-open)]',
+          // 키보드로 들어왔을 때만 카드 바깥에 Figma 톤 테두리(마우스 클릭 포커스엔 안 보인다)
+          'group-has-[:focus-visible]:outline-[length:var(--stroke-weight-bold)] group-has-[:focus-visible]:outline-offset-[var(--focus-outline-offset)] group-has-[:focus-visible]:outline-[color:var(--color-shelf-focus)]',
         ].join(' ')}
       >
         {path !== null && cover !== 'failed' ? (
@@ -117,7 +119,7 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
         <div className="relative flex h-full flex-col">
           <div
             className={[
-              'flex items-center gap-[var(--space-gap-1)]',
+              'flex items-start gap-[var(--space-gap-1)]',
               // 글리프 색: 사진 위는 흰색, 사진 없는 면은 시안처럼 sub-text(#43464D, 1226:78464 실측)
               onImage
                 ? 'text-[color:var(--color-font-on-fill)]'
@@ -126,7 +128,7 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
           >
             <Icon name={TYPE_GLYPH[type]} size={20} />
             <span
-              className={`hidden [font:var(--text-body-b2-r)] ${subText} group-focus-within:inline group-hover:inline`}
+              className={`hidden [font:var(--text-body-b2-r)] tracking-[var(--letter-spacing-shelf-body)] ${subText} group-focus-within:inline group-hover:inline`}
             >
               {COPY[TYPE_LABEL[type]]}
             </span>
@@ -153,7 +155,7 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
             onKeyDown={handleKeyDown}
             className={[
               'mt-auto line-clamp-3 break-words no-underline',
-              '[font:var(--text-subtitle-st2-sb)] tracking-[var(--letter-spacing-default)]',
+              '[font:var(--text-subtitle-st2-sb)] tracking-[var(--letter-spacing-shelf-title)]',
               'group-focus-within:line-clamp-1 group-hover:line-clamp-1',
               // 기본(좁을 때)은 이미지만 보이게 제목을 투명하게 둔다(링크 이름은 그대로라 낭독기·Tab·클릭 가능).
               // 마우스·키보드 포커스가 오면 카드가 넓어지며 제목이 서서히 보인다.
@@ -167,7 +169,7 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
             {project.title}
           </Link>
           <span
-            className={`hidden items-center gap-[var(--space-gap-1)] [font:var(--text-body-b2-r)] ${subText} group-focus-within:flex group-hover:flex`}
+            className={`hidden items-center gap-[var(--space-gap-1)] [font:var(--text-body-b2-r)] tracking-[var(--letter-spacing-shelf-body)] ${subText} group-focus-within:mt-[var(--space-gap-1)] group-focus-within:flex group-hover:mt-[var(--space-gap-1)] group-hover:flex`}
           >
             {/* Figma 는 20px 편집 기록 아이콘. 그 파일이 없어 24px history 를 20 크기로 쓴다 */}
             <Icon name="history" size={20} />
