@@ -28,6 +28,7 @@ import { addDerivedProject, type AgoraCommentRecord, type FakeStore } from './st
 /** 서버 agora.rules.ts 와 같은 개수 */
 const RECOMMENDED_LIMIT = 12;
 const RISING_LIMIT = 8;
+const NEW_CREATOR_LIMIT = 8;
 const HOT_TOPIC_LIMIT = 5;
 const HOT_TOPIC_PROJECT_LIMIT = 6;
 const TOPIC_PROJECT_LIMIT = 50;
@@ -246,6 +247,22 @@ const PUBLIC_PROJECTS: readonly PublicProject[] = [
     QUIET_HARBOR.id,
     'Three small rowboats resting on wet sand at low tide',
   ),
+  // 묶음의 "+N"(묶음에 보이는 4장 밖의 공개작 수, #214)이 보이도록 한 토픽에만 둘 더 둔다.
+  // 게시일이 가장 오래된 축(10-21)이라 추천 12개·라이징 순서는 그대로다.
+  fillerProject(
+    19,
+    'Clamp lamp over a drafting table',
+    MARA,
+    WARM_LIGHTING.id,
+    'A metal clamp lamp lighting a drafting table at dusk',
+  ),
+  fillerProject(
+    29,
+    'Paper lantern by the window',
+    LIND,
+    WARM_LIGHTING.id,
+    'A paper lantern glowing warmly beside a rainy window',
+  ),
 ];
 
 const FAKE_COMMENT_IDS = [
@@ -434,12 +451,35 @@ export function agoraHome(s: FakeStore): AgoraHomeResponse {
     .map((entry) => ({
       topic: entry.topic,
       projects: entry.projects.slice(0, HOT_TOPIC_PROJECT_LIMIT).map((p) => toCard(s, p)),
+      projectCount: entry.projects.length,
     }));
   return {
     recommended: all.slice(0, RECOMMENDED_LIMIT).map((p) => toCard(s, p)),
     risingCreators,
+    newCreators: newCreatorsOf(all),
     hotTopics,
   };
+}
+
+/** 새 창작자: 첫 공개 게시가 최근인 순 → 같으면 id(서버 rankNewCreators, #214). */
+function newCreatorsOf(projects: readonly PublicProject[]): CreatorSummary[] {
+  const first = new Map<string, { creator: CreatorSummary; firstPostedAt: string }>();
+  for (const project of projects) {
+    const entry = first.get(project.author.id);
+    if (!entry) {
+      first.set(project.author.id, { creator: project.author, firstPostedAt: project.postedAt });
+    } else if (project.postedAt < entry.firstPostedAt) {
+      entry.firstPostedAt = project.postedAt;
+    }
+  }
+  return [...first.values()]
+    .sort(
+      (a, b) =>
+        b.firstPostedAt.localeCompare(a.firstPostedAt) ||
+        (a.creator.id < b.creator.id ? -1 : a.creator.id > b.creator.id ? 1 : 0),
+    )
+    .slice(0, NEW_CREATOR_LIMIT)
+    .map((entry) => entry.creator);
 }
 
 export function agoraTopic(s: FakeStore, id: string): TopicResponse {

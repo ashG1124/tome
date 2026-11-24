@@ -2,11 +2,12 @@ import type { AnswerSummary, Node, NodeComment } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { createContext, type ContextType } from 'react';
+import { GROUP_KINDS } from './edit-model';
 
 export interface CanvasEditorSelection {
   setId: string;
   nodeId: string;
-  /** 고른 노드 종류. 검색 우선순위는 묶음 전체가 한 카드로 펼쳐진다. */
+  /** 고른 노드 종류. 검색 우선순위·검증 기준은 묶음 전체가 한 카드로 펼쳐진다. */
   kind?: string;
 }
 
@@ -24,7 +25,7 @@ export interface CanvasEditorConnection {
   slot?: (element: HTMLElement | null) => void;
 }
 
-/** 펼친 노드의 위치. 검색 우선순위는 묶음 첫 줄 카드가 묶음 전체를 대신한다. */
+/** 펼친 노드의 위치. 검색 우선순위·검증 기준은 묶음 첫 줄 카드가 묶음 전체를 대신한다. */
 export function openRole(
   selected: CanvasEditorSelection | undefined,
   setId: string,
@@ -32,7 +33,7 @@ export function openRole(
   groupPosition: string | undefined,
 ): 'open' | 'covered' | null {
   if (!selected || !output || selected.setId !== setId) return null;
-  if (selected.kind === 'priority' && output.kind === 'priority')
+  if (selected.kind && GROUP_KINDS.has(selected.kind) && output.kind === selected.kind)
     return groupPosition === 'first' || groupPosition === 'only' ? 'open' : 'covered';
   return selected.nodeId === output.id ? 'open' : null;
 }

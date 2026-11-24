@@ -27,7 +27,15 @@ import { GenerationCanvas } from './components/GenerationCanvas';
 import { NodeEditPanel, type NodeEditorLabels } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
 import { createEditorRequests, useNodeEditor } from './hooks/useNodeEditor';
-import { SNAP_KINDS, canEditNode } from './edit-model';
+import {
+  SNAP_KINDS,
+  canOpenNode,
+  isVerificationNode,
+  restoreCriteria,
+  verificationNodes,
+} from './edit-model';
+import { VerificationPanel } from './components/VerificationPanel';
+import { useVerificationEditor, type UpdateVerificationApi } from './hooks/useVerificationEditor';
 import { NodeComments, type NodeCommentLabels } from './components/NodeComments';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistory';
@@ -73,6 +81,8 @@ export interface CanvasEditorOptions {
   acceptPreview?: (answerId: string) => Promise<AcceptAnswerResponse>;
   renderImage?: (answer: Answer) => ReactNode;
   onAccepted?: (answer: Answer) => void;
+  /** 5단계 검증 기준 켜짐 저장(검증 기록). 없으면 api.updateVerification */
+  updateVerification?: UpdateVerificationApi;
 }
 
 export interface WorkspaceCanvasProps {
@@ -320,6 +330,25 @@ function PageCanvas({
     closeTimer.current = window.setTimeout(finish, duration);
   }, []);
   const sessionBase = sets.find((set) => set.id === sessionSet)?.latestAnswer;
+  const verification = useVerificationEditor(
+    projectId,
+    (editor && editor.updateVerification) || ((id, body) => api.updateVerification(id, body)),
+  );
+  /** 세트의 보이는 답변에서 노드를 찾는다. 5단계 검증 노드는 답변의 verification 에 있다. */
+  const findNode = (setId: string, nodeId: string) => {
+    const base = sets.find((set) => set.id === setId)?.latestAnswer;
+    const node = base
+      ? [...base.nodes.nodes, ...verificationNodes(base.verification)].find(
+          (entry) => entry.id === nodeId,
+        )
+      : undefined;
+    return { base, node };
+  };
+  const verificationOpen = selected ? findNode(selected.setId, selected.nodeId) : undefined;
+  const verificationBase =
+    verificationOpen?.node && isVerificationNode(verificationOpen.node)
+      ? verificationOpen.base
+      : undefined;
   const [geometry, setGeometry] = useState<CanvasGeometry | null>(null);
   useLayoutEffect(() => {
     let active = true;
@@ -469,32 +498,34 @@ function PageCanvas({
                   draft,
                   slot: setSlot,
                   close: () => {
-                    if (selected && !editingBusy) closeEditor(false);
+                    if (selected && !editingBusy && !verification.saving) closeEditor(false);
                   },
                   canOpen: (setId, nodeId) => {
-                    const base = sets.find((set) => set.id === setId)?.latestAnswer;
-                    const node = base?.nodes.nodes.find((entry) => entry.id === nodeId);
+                    const { base, node } = findNode(setId, nodeId);
                     return (
                       !busy &&
                       !editingBusy &&
                       base?.status === 'accepted' &&
                       !!node &&
-                      canEditNode(node)
+                      canOpenNode(node)
                     );
                   },
                   open: (setId, nodeId) => {
                     opener.current =
                       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-                    const kind = sets
-                      .find((set) => set.id === setId)
-                      ?.latestAnswer?.nodes.nodes.find((entry) => entry.id === nodeId)?.kind;
+                    const node = findNode(setId, nodeId).node;
+                    const kind = node?.kind;
                     window.clearTimeout(closeTimer.current);
                     setClosing(false);
                     setCommentTarget(undefined);
                     setStacked(false);
-                    // 다른 세트의 노드를 열면 그 세트로 세션을 옮긴다(앞 세트의 Apply 전 값은 버린다).
-                    if (sessionSet !== setId) setDraft(undefined);
-                    setSessionSet(setId);
+                    verification.clearError();
+                    // 검증 노드는 미리보기 세션 없이 바로 저장한다(앞 세트의 Apply 전 값도 그대로 둔다).
+                    if (!node || !isVerificationNode(node)) {
+                      // 다른 세트의 노드를 열면 그 세트로 세션을 옮긴다(앞 세트의 Apply 전 값은 버린다).
+                      if (sessionSet !== setId) setDraft(undefined);
+                      setSessionSet(setId);
+                    }
                     openKind.current = kind;
                     setSelected({ setId, nodeId, kind });
                   },
@@ -503,6 +534,40 @@ function PageCanvas({
           }
         />
       ) : null}
+      {editor && slot && verificationBase && verificationOpen?.node
+        ? createPortal(
+            <VerificationPanel
+              key={`${verificationBase.id}:${verificationOpen.node.kind}`}
+              node={verificationOpen.node}
+              criteria={verificationBase.verification?.criteria ?? []}
+              labels={{ ...NODE_EDITOR_COPY, ...editor.labels }}
+              saving={
+                verification.saving?.answerId === verificationBase.id
+                  ? verification.saving.ids
+                  : undefined
+              }
+              errorMessage={
+                verification.error?.answerId === verificationBase.id
+                  ? COPY[errorCopyKey(verification.error.error)]
+                  : undefined
+              }
+              onToggle={(id, enabled) =>
+                void verification.change(verificationBase, [{ id, enabled }])
+              }
+              onRestore={
+                restoreCriteria(verificationBase.verification?.criteria ?? []).length > 0
+                  ? () =>
+                      void verification.change(
+                        verificationBase,
+                        restoreCriteria(verificationBase.verification?.criteria ?? []),
+                      )
+                  : undefined
+              }
+              onClose={() => closeEditor(true)}
+            />,
+            slot,
+          )
+        : null}
       {editor && !(sessionSet && sessionBase?.status === 'accepted') ? (
         <div className="canvas-preview-dock">
           <PreviewPanel

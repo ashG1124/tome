@@ -2,6 +2,7 @@
 
 export const RECOMMENDED_LIMIT = 12;
 export const RISING_LIMIT = 8;
+export const NEW_CREATOR_LIMIT = 8;
 export const HOT_TOPIC_LIMIT = 5;
 export const HOT_TOPIC_PROJECT_LIMIT = 6;
 export const TOPIC_PROJECT_LIMIT = 50;
@@ -65,6 +66,21 @@ export function rankCreators<T extends CreatorScore>(creators: readonly T[]): T[
         b.latestPostedAt.getTime() - a.latestPostedAt.getTime() ||
         seedKey(a.seedOrder) - seedKey(b.seedOrder) ||
         byId(a, b),
+  );
+}
+
+export interface NewCreatorEntry {
+  creatorId: string;
+  /** 이 창작자 공개 프로젝트 중 가장 이른 게시 시각(= 아고라에 처음 나온 때) */
+  firstPostedAt: Date;
+}
+
+/** 새 창작자 순서(Creator 탭 New Creator, #214): 첫 공개 게시가 최근인 순 → 같으면 id 로 안정 정렬. */
+export function rankNewCreators<T extends NewCreatorEntry>(creators: readonly T[]): T[] {
+  return [...creators].sort(
+    (a, b) =>
+      b.firstPostedAt.getTime() - a.firstPostedAt.getTime() ||
+      (a.creatorId < b.creatorId ? -1 : a.creatorId > b.creatorId ? 1 : 0),
   );
 }
 

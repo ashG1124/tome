@@ -70,6 +70,8 @@ const LAYOUT = {
   /** 묶음 행(우선순위·검증 기준) 사이 간격과 맨 위·맨 아래 안쪽 여백 */
   rowGap: 12,
   rowEdge: 20,
+  /** 카드 아래 작은 안내 한 줄(Not measured, 14px × 1.5). 5단계가 측정 전(skipped)이면 줄마다 붙는다. */
+  note: 21,
   /** 답변 그림 비율 11:7(canvas.css .canvas-image-slot). 파생 2열에서 위 카드 높이를 어림해 아래 카드를 놓는 데 쓴다. */
   answerAspect: 340 / 520,
   /** 열 맨 위(손잡이)에서 답변 카드 맨 앞 장 위쪽까지. 시안 1679:11606(카드 06 y369 − 열 y164) */
@@ -411,7 +413,10 @@ export function buildCanvas(
             },
             { y: cursor, minHeight: false },
           );
-          const height = estimateHeight(node, groupPosition, nodeWidth);
+          // 측정 전(skipped) 안내 줄만큼 높여야 검증 기준 줄끼리 겹치지 않는다(#212).
+          const height =
+            estimateHeight(node, groupPosition, nodeWidth) +
+            (state === 'skipped' ? LAYOUT.note : 0);
           cursor += height + (isRow(node) && !last ? 0 : LAYOUT.cardGap);
           previousKey = group.key;
         });
@@ -538,6 +543,48 @@ export function buildCanvas(
     stepEdges.length = 0;
   }
   return { nodes, edges };
+}
+
+/** 측정 높이로 다시 쌓을 때 한 단계 열의 항목. 단계 알약은 넣지 않는다. */
+export interface ColumnEntry {
+  id: string;
+  /** 지금 y(캔버스 좌표) */
+  y: number;
+  /** 측정한 높이 */
+  height: number;
+  /** 묶음 소제목이면 heading, 노드·자리 카드면 card */
+  kind: 'heading' | 'card';
+  /** 우선순위·검증 기준처럼 한 장 카드 안의 줄로 이어 붙는 카드 */
+  row?: boolean;
+  groupPosition?: GroupPosition;
+}
+
+/**
+ * 한 단계 열을 실제 측정 높이로 다시 쌓는다(#215). 글자 수로 어림한 높이와 실제 높이가 달라 간격이 어긋나는 것을 바로잡는다.
+ * 간격 규칙은 buildCanvas 와 같다: 같은 묶음 카드 사이 cardGap, 이어 붙는 줄 사이 0,
+ * 앞 카드 아래 → 다음 소제목 groupGap, 소제목 위 → 그 묶음 첫 카드 groupLabel. 첫 항목은 제자리.
+ * 반환값은 바뀌어야 하는 항목의 새 y.
+ */
+export function stackColumn(entries: readonly ColumnEntry[]): Map<string, number> {
+  const ordered = [...entries].sort((a, b) => a.y - b.y);
+  const next = new Map<string, number>();
+  let previous: (ColumnEntry & { at: number }) | undefined;
+  for (const entry of ordered) {
+    let at = entry.y;
+    if (previous) {
+      if (entry.kind === 'heading') at = previous.at + previous.height + LAYOUT.groupGap;
+      else if (previous.kind === 'heading') at = previous.at + LAYOUT.groupLabel;
+      else {
+        const joined =
+          previous.row &&
+          (previous.groupPosition === 'first' || previous.groupPosition === 'middle');
+        at = previous.at + previous.height + (joined ? 0 : LAYOUT.cardGap);
+      }
+    }
+    if (Math.abs(at - entry.y) > 0.5) next.set(entry.id, at);
+    previous = { ...entry, at };
+  }
+  return next;
 }
 
 export function keyboardTarget(

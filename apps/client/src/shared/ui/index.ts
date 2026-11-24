@@ -8,7 +8,12 @@ export { Flash, type FlashKind } from './Flash';
 export { Icon } from './Icon';
 export {
   AGORA_SEARCH_SCOPES,
+  AGORA_TAB_PATHS,
   agoraSearchQuery,
+  agoraTabHref,
+  agoraTabOfPath,
+  isLiveFilterPath,
+  legacyAgoraTabHref,
   matchesQuery,
   parseAgoraSearch,
   useAgoraSearch,

@@ -225,6 +225,13 @@ describe.skipIf(!url)('finish & post API (real Postgres)', () => {
     const bob = await newOwner();
     const { projectId, answerId } = await generated(alice);
 
+    // 작업 중(대표 버전 없음)에도 서가 썸네일은 최근 확정 답변의 축소본이다(#211).
+    const building = (await shelf(alice)).find((p) => p.id === projectId)!;
+    expect(building).toMatchObject({
+      status: 'building',
+      coverThumbUrl: `/assets/answers/${answerId}/thumb`,
+    });
+
     const candidates = await call('GET', `/projects/${projectId}/finish-candidates`, alice.token);
     expect(candidates.status).toBe(200);
     expect(

@@ -799,6 +799,36 @@
 .node-open-remove:disabled {
   cursor: not-allowed;
 }
+/* 5단계 검증 기준: 굵은 글 · 빼기 (2971:70686 — 위아래 20 · 좌우 16, 줄 사이 12, 글과 빼기 사이 8, 글 좌우 4) */
+.node-open[data-kind='criterion'] .node-open-inner {
+  align-items: stretch;
+  gap: var(--space-gap-4);
+  padding: var(--space-padding-7) var(--space-padding-6);
+}
+.node-open[data-kind='criterion'] .node-open-list-item {
+  gap: var(--space-gap-3);
+}
+.node-open[data-kind='criterion'] .node-open-list-text {
+  padding-inline: var(--space-padding-2);
+}
+/* 5단계 불일치: 가운데 굵은 글 (2971:70849 — 사방 16) */
+.node-open[data-kind='mismatch'] .node-open-inner {
+  padding: var(--space-padding-6);
+}
+.node-open[data-kind='mismatch'] .node-open-title[data-enabled='false'] {
+  color: var(--color-font-disable);
+  text-decoration: line-through;
+}
+.node-open:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.node-open:focus:not(:focus-visible) {
+  outline: none;
+}
+.node-open-error {
+  text-align: left;
+}
 /* 노드 도구: 펼친 카드 오른쪽 10px, 세로 가운데 (1427:132650 gap 10) */
 .node-open-tool {
   position: absolute;

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Node } from '@tome/shared';
 import {
+  GROUP_KINDS,
+  SNAP_KINDS,
+  canEditNode,
+  canOpenNode,
+  isVerificationNode,
+  restoreCriteria,
+  verificationNodes,
+  withVerificationEnabled,
   nodePad,
   nodeWeight,
   padCoordinates,
@@ -103,5 +111,59 @@ describe('node editing', () => {
     expect(saved.pad!.xAxis[0]).toBe('Textured');
     expect(restoreNode({ ...original, enabled: false }, original)).toEqual(original);
     expect(() => restoreNode({ ...original, id: 'k2' }, original)).toThrow();
+  });
+});
+
+describe('verification nodes (#212)', () => {
+  const criterion: Node = {
+    id: 'v1',
+    kind: 'criterion',
+    stage: 'verify',
+    text: 'The image shows a lamp.',
+    enabled: true,
+    parentIds: ['a1'],
+  };
+  const off: Node = { ...criterion, id: 'v2', enabled: false };
+  const mismatch: Node = { ...criterion, id: 'm1', kind: 'mismatch', text: 'A mismatch' };
+  const verification = {
+    status: 'skipped' as const,
+    criteria: [criterion, off],
+    mismatches: [mismatch],
+  };
+
+  it('opens criteria and mismatches in place without making them preview edits', () => {
+    for (const node of [criterion, mismatch]) {
+      expect(isVerificationNode(node)).toBe(true);
+      expect(canOpenNode(node)).toBe(true);
+      expect(canEditNode(node)).toBe(false);
+      expect(SNAP_KINDS.has(node.kind)).toBe(true);
+    }
+    expect(canOpenNode(original)).toBe(true);
+    expect(isVerificationNode(original)).toBe(false);
+    expect(GROUP_KINDS.has('criterion')).toBe(true);
+    expect(GROUP_KINDS.has('mismatch')).toBe(false);
+  });
+
+  it('lists verification nodes and overlays enabled values by id', () => {
+    expect(verificationNodes(null)).toEqual([]);
+    expect(verificationNodes(verification).map((node) => node.id)).toEqual(['v1', 'v2', 'm1']);
+    const next = withVerificationEnabled(
+      verification,
+      new Map([
+        ['v1', false],
+        ['m1', false],
+        ['missing', true],
+      ]),
+    );
+    expect(next.criteria.map((node) => node.enabled)).toEqual([false, false]);
+    expect(next.mismatches[0]!.enabled).toBe(false);
+    expect(verification.criteria[0]!.enabled).toBe(true);
+    expect(withVerificationEnabled(verification, new Map([['v1', true]]))).toBe(verification);
+  });
+
+  it('restores criteria to their initial value (AI initial, otherwise on)', () => {
+    expect(restoreCriteria([criterion, off])).toEqual([{ id: 'v2', enabled: true }]);
+    expect(restoreCriteria([{ ...off, aiInitial: { enabled: false } }])).toEqual([]);
+    expect(restoreCriteria([criterion, mismatch])).toEqual([]);
   });
 });

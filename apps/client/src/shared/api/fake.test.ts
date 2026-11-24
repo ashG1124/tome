@@ -93,6 +93,16 @@ describe('가짜 응답 모드', () => {
     expect(workspace.pages.length).toBeGreaterThan(0);
   });
 
+  it('작업 중 프로젝트도 서가 썸네일은 최근 확정 답변의 축소본이다(#211)', async () => {
+    await signIn({ consent: true });
+    const created = await api.createProject({ prompt: 'A quiet lighthouse at dusk.' });
+    let job = created.job!;
+    while (job.nextStage) job = (await api.advanceJob(job.id, job.nextStage)).job;
+    const mine = (await api.listProjects()).projects.find((p) => p.id === created.project.id)!;
+    expect(mine.status).toBe('building');
+    expect(mine.coverThumbUrl).not.toBeNull();
+  });
+
   it('GET /health 는 토큰 없이 부를 수 있다', async () => {
     const health = await api.health();
     expect(HealthResponseSchema.safeParse(health).success).toBe(true);

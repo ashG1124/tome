@@ -21,6 +21,7 @@ import {
 } from '../model';
 import { CanvasCard } from './CanvasCard';
 import { useOpenShift } from '../hooks/useOpenShift';
+import { useMeasuredStack } from '../hooks/useMeasuredStack';
 import {
   CanvasNavigation,
   type CanvasEditorConnection,
@@ -181,6 +182,8 @@ function CanvasContent({
 
   // 노드를 제자리에서 펼치면 아래 노드를 밀어 내리고, 다 펼친 뒤 펼친 카드와 노드 도구가 화면 안에 오게 살짝 옮긴다.
   const openId = useOpenShift(editor?.selected);
+  // 실제 높이로 단계 열을 다시 쌓아 노드 간격을 일정하게(#215). 펼친 동안은 쉰다.
+  useMeasuredStack(openId);
   useEffect(() => {
     if (!openId) return;
     const css = getComputedStyle(document.documentElement);
