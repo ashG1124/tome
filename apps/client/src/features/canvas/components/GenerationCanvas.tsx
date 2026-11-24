@@ -12,6 +12,7 @@ import type { PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
 import {
   buildCanvas,
   keyboardTarget,
+  STEP_PILL_TOP,
   sameCardData,
   type CanvasGeometry,
   type CanvasLabels,
@@ -28,30 +29,45 @@ import {
 import '@xyflow/react/dist/style.css';
 import '../canvas.css';
 
-/** 첫 화면: 가장 최근 세트의 마지막 두 단계(4·5)와 답변 카드가 보이게 확대(zoom 1 이하)한다. 맞는 노드가 없으면 null. */
+/** 토큰 값을 숫자로 읽는다. 스타일이 없는 환경(테스트 등)이면 NaN. */
+function tokenNumber(name: string): number {
+  return Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+}
+
+/**
+ * 첫 화면: 가장 최근 세트를 Figma 프레임(My work 3924:67090 / 파생 Derive 1679:15197)과 같은 자리에 놓는다.
+ * 시안 1728 폭 기준 값(확대율·1단계 왼쪽·알약 위쪽)을 화면 폭에 비례해 늘리거나 줄인다(0.7~1.25배).
+ * 맞는 노드가 없거나 토큰이 없으면 null.
+ */
 function recentView(
   nodes: readonly CanvasNode[],
   sets: readonly PromptSet[],
   width: number,
   height: number,
+  derived: boolean,
 ) {
   const latest = [...sets].sort((a, b) => b.position - a.position)[0];
   if (!latest || width <= 0 || height <= 0) return null;
-  const picked = nodes.filter((node) => node.data.setId === latest.id && node.data.column >= 4);
-  if (picked.length === 0) return null;
-  const left = Math.min(...picked.map((node) => node.position.x));
-  const right = Math.max(
-    ...picked.map(
-      (node) => node.position.x + (node.measured?.width ?? Number(node.style?.width ?? 0)),
-    ),
+  const steps = nodes.filter(
+    (node) =>
+      node.data.setId === latest.id && node.data.kind === 'heading' && node.data.variant === 'step',
   );
-  const top = Math.min(...picked.map((node) => node.position.y));
-  if (right <= left) return null;
-  const zoom = Math.min(1, (width * 0.92) / (right - left));
+  const anchor = steps.find((node) => node.data.column === (derived ? 5 : 1));
+  if (!anchor) return null;
+  const frame = tokenNumber('--canvas-figma-frame-width');
+  const scale = Math.min(1.25, Math.max(0.7, width / frame));
+  const zoom = (derived ? 1 : tokenNumber('--canvas-figma-view-zoom')) * scale;
+  const left = derived
+    ? tokenNumber('--canvas-figma-derive-step-left')
+    : tokenNumber('--canvas-figma-view-left');
+  const pill = derived
+    ? tokenNumber('--canvas-figma-derive-pill-top')
+    : tokenNumber('--canvas-figma-view-pill-top');
+  if (![zoom, left, pill].every(Number.isFinite)) return null;
   return {
     zoom,
-    x: (width - (right - left) * zoom) / 2 - left * zoom,
-    y: height * 0.16 - top * zoom,
+    x: left * scale - anchor.position.x * zoom,
+    y: pill * scale - (anchor.position.y + STEP_PILL_TOP) * zoom,
   };
 }
 
@@ -154,11 +170,11 @@ function CanvasContent({
     if (initialized && !fitted.current && graph.nodes.length) {
       fitted.current = true;
       const { width, height } = store.getState();
-      const view = recentView(flow.getNodes(), sets, width, height);
+      const view = recentView(flow.getNodes(), sets, width, height, !!derivedFrom);
       if (view) void flow.setViewport(view);
       else void flow.fitView({ padding: 0.12, minZoom: 0.3, maxZoom: 0.8 });
     }
-  }, [initialized, flow, store, sets, graph.nodes.length]);
+  }, [initialized, flow, store, sets, graph.nodes.length, derivedFrom]);
 
   // 노드 편집 패널이 열리면 패널이 가리는 오른쪽 띠 밖으로 답변 카드(와 고른 노드)가 오게 화면을 옮긴다.
   const selectedKey = editor?.selected ? `${editor.selected.setId}:${editor.selected.nodeId}` : '';

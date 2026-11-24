@@ -20,6 +20,7 @@ function StepPill({ number, label }: { number: number; label: string }) {
           {number}
         </span>
         <strong>{label}</strong>
+        {number === 1 ? <span className="canvas-step-badge" aria-hidden="true" /> : null}
       </div>
       <Handle
         type="target"
@@ -64,7 +65,14 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
   return (
     <>
       {data.kind !== 'prompt' ? (
-        <Handle type="target" position={Position.Left} isConnectable={false} />
+        <Handle
+          type="target"
+          position={Position.Left}
+          isConnectable={false}
+          className={
+            data.kind === 'answer' || data.kind === 'origin' ? 'canvas-answer-dot' : undefined
+          }
+        />
       ) : null}
       <CanvasSurface
         data={data}
@@ -105,7 +113,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           navigation.move(id, event.key);
         }}
       >
-        <div className="canvas-connections">
+        <div className="canvas-connections" data-column={data.column}>
           {connectionsForNode(navigation.remix, data.answerId, data.output?.id).map(
             (connection) => (
               <ConnectionPopover
@@ -166,7 +174,12 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
       ) : null}
 
       {data.kind !== 'answer' && data.kind !== 'origin' ? (
-        <Handle type="source" position={Position.Right} isConnectable={false} />
+        <Handle
+          type="source"
+          position={Position.Right}
+          isConnectable={false}
+          className={data.kind === 'prompt' ? 'canvas-answer-dot' : undefined}
+        />
       ) : null}
     </>
   );

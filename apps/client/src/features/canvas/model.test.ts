@@ -42,8 +42,10 @@ const labels: CanvasLabels = {
 const geometry: CanvasGeometry = {
   nodeWidth: 300,
   nodeHeight: 62,
-  answerWidth: 440,
-  columnGap: 80,
+  answerWidth: 520,
+  columnGap: 95,
+  promptGap: 171,
+  answerGap: 203,
   rowGap: 24,
   setGap: 120,
   headerHeight: 48,
@@ -95,7 +97,7 @@ describe('generation canvas', () => {
     expect(nodes.find((node) => node.id === 'set-a:evidence-placeholder')?.data.state).toBe(
       'pending',
     );
-    expect(nodes.filter((node) => node.data.kind === 'heading')).toHaveLength(7);
+    expect(nodes.filter((node) => node.data.kind === 'heading')).toHaveLength(6);
   });
   it('preserves previous output when the next stage fails', () => {
     const { nodes } = buildCanvas(
@@ -113,7 +115,9 @@ describe('generation canvas', () => {
     const second = { ...set, id: 'set-b', position: 2 };
     const { nodes, edges } = buildCanvas([second, set], generation, labels, geometry);
     expect(new Set(nodes.map((node) => node.id)).size).toBe(nodes.length);
-    expect(edges[0]?.source).toBe('set-a:prompt');
+    expect(
+      edges.some((e) => e.source === 'set-a:prompt' && e.target === 'set-a:analyze-heading'),
+    ).toBe(true);
     const firstMax = Math.max(
       ...nodes.filter((node) => node.data.setId === set.id).map((node) => node.position.y),
     );
@@ -273,11 +277,14 @@ describe('derive columns', () => {
     expect(origin.data).toMatchObject({ kind: 'origin', label: 'Answer 6', origin: open });
     expect(origin.draggable).toBe(false);
     expect(mine.position.y).toBeGreaterThan(origin.position.y + 1);
-    expect(mine.position.x).toBe(origin.position.x);
+    // 시안 Derive: 내 답변은 원작 답변보다 179 오른쪽에 놓인다(1002 − 823)
+    expect(mine.position.x).toBe(origin.position.x + 179);
     expect(edges.filter((e) => e.target === 'set-a:origin-answer').map((e) => e.source)).toEqual([
-      'set-a:v1',
+      'set-a:verify-heading',
     ]);
-    expect(edges.some((e) => e.source === 'set-a:v1' && e.target === 'set-a:answer')).toBe(true);
+    expect(
+      edges.some((e) => e.source === 'set-a:verify-heading' && e.target === 'set-a:answer'),
+    ).toBe(true);
   });
   it('links from the last step card when the copied answer has no verification nodes yet', () => {
     const bare = {
@@ -291,9 +298,10 @@ describe('derive columns', () => {
       geometry,
       open,
     );
-    expect(
-      edges.filter((e) => e.source === 'set-a:verify-placeholder').map((e) => e.target),
-    ).toEqual(['set-a:answer', 'set-a:origin-answer']);
+    expect(edges.filter((e) => e.source === 'set-a:verify-heading').map((e) => e.target)).toEqual([
+      'set-a:answer',
+      'set-a:origin-answer',
+    ]);
   });
   it('keeps the original card in the keyboard order, above My answer', () => {
     const { nodes } = build(open);
@@ -315,7 +323,8 @@ describe('derive columns', () => {
   });
   it('leaves an original project as a single answer column', () => {
     const { nodes } = build(undefined);
-    expect(headings(nodes)).toEqual(['Answer 1']);
+    // 내 작업 화면에는 답변 카드 위 머리글이 없다(시안 My work)
+    expect(headings(nodes)).toEqual([]);
     expect(nodes.some((n) => n.id === 'set-a:origin-answer')).toBe(false);
     expect(nodes.find((n) => n.id === 'set-a:answer')?.data.row).toBe(0);
   });

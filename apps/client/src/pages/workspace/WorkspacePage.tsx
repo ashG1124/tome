@@ -31,6 +31,7 @@ export function WorkspacePage() {
     queryFn: () => api.getWorkspace(id, requestedPage),
   });
   const queryClient = useQueryClient();
+  const me = useQuery({ queryKey: ['me'], queryFn: api.getMe });
   const remix = useRemixConnections(workspace.data);
   // 페이지 추가·세트 만들기가 실패했을 때의 오류(다음 시도에서 지운다)
   const [actionError, setActionError] = useState<unknown>(null);
@@ -198,7 +199,7 @@ export function WorkspacePage() {
         <WorkspaceCanvas projectId={id} pageId={pageId} workspace={workspace.data} remix={remix} />
       ) : null}
       {menu ? (
-        <div className="fixed top-[var(--space-padding-8)] right-[var(--space-padding-8)]">
+        <div className="fixed top-[var(--space-workspace-edge)] right-[var(--space-icon-menu-right)]">
           <IconMenu
             menu={menu}
             onSelectPage={(next) => setSearch({ page: next })}
@@ -235,12 +236,12 @@ export function WorkspacePage() {
         </div>
       ) : null}
       {bar ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[var(--space-padding-8)] flex justify-center px-[var(--grid-margin)]">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[var(--space-workspace-bottom)] flex justify-center px-[var(--grid-margin)]">
           <div className="pointer-events-auto flex w-[calc(var(--size-prompt-width)+var(--size-icon-menu-button)+var(--space-gap-4))] max-w-full items-center gap-[var(--space-gap-4)]">
             {/* 첨부(클립) 버튼은 자리만 둔다. 동작은 첨부 기능(T11)에서. */}
             <span
               aria-hidden="true"
-              className="flex size-[var(--size-icon-menu-button)] shrink-0 items-center justify-center rounded-[var(--radius-max)] bg-[color:var(--color-background-default)] text-[color:var(--color-font-sub-text)] shadow-[var(--shadow-prompt)]"
+              className="flex size-[var(--size-icon-menu-button)] shrink-0 items-center justify-center rounded-[var(--radius-max)] bg-[color:var(--color-glass)] text-[color:var(--color-font-sub-text)] shadow-[var(--shadow-prompt)] backdrop-blur-[var(--blur-background)]"
             >
               <ClipIcon />
             </span>
@@ -251,6 +252,7 @@ export function WorkspacePage() {
                 value={drafts[pageId] ?? ''}
                 onChange={(value) => setDrafts((all) => ({ ...all, [pageId]: value }))}
                 onSubmit={sendPrompt}
+                greetingName={me.data?.creator.displayName}
               />
             </div>
           </div>

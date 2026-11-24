@@ -279,3 +279,69 @@
 :root {
   --canvas-node-surface-height: 60px;
 }
+
+/* #185-W Figma 재정합 — 워크스페이스 전체 화면 수치 (Rn2COoR4YCsCdUuYPsi8ju, 프레임 1728×1117, 메뉴바 34 제외) */
+:root {
+  --canvas-figma-column-gap: 95px; /* 1679:11662 단계 사이 연결선 구간(열 간격 395 = 300 + 95) */
+  --canvas-figma-prompt-gap: 171px; /* 1679:11666 질문 노드 → 1단계 곡선 구간 */
+  --canvas-figma-answer-gap: 203px; /* 1679:11661 5단계 오른쪽 끝 → 답변 카드 왼쪽 점 */
+  --canvas-figma-answer-width: 520px; /* 1226:70281 답변 카드 06(맨 앞) 폭 (높이 340) */
+  --canvas-figma-answer-height: 340px; /* 1226:70281 답변 카드 높이 */
+  --canvas-figma-frame-width: 1728px; /* 1679:10955 화면 프레임 폭 — 첫 화면 확대율의 기준 폭 */
+  --canvas-figma-view-zoom: 0.69623; /* 3924:67090 첫 화면 확대율(208.869/300) */
+  --canvas-figma-view-left: 74.55px; /* 3924:67109 첫 화면에서 1단계 열 왼쪽 */
+  --canvas-figma-view-pill-top: 162px; /* 3924:67090 첫 화면에서 단계 알약 위쪽(메뉴바 뺀 값) */
+  --color-step-pill-border: #ffe3d6; /* 1226:69439 단계 알약 테두리(하드코딩 값) */
+  --color-step-pill-glow: rgb(245 224 255); /* 1226:69439 단계 알약 연보라 광 */
+  --size-pill-handle-width: 54px; /* 1226:69423 단계 알약 위 손잡이 폭 */
+  --size-canvas-label: 21px; /* 1679:11623 그룹 소제목 높이(14px × 1.5) */
+  --size-node-tool: 40px; /* 1187:62180 노드 옆 도구 폭(항목 32 + 안쪽 여백 4×2) */
+  --size-answer-arrow: 40px; /* 1226:70468 ^ v 버튼 한 칸 */
+  --size-answer-pin: 44px; /* 1226:69621 핀 버튼 */
+  --space-answer-chip-edge: 17.5px; /* 1679:11606 칩 줄 위·왼쪽 여백 */
+  --size-prompt-pill-height: 59px; /* 1187:61878 입력 알약 높이 */
+  --radius-prompt-pill: 32px; /* 1187:61878 입력 알약 모서리 */
+  --size-preview-pill-width: 190px; /* 1271:121853 Preview 알약 폭 */
+  --size-preview-pill-height: 59px; /* 1271:121853 Preview 알약 높이 */
+  --space-workspace-edge: 20px; /* 1679:11033 로고·Preview 왼쪽 여백, 위 여백 */
+  --space-workspace-bottom: 33px; /* 1187:61873 프롬프트 바·Preview 아래 여백(1083 − 991 − 59) */
+  --blur-glass: 26px; /* 2351:170408 리믹스 패널 검색칸·목록 배경 흐림 */
+  --color-glass: rgb(252 253 255 / 0.5); /* 1187:61878 반투명 흰색(#FCFDFF 50%) */
+  --size-remix-search-height: 51px; /* 2351:170408 > 1720:79876 검색칸 높이 */
+  --size-remix-tabs-height: 33px; /* 1720:79883 Rising·Favorite 묶음 높이 */
+  --size-remix-tab-height: 25px; /* 1720:79886 탭 한 칸 높이 */
+  --size-remix-control-height: 48px; /* 1720:80489 Remix with 알약 높이 */
+  --size-avatar-thumb: 32px; /* 1720:80415 알약 안 썸네일 */
+  --space-remix-row-gap: 20px; /* 1720:79889 목록 항목 사이 */
+  --space-remix-icon-gap: 10px; /* 1720:80396 검색 아이콘과 글자 사이 */
+  --space-remix-panel-gap: 11px; /* 2351:170408 패널 오른쪽 끝(1648)과 IconMenu(1659) 사이 */
+  --space-icon-menu-right: 21px; /* 2332:159703 IconMenu 오른쪽 여백(1728 − 1659 − 48) */
+}
+
+:root {
+  --canvas-figma-derive-step-left: 320px; /* 1679:17902 파생 첫 화면에서 5단계 열 왼쪽 */
+  --canvas-figma-derive-pill-top: 172px; /* 1679:17902 파생 첫 화면에서 단계 알약 위쪽(메뉴바 뺀 값) */
+}
+
+:root {
+  --canvas-figma-derive-step-left: 320px; /* 1679:17902 파생 첫 화면에서 5단계 열 왼쪽 */
+  --canvas-figma-derive-pill-top: 172px; /* 1679:17902 파생 첫 화면에서 단계 알약 위쪽(메뉴바 뺀 값) */
+}
+
+:root {
+  --size-dot-gap: 15.6px; /* 1679:10956 점 격자 간격(PNG 실측 15.6) */
+  --size-dot: 3px; /* 1679:10956 점 지름(PNG 실측 3) */
+  --color-dot: #dadfe4; /* 1679:10956 점 색(PNG 실측) */
+  --canvas-figma-bg-radius-x: 120%; /* 1679:10956 흰 타원 그라디언트 가로 반경(2076/1728) */
+  --canvas-figma-bg-radius-y: 103%; /* 1679:10956 흰 타원 그라디언트 세로 반경(1113/1083) */
+  --canvas-figma-step-pill-height-first: 64px; /* 1679:11621 1단계 알약 높이 */
+}
+
+:root {
+  --size-icon-menu-divider: 27px; /* 2332:159744 IconMenu 구분선 폭 */
+}
+
+:root {
+  --size-remix-list-visible: 187px; /* 1720:79888 목록 보이는 높이(3명 49×3 + 간격 20×2) */
+  --size-title-divider-height: 17.5px; /* 2513:227781 제목 가운데 세로 구분선 높이 */
+}
