@@ -33,13 +33,27 @@ import { makeTitle, planShelfOrder, resolvePrompt, shelfChanges } from './projec
 /** 서가에 보여 주는 프로젝트 수 상한. */
 export const SHELF_LIMIT = 50;
 
+/** 썸네일로 쓸 답변: 대표 버전이 있으면 그것, 없으면(작업 중) 세트들 중 가장 최근에 확정된 답변(#211). */
+export function thumbAnswerId(row: Pick<ProjectRow, 'coverAnswerId' | 'sets'>): string | null {
+  if (row.coverAnswerId) return row.coverAnswerId;
+  let latest: { id: string; at: number } | null = null;
+  for (const set of row.sets) {
+    const answer = set.answers[0];
+    if (!answer) continue;
+    const at = (answer.acceptedAt ?? answer.createdAt).getTime();
+    if (latest === null || at > latest.at) latest = { id: answer.id, at };
+  }
+  return latest?.id ?? null;
+}
+
 export function toSummary(row: ProjectRow): ProjectSummary {
+  const thumbId = thumbAnswerId(row);
   const summary: ProjectSummary = {
     id: row.id,
     title: row.title,
     status: row.status,
     posted: row.postedAt !== null,
-    coverThumbUrl: row.coverAnswerId ? `/assets/answers/${row.coverAnswerId}/thumb` : null,
+    coverThumbUrl: thumbId ? `/assets/answers/${thumbId}/thumb` : null,
     lastEditedAt: row.lastEditedAt.toISOString(),
     shelfPosition: row.shelfPosition,
     kind: row.kind,

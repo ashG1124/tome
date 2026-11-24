@@ -28,6 +28,17 @@ const SUMMARY_SELECT = {
   hiddenAt: true,
   finishedAt: true,
   remixPartner: { select: { id: true, kind: true, displayName: true, bio: true, avatarKey: true } },
+  // 작업 중(대표 버전 없음) 썸네일용: 세트마다 가장 최근에 확정된 답변 하나(#211)
+  sets: {
+    select: {
+      answers: {
+        where: { status: 'accepted' },
+        orderBy: [{ acceptedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 1,
+        select: { id: true, acceptedAt: true, createdAt: true },
+      },
+    },
+  },
 } satisfies Prisma.ProjectSelect;
 
 export type ProjectRow = Prisma.ProjectGetPayload<{ select: typeof SUMMARY_SELECT }>;
