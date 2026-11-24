@@ -1,10 +1,78 @@
-import { DEFAULT_AXES, LIMITS, type Node, type NodeSnapshot, type Pad } from '@tome/shared';
+import {
+  DEFAULT_AXES,
+  LIMITS,
+  type Node,
+  type NodeSnapshot,
+  type Pad,
+  type Verification,
+} from '@tome/shared';
 
-/** 펼침·접힘 높이 애니메이션 없이 바로 바뀌는 노드 종류(제목이 없어 펼쳐도 높이가 거의 같다, #204). */
-export const SNAP_KINDS: ReadonlySet<string> = new Set(['evidence', 'priority']);
+/**
+ * 펼침·접힘 높이 애니메이션 없이 바로 바뀌는 노드 종류(제목이 없어 펼쳐도 높이가 거의 같다, #204).
+ * 5단계 검증 기준·불일치도 제목 없이 같은 글을 굵게 보일 뿐이라 높이가 거의 같다(#212).
+ */
+export const SNAP_KINDS: ReadonlySet<string> = new Set([
+  'evidence',
+  'priority',
+  'criterion',
+  'mismatch',
+]);
 
+/** 묶음 전체가 한 카드로 펼쳐지는 줄 노드(검색 우선순위·검증 기준). */
+export const GROUP_KINDS: ReadonlySet<string> = new Set(['priority', 'criterion']);
+
+/** 미리보기(편집 재생성) 대상 노드. 값을 바꾸면 미리보기를 만들고 Apply 로 새 버전이 된다. */
 export function canEditNode(node: Node): boolean {
   return ['keyword', 'dataType', 'priority', 'evidence', 'attribute'].includes(node.kind);
+}
+
+/** 5단계 검증 노드. 켜짐은 미리보기가 아니라 검증 기록(PATCH /answers/:id/verification)으로 바로 저장한다. */
+export function isVerificationNode(node: Pick<Node, 'kind'>): boolean {
+  return node.kind === 'criterion' || node.kind === 'mismatch';
+}
+
+/** 제자리에서 펼칠 수 있는 노드: 편집 노드와 검증 노드 */
+export function canOpenNode(node: Node): boolean {
+  return canEditNode(node) || isVerificationNode(node);
+}
+
+/** 검증 결과의 기준·불일치 노드 전부 */
+export function verificationNodes(verification: Verification | null | undefined): Node[] {
+  return verification ? [...verification.criteria, ...verification.mismatches] : [];
+}
+
+/** 노드 id → 켜짐 값을 검증 결과에 덮는다. 없는 id 는 무시하고, 바뀐 것이 없으면 같은 객체를 돌려준다. */
+export function withVerificationEnabled(
+  verification: Verification,
+  enabled: ReadonlyMap<string, boolean>,
+): Verification {
+  let changed = false;
+  const map = (nodes: Node[]) =>
+    nodes.map((node) => {
+      const next = enabled.get(node.id);
+      if (next === undefined || next === node.enabled) return node;
+      changed = true;
+      return { ...node, enabled: next };
+    });
+  const next = {
+    ...verification,
+    criteria: map(verification.criteria),
+    mismatches: map(verification.mismatches),
+  };
+  return changed ? next : verification;
+}
+
+/** 검증 기준을 처음 값(AI 초기값, 없으면 켜짐)으로 되돌리는 변경. 이미 처음 값이면 빠진다. */
+export function restoreCriteria(criteria: readonly Node[]): { id: string; enabled: boolean }[] {
+  return criteria
+    .filter((node) => node.kind === 'criterion')
+    .map((node) => ({
+      id: node.id,
+      enabled: node.aiInitial?.enabled ?? true,
+      current: node.enabled,
+    }))
+    .filter((change) => change.enabled !== change.current)
+    .map(({ id, enabled }) => ({ id, enabled }));
 }
 
 export function sameEditableValues(a: NodeSnapshot, b: NodeSnapshot): boolean {
