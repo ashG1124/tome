@@ -12,9 +12,10 @@ interface SwitchProps {
 
 /**
  * 켜고 끄는 스위치(Radix Switch 래핑). Space·Enter 로 켜고 끈다.
- * 켜짐/꺼짐은 색과 함께 손잡이 위치로도 구분된다.
- * 바깥선은 흰 바탕에서 3:1 이 되도록 --color-border-input 을 쓴다(시안에는 선 없음).
- * 시안: Completion Modal 3182:176864 의 게시 토글.
+ * 시안: Done Modal 의 active switch(3182:176310, 50.909×28)와 켜짐 모양(1226:67909).
+ * 바깥선·그림자 없이 면 색(꺼짐 Card, 켜짐 Tome Yellow/7)과 흰 손잡이뿐이다.
+ * 켜짐/꺼짐은 색과 함께 손잡이 위치(왼쪽/오른쪽)로도 구분된다.
+ * 키보드 포커스는 바깥에 Figma 톤 테두리를 보인다(입력칸과 같은 색, 리드 결정 #185).
  */
 export function Switch({ checked, onCheckedChange, disabled, ...rest }: SwitchProps) {
   return (
@@ -24,19 +25,20 @@ export function Switch({ checked, onCheckedChange, disabled, ...rest }: SwitchPr
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       className={[
-        'relative box-border shrink-0 cursor-pointer rounded-[var(--radius-max)] border border-solid p-0',
+        'relative box-border shrink-0 cursor-pointer rounded-[var(--radius-max)] border-0 p-0',
         'h-[var(--size-switch-height)] w-[var(--size-switch-width)]',
-        'border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)]',
         'bg-[color:var(--color-fill-card)] data-[state=checked]:bg-[color:var(--color-tome-yellow-7)]',
-        'disabled:cursor-not-allowed disabled:border-[color:var(--color-border-default)] disabled:bg-[color:var(--color-gray-20)]',
+        'focus-visible:outline-[color:var(--color-border-input)]!',
+        'disabled:cursor-not-allowed disabled:bg-[color:var(--color-gray-20)]',
+        'disabled:shadow-[inset_0_0_0_var(--stroke-weight-light)_var(--color-border-default)]',
       ].join(' ')}
     >
       <RadixSwitch.Thumb
         className={[
           'absolute top-1/2 block -translate-y-1/2 rounded-[var(--radius-max)]',
-          'size-[calc(var(--size-switch-height)-2*var(--space-padding-2))]',
-          'bg-[color:var(--color-background-default)] shadow-[var(--shadow-03)]',
-          'left-[var(--space-padding-2)] data-[state=checked]:left-auto data-[state=checked]:right-[var(--space-padding-2)]',
+          'size-[var(--size-switch-thumb)] bg-[color:var(--color-background-default)]',
+          'left-[var(--space-switch-thumb-off)]',
+          'data-[state=checked]:left-[calc(100%-var(--size-switch-thumb)-var(--space-switch-thumb-on))]',
         ].join(' ')}
       />
     </RadixSwitch.Root>

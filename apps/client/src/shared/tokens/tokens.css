@@ -194,7 +194,7 @@
   --size-version-thumb: 90px; /* 디자인 변수 없음, 원값 90px — 버전 썸네일 한 변 */
   --radius-version-thumb: 12px; /* 디자인 변수 없음, 원값 12px — 버전 썸네일 모서리 */
   --size-scroll-bar: 4px; /* 디자인 변수 없음, 원값 4px — 썸네일 가로 스크롤 진행 막대 두께 */
-  --size-switch-width: 51px; /* 디자인 변수 없음, 원값 50.909px — 게시 토글 폭 (3182:176864) */
+  --size-switch-width: 50.909px; /* 디자인 변수 없음, 원값 50.909px — 게시 토글 폭 (3182:176864) */
   --size-switch-height: 28px; /* 디자인 변수 없음, 원값 28px — 게시 토글 높이 (3182:176864) */
   --color-dim-from: rgb(
     84 88 99 / 0.02
@@ -468,4 +468,12 @@
   --opacity-connection-dot-off: 0.5; /* 디자인 변수 없음, 원값 50% — 지금 쪽이 아닌 점 (1705:20755) */
   --shadow-connection-drop: 0 0 4px var(--color-shadow-weak); /* 원값 drop-shadow 0 0 4 — 열린 Connection 전체 (1708:20784) */
   --size-prompt-remix-chip: 40px; /* 디자인 변수 없음, 원값 32 + 여백 4×2 — 프롬프트 바 리믹스 상대 칩 높이 (4898:93346) */
+}
+/* ===== 완료 모달 재정합(#205) — Done Modal 3182:176717 · Completion Modal 3182:176864 · Title Input-Modal 3182:176487 · active switch 3182:176310 ===== */
+:root {
+  --color-finish-placeholder: #a4a9b3; /* Color/Font Color/Helper Text 원값 — 완료 모달 입력칸 안내 글자 (3182:176476) */
+  --space-finish-header-top: 20px; /* 디자인 변수 없음, 원값 닫기 줄 24 − 겹침 4 — 완료 모달 제목 위 (1183:54953) */
+  --size-switch-thumb: 21.636px; /* 디자인 변수 없음, 원값 21.636px — 게시 토글 손잡이 지름 (3182:176310 Ellipse 2539) */
+  --space-switch-thumb-off: 2.545px; /* 디자인 변수 없음, 원값 2.545px — 꺼짐 손잡이 왼쪽 여백 (3182:176310) */
+  --space-switch-thumb-on: 3.182px; /* 디자인 변수 없음, 원값 40×22 켜짐(1226:67909) 오른쪽 2.5 를 50.909×28 로 키운 값 — 켜짐 손잡이 오른쪽 여백 */
 }

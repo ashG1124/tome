@@ -163,6 +163,7 @@ export function FinishModal({
                 {COPY['D-03a']}
               </label>
               <TitleInput
+                look="modal"
                 id={titleId}
                 aria-label={COPY['D-03a']}
                 aria-invalid={titleError || undefined}
@@ -193,6 +194,7 @@ export function FinishModal({
                 {COPY['D-05a']}
               </label>
               <TitleInput
+                look="modal"
                 id={reasonId}
                 aria-label={COPY['D-05a']}
                 placeholder={COPY['D-05b']}

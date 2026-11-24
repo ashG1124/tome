@@ -113,6 +113,14 @@ describe('FinishModal', () => {
     expect(reasonBox().placeholder).toBe(COPY['D-05b']);
   });
 
+  it('제목·이유 칸은 시안 Title Input-Modal 모양(연한 테두리)을 쓴다', () => {
+    setup();
+    for (const box of [titleBox(), reasonBox()]) {
+      expect(box.className).toContain('border-[color:var(--color-border-default)]');
+      expect(box.className).toContain('focus-visible:outline-none!');
+    }
+  });
+
   it('열리면 포커스가 제목 칸으로 들어간다', async () => {
     setup();
     await waitFor(() => expect(document.activeElement).toBe(titleBox()));

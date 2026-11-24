@@ -68,4 +68,52 @@ describe('TitleInput', () => {
     );
     expect(input.getAttribute('aria-describedby')).toBe('err');
   });
+
+  it('기본 모양은 진한 테두리(--color-border-input)다', () => {
+    render(<TitleInput aria-label="Title" />);
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    expect(input.className).toContain('border-[color:var(--color-border-input)]');
+    expect(input.className).not.toContain('focus-visible:outline-none!');
+  });
+
+  it('modal 모양은 시안처럼 연한 테두리·연한 안내 글자이고 안쪽 포커스 사각형을 끈다', () => {
+    render(<TitleInput aria-label="Title" look="modal" />);
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    expect(input.className).toContain('border-[color:var(--color-border-default)]');
+    expect(input.className).toContain('placeholder:text-[color:var(--color-finish-placeholder)]');
+    expect(input.className).toContain('focus:border-[color:var(--color-fill-neutral)]');
+    expect(input.className).toContain('focus-visible:outline-none!');
+    expect(input.className.split(' ')).not.toContain('border-[color:var(--color-border-input)]');
+  });
+
+  it('modal 모양은 키보드로 들어왔을 때만 바깥 테두리 표시(data-keyboard-focus)를 단다', () => {
+    const seen: string[] = [];
+    render(
+      <TitleInput
+        aria-label="Title"
+        look="modal"
+        onFocus={() => seen.push('focus')}
+        onBlur={() => seen.push('blur')}
+      />,
+    );
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    fireEvent.pointerDown(window);
+    fireEvent.focus(input);
+    expect(input.hasAttribute('data-keyboard-focus')).toBe(false);
+    fireEvent.blur(input);
+    fireEvent.keyDown(window, { key: 'Tab' });
+    fireEvent.focus(input);
+    expect(input.hasAttribute('data-keyboard-focus')).toBe(true);
+    fireEvent.blur(input);
+    expect(input.hasAttribute('data-keyboard-focus')).toBe(false);
+    expect(seen).toEqual(['focus', 'blur', 'focus', 'blur']);
+  });
+
+  it('기본 모양은 키보드 표시를 달지 않는다(전역 포커스 테두리를 그대로 쓴다)', () => {
+    render(<TitleInput aria-label="Title" />);
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    fireEvent.keyDown(window, { key: 'Tab' });
+    fireEvent.focus(input);
+    expect(input.hasAttribute('data-keyboard-focus')).toBe(false);
+  });
 });
