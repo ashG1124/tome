@@ -90,13 +90,15 @@ function RemixButton({ slot }: { slot: RemixSlot }) {
       className="relative flex items-center"
     >
       {open ? (
-        <div className="absolute top-0 right-[calc(100%+var(--space-gap-5))]">{slot.panel}</div>
+        <div className="absolute top-0 right-[calc(100%+var(--space-remix-panel-gap))]">
+          {slot.panel}
+        </div>
       ) : slot.partnerName !== undefined ? (
         <button
           type="button"
           aria-expanded={false}
           onClick={onOpen}
-          className="absolute top-0 right-[calc(100%+var(--space-gap-5))] w-[var(--size-remix-panel-width)] cursor-pointer rounded-[var(--radius-max)] border-0 bg-transparent p-0"
+          className="absolute top-0 right-[calc(100%+var(--space-remix-panel-gap))] w-[var(--size-remix-panel-width)] cursor-pointer rounded-[var(--radius-max)] border-0 bg-transparent p-0"
         >
           <RemixLabel partner={slot.partnerName} open={false} />
         </button>
@@ -192,7 +194,7 @@ export function IconMenu({
         <ul
           id={listId}
           className={[
-            'absolute top-0 right-[calc(100%+var(--space-gap-5))] m-0 flex w-[var(--size-page-list-width)] list-none flex-col',
+            'absolute top-0 right-[calc(100%+var(--space-remix-panel-gap))] m-0 flex w-[var(--size-page-list-width)] list-none flex-col',
             'gap-[var(--space-padding-2)] rounded-[var(--radius-node)] border border-solid border-[length:var(--stroke-weight-light)]',
             'border-[color:var(--color-fill-card)] bg-[color:var(--color-background-default)] p-[var(--space-padding-3)] shadow-[var(--shadow-floating)]',
           ].join(' ')}
@@ -263,10 +265,10 @@ export function IconMenu({
 
       {remix !== undefined ? (
         <>
-          <span
-            aria-hidden="true"
-            className="block h-[var(--stroke-weight-light)] w-[var(--size-avatar-remix)] bg-[color:var(--color-border-dark)]"
-          />
+          {/* 구분선 2332:159744: 높이 0 칸 안에 굵기 2 · 폭 27 선(메뉴 간격 16 안에 들어간다) */}
+          <span aria-hidden="true" className="relative block h-0 w-[var(--size-icon-menu-divider)]">
+            <span className="absolute inset-x-0 top-[calc(var(--stroke-weight-bold)/-2)] h-[var(--stroke-weight-bold)] bg-[color:var(--color-border-default)]" />
+          </span>
           <RemixButton slot={remix} />
         </>
       ) : null}

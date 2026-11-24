@@ -26,6 +26,14 @@ import type { NodeCommentsApi } from './hooks/useNodeComments';
 import type { CanvasRemixOptions } from './remix-model';
 import './history.css';
 
+/** 시안 전체 화면 수치(#185-W). 기본 지오메트리 토큰 위에 덮어쓴다. */
+const FIGMA_GEOMETRY_TOKENS = {
+  columnGap: '--canvas-figma-column-gap',
+  promptGap: '--canvas-figma-prompt-gap',
+  answerGap: '--canvas-figma-answer-gap',
+  answerWidth: '--canvas-figma-answer-width',
+} as const;
+
 const HISTORY_API: AnswerHistoryApi & NodeCommentsApi = {
   getAnswer: api.getAnswer,
   setPinned: async (id, pinned) => {
@@ -209,10 +217,9 @@ function PageCanvas({
       const css = getComputedStyle(document.documentElement);
       setGeometry(
         Object.fromEntries(
-          Object.entries(CANVAS_GEOMETRY_TOKENS).map(([key, token]) => [
-            key,
-            Number.parseFloat(css.getPropertyValue(token)),
-          ]),
+          Object.entries({ ...CANVAS_GEOMETRY_TOKENS, ...FIGMA_GEOMETRY_TOKENS }).map(
+            ([key, token]) => [key, Number.parseFloat(css.getPropertyValue(token))],
+          ),
         ) as unknown as CanvasGeometry,
       );
     });
