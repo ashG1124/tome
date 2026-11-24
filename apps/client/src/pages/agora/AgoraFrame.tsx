@@ -17,7 +17,11 @@ export function AgoraFrame({ children, busy }: { children: ReactNode; busy?: boo
       className="relative isolate -m-[var(--space-padding-8)] min-h-screen"
       aria-busy={busy || undefined}
     >
-      <AppHeader current="agora" profileTo={profileTo} />
+      <AppHeader
+        current="agora"
+        profileTo={profileTo}
+        avatarUrl={me.data?.creator.avatarUrl ?? null}
+      />
       {children}
     </div>
   );

@@ -218,7 +218,7 @@ export function WorkspacePage() {
             }
             remix={{
               open: remixOpen,
-              partnerName: workspace.data?.project.remixPartner?.displayName,
+              partner: workspace.data?.project.remixPartner,
               panelId: remixPanelId,
               onOpen: openRemix,
               onClose: closeRemix,
@@ -253,6 +253,16 @@ export function WorkspacePage() {
                 onChange={(value) => setDrafts((all) => ({ ...all, [pageId]: value }))}
                 onSubmit={sendPrompt}
                 greetingName={me.data?.creator.displayName}
+                remix={
+                  workspace.data?.project.remixPartner
+                    ? {
+                        partner: workspace.data.project.remixPartner,
+                        open: remixOpen,
+                        panelId: remixPanelId,
+                        onToggle: remixOpen ? closeRemix : openRemix,
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>

@@ -65,13 +65,17 @@ export function FinishDialogFrame({
               wide ? 'w-[var(--size-dialog-width-wide)]' : 'w-[var(--size-dialog-width)]',
               'flex flex-col gap-[var(--space-padding-8)]',
               'rounded-[var(--radius-dialog)] bg-[color:var(--color-background-default)] shadow-[var(--shadow-floating)]',
-              'px-[var(--space-padding-8)] pt-[var(--space-padding-8)] pb-[var(--space-padding-8)]',
+              // 시안: 위 20, 좌우·아래 24 (3182:176717·3182:176850)
+              'px-[var(--space-padding-8)] pt-[var(--space-padding-7)] pb-[var(--space-padding-8)]',
             ].join(' ')}
           >
             <div
               className={[
                 'flex flex-col gap-[var(--space-padding-2)] pr-[var(--space-padding-8)]',
-                wide ? 'text-left' : 'pl-[var(--space-padding-8)] text-center',
+                // 넓은 창은 닫기 줄(24) 아래 4 겹쳐 제목이 온다(1183:54953). 좁은 확인 창은 닫기 줄과 겹친다(2205:113740).
+                wide
+                  ? 'pt-[var(--space-finish-header-top)] text-left'
+                  : 'pl-[var(--space-padding-8)] text-center',
               ].join(' ')}
             >
               <RadixDialog.Title
@@ -92,7 +96,7 @@ export function FinishDialogFrame({
                 aria-label={COPY['D-11']}
                 disabled={!dismissible}
                 className={[
-                  'absolute top-[var(--space-padding-8)] right-[var(--space-padding-8)]',
+                  'absolute top-[var(--space-padding-7)] right-[var(--space-padding-8)]',
                   'flex cursor-pointer items-center justify-center border-0 bg-transparent p-0',
                   'text-[color:var(--color-font-sub-text)] disabled:cursor-not-allowed disabled:text-[color:var(--color-font-disable)]',
                 ].join(' ')}

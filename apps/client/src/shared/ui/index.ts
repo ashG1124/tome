@@ -1,3 +1,4 @@
+export { ApiPhoto } from './ApiPhoto';
 export { AppHeader, type AppHeaderSection } from './AppHeader';
 export { BusyMark } from './BusyMark';
 export { Button } from './Button';

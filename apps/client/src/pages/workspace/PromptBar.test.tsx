@@ -163,3 +163,48 @@ describe('PromptBar', () => {
     expect(screen.queryByRole('list')).toBeNull();
   });
 });
+
+describe('PromptBar 리믹스 칩(4898:93342)', () => {
+  const partner = { displayName: 'Milla', avatarUrl: null };
+  function render2({ emptyPage, open = false }: { emptyPage: boolean; open?: boolean }) {
+    const onToggle = vi.fn();
+    render(
+      <PromptBar
+        state="ready"
+        emptyPage={emptyPage}
+        value=""
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        greetingName="Jiho"
+        remix={{ partner, open, panelId: 'remix-panel', onToggle }}
+      />,
+    );
+    return { onToggle };
+  }
+  const chip = () => screen.queryByRole('button', { name: `${COPY['RX-01']} Milla` });
+
+  it('빈 페이지면 반짝이 대신 상대 칩과 "Start a new project with 이름"을 보인다', () => {
+    const { onToggle } = render2({ emptyPage: true });
+    expect(input().placeholder).toBe(COPY['FG-04'].replace('{name}', 'Milla'));
+    expect(chip()?.textContent).toBe('M');
+    expect(chip()?.getAttribute('aria-expanded')).toBe('false');
+    // 닫혀 있으면 오른쪽 화살표는 손을 올리거나 키보드로 올 때만 보인다(4897:96773)
+    expect(chip()?.querySelector('[data-icon="arrow-right"]')?.parentElement?.className).toContain(
+      'group-hover:flex',
+    );
+    fireEvent.click(chip()!);
+    expect(onToggle).toHaveBeenCalledOnce();
+  });
+
+  it('패널이 열려 있으면 아래 화살표(4706:159190)', () => {
+    render2({ emptyPage: true, open: true });
+    expect(chip()?.getAttribute('aria-controls')).toBe('remix-panel');
+    expect(chip()?.querySelector('[data-icon="arrow-down"]')).not.toBeNull();
+  });
+
+  it('세트가 있는 페이지는 평소 인사말과 반짝이를 그대로 쓴다', () => {
+    render2({ emptyPage: false });
+    expect(chip()).toBeNull();
+    expect(input().placeholder).toBe(COPY['FG-01'].replace('{name}', 'Jiho'));
+  });
+});

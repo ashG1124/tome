@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { Injectable } from '@nestjs/common';
 import {
   type CancelJobResponse,
@@ -125,7 +126,7 @@ export class GenerationService {
         kind: original.owner.kind,
         displayName: original.owner.displayName,
         bio: original.owner.bio,
-        avatarUrl: null,
+        avatarUrl: creatorAvatarUrl(original.owner),
       },
       answer: visible
         ? {

@@ -32,7 +32,7 @@ import { MockAiProvider, createAiProvider, type AiProvider } from '../src/ai';
 import { loadEnv } from '../src/config';
 import { assemblePrompt } from '../src/modules/generation/assemble';
 import { buildVerification } from '../src/modules/generation/verify';
-import { CREATOR_SPECS } from '../src/seed/specs';
+import { CREATOR_SPECS, needsOwnImage } from '../src/seed/specs';
 import { makeThumbnail } from '../src/storage/thumbnail';
 import { SAMPLE_RESULTS_DIR } from '../prisma/seed/sample-results';
 
@@ -197,6 +197,8 @@ async function makePlan(
   const projects: ProjectPlan[] = [];
   for (const creator of CREATOR_SPECS) {
     for (const project of creator.projects) {
+      // 다른 프로젝트 이미지를 같이 쓰는 것(쇼케이스·파생)은 만들지 않는다.
+      if (!needsOwnImage(project)) continue;
       const done =
         manifest.projects[project.key] === true ||
         (!dryRun && (await projectImageIsReal(paths.projects, project.key)));
@@ -312,7 +314,7 @@ async function syncPresetCopies(paths: Paths, manifest: Manifest): Promise<numbe
   let copied = 0;
   for (const creator of CREATOR_SPECS) {
     for (const project of creator.projects) {
-      if (!project.presetKey) continue;
+      if (!project.presetKey || !needsOwnImage(project)) continue;
       const source = join(paths.samples, `${project.presetKey}.jpg`);
       if (
         !(await exists(source)) ||

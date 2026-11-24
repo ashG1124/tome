@@ -4,6 +4,7 @@ import { COPY, type CopyKey } from '../../shared/copy';
 import { Icon } from '../../shared/ui';
 import { SparkleIcon } from './PromptIcons';
 import { canSubmitPrompt, presetKeyFor, type PromptBarState } from './prompt';
+import { PersonPhoto, type RemixPerson } from './remix/RemixPanel';
 
 /** 프리셋 탭 이름 문구. PROMPT_PRESETS 순서와 같다. */
 const PRESET_LABELS: readonly CopyKey[] = ['S-11a', 'S-11b', 'S-11c', 'S-11d', 'S-11e'];
@@ -14,6 +15,15 @@ const REASON: Record<PromptBarState, CopyKey | null> = {
   generating: 'S-03',
   full: 'S-09',
 };
+
+/** 리믹스 상대가 있는 빈 페이지에서 반짝이 자리에 두는 상대 칩(프롬프트 바 remix 변형 4898:93342). */
+export interface PromptRemixChip {
+  partner: RemixPerson;
+  /** 리믹스 패널이 열려 있는지(열리면 아래 화살표) */
+  open: boolean;
+  panelId: string;
+  onToggle: () => void;
+}
 
 export interface PromptSubmit {
   prompt: string;
@@ -29,7 +39,48 @@ interface PromptBarProps {
   onSubmit: (request: PromptSubmit) => Promise<void> | void;
   /** 로그인한 사람 이름. 있으면 자리 문구가 "Hello, 이름. …"이 된다(시안 1187:61881). */
   greetingName?: string;
+  /** 리믹스 상대. 빈 페이지면 상대 칩과 "Start a new project with 이름"(FG-04)을 보인다 */
+  remix?: PromptRemixChip;
 }
+
+/**
+ * 프롬프트 바 리믹스 칩(4898:93342·4897:96773·4706:159190): 반투명 흰 알약(여백 4) 안 32 사진.
+ * 손을 올리거나 키보드로 오면 오른쪽 화살표(4897:96773), 리믹스 패널이 열려 있으면 아래 화살표(4706:159190).
+ * 누르면 리믹스 패널을 열고 닫는다(상대 바꾸기).
+ */
+function RemixChip({ chip, disabled }: { chip: PromptRemixChip; disabled: boolean }) {
+  return (
+    <button
+      type="button"
+      data-remix-opener=""
+      aria-label={`${COPY['RX-01']} ${chip.partner.displayName}`}
+      aria-expanded={chip.open}
+      aria-controls={chip.open ? chip.panelId : undefined}
+      disabled={disabled}
+      onClick={chip.onToggle}
+      className={[
+        'group my-[calc((var(--font-size-b2)*var(--line-height-default)-var(--size-prompt-remix-chip))/2)] flex shrink-0 cursor-pointer items-center',
+        'rounded-[var(--radius-max)] border-0 bg-[color:var(--color-glass)] p-[var(--space-padding-2)] text-[color:var(--color-font-sub-text)]',
+        'disabled:cursor-not-allowed',
+      ].join(' ')}
+    >
+      <PersonPhoto
+        person={chip.partner}
+        className="size-[var(--size-avatar-thumb)] border-0 bg-[color:var(--color-fill-brand-weak)]"
+      />
+      {chip.open ? (
+        <Icon name="arrow-down" size={ARROW_SIZE} />
+      ) : (
+        <span className="hidden group-hover:flex group-focus-visible:flex group-disabled:hidden">
+          <Icon name="arrow-right" size={ARROW_SIZE} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** 칩 안 화살표 한 변(px). 시안 4706:159231 의 20 */
+const ARROW_SIZE = 20;
 
 /** 마지막 입력이 키보드였는지. 키보드로 들어왔을 때만 포커스 테두리를 보이려고 쓴다. */
 let lastInputWasKeyboard = false;
@@ -64,13 +115,19 @@ export function PromptBar({
   onChange,
   onSubmit,
   greetingName,
+  remix,
 }: PromptBarProps) {
   const input = useRef<HTMLTextAreaElement>(null);
   // 입력칸 안쪽에는 포커스 사각형을 그리지 않는다. 키보드로 들어왔을 때만 알약 바깥에 테두리를 보인다.
   const [keyboardFocus, setKeyboardFocus] = useState(false);
   useEffect(() => trackInputKind(), []);
+  const chip = emptyPage ? remix : undefined;
   const placeholder =
-    greetingName === undefined ? COPY['S-08'] : COPY['FG-01'].replace('{name}', greetingName);
+    chip !== undefined
+      ? COPY['FG-04'].replace('{name}', chip.partner.displayName)
+      : greetingName === undefined
+        ? COPY['S-08']
+        : COPY['FG-01'].replace('{name}', greetingName);
   // 글이 길어지면 칸이 내용만큼 늘어난다(화면 높이의 40% 까지, 그 뒤로는 칸 안에서 스크롤).
   // 프리셋처럼 글이 한꺼번에 바뀔 때도 맞춘다.
   useLayoutEffect(() => {
@@ -138,15 +195,21 @@ export function PromptBar({
         data-keyboard-focus={keyboardFocus || undefined}
         className={[
           'box-border flex min-h-[var(--size-prompt-pill-height)] w-full items-start gap-[var(--space-gap-4)] rounded-[var(--radius-prompt-pill)]',
-          'bg-[color:var(--color-glass)] px-[var(--space-padding-7)] py-[var(--space-padding-6)] backdrop-blur-[var(--blur-background)]',
+          'bg-[color:var(--color-glass)] py-[var(--space-padding-6)] pr-[var(--space-padding-7)] backdrop-blur-[var(--blur-background)]',
+          // 리믹스 칩이 있으면 왼쪽 여백 12(4706:159193), 없으면 20
+          chip ? 'pl-[var(--space-padding-5)]' : 'pl-[var(--space-padding-7)]',
           'shadow-[var(--shadow-prompt)] text-[color:var(--color-font-sub-text)]',
           'data-[keyboard-focus]:outline data-[keyboard-focus]:outline-2 data-[keyboard-focus]:outline-offset-2 data-[keyboard-focus]:outline-[color:var(--color-border-input)]',
           locked ? 'bg-[color:var(--color-gray-20)] text-[color:var(--color-font-disable)]' : '',
         ].join(' ')}
       >
-        <span className="mt-[calc(var(--space-gap-1)/2)] flex">
-          <SparkleIcon />
-        </span>
+        {chip ? (
+          <RemixChip chip={chip} disabled={locked} />
+        ) : (
+          <span className="mt-[calc(var(--space-gap-1)/2)] flex">
+            <SparkleIcon />
+          </span>
+        )}
         <textarea
           ref={input}
           aria-label={COPY['S-08']}

@@ -273,7 +273,8 @@ export function buildCanvas(
         xOffset?: number;
       } = {},
     ) => {
-      const { heading = false, y, minHeight, draggable = !heading, xOffset } = opts;
+      // 노드는 끌어서 옮기지 않는다(리드 결정 #197). 노드 위에서 끌면 캔버스가 움직인다.
+      const { heading = false, y, minHeight, draggable = false, xOffset } = opts;
       nodes.push({
         id: id(suffix),
         type: 'card',

@@ -194,7 +194,7 @@
   --size-version-thumb: 90px; /* 디자인 변수 없음, 원값 90px — 버전 썸네일 한 변 */
   --radius-version-thumb: 12px; /* 디자인 변수 없음, 원값 12px — 버전 썸네일 모서리 */
   --size-scroll-bar: 4px; /* 디자인 변수 없음, 원값 4px — 썸네일 가로 스크롤 진행 막대 두께 */
-  --size-switch-width: 51px; /* 디자인 변수 없음, 원값 50.909px — 게시 토글 폭 (3182:176864) */
+  --size-switch-width: 50.909px; /* 디자인 변수 없음, 원값 50.909px — 게시 토글 폭 (3182:176864) */
   --size-switch-height: 28px; /* 디자인 변수 없음, 원값 28px — 게시 토글 높이 (3182:176864) */
   --color-dim-from: rgb(
     84 88 99 / 0.02
@@ -426,4 +426,54 @@
 :root {
   --letter-spacing-shelf-title: -0.02em; /* 서가 hover 제목 18px −0.36px = −2% (1311:127953) */
   --letter-spacing-shelf-body: -0.02em; /* 서가 라벨·시간·+ Project 14px −0.28px = −2% (1311:127953, 1185:57987) */
+}
+/* ===== 캔버스 노드 제자리 펼침·움직임(#195) — Node open=on 1427:132650·1427:133413·2971:69002 ===== */
+:root {
+  --canvas-node-open-gap: 10px; /* 디자인 변수 없음, 원값 10px — 펼친 노드와 오른쪽 노드 도구 사이 (1427:132650) */
+  --canvas-node-open-padding-y: 30px; /* 디자인 변수 없음, 원값 30px — 가중치 노드 펼침 위아래 여백 (1427:132615) */
+  --canvas-node-open-padding-top: 28px; /* 디자인 변수 없음, 원값 28px — 데이터 유형 노드 펼침 위 여백 (2971:74802) */
+  --canvas-node-open-body-width: 240px; /* 디자인 변수 없음, 원값 240px — 펼친 노드 안 글·다이얼 폭 (1427:132616) */
+  --canvas-node-open-gap-body: 53px; /* 디자인 변수 없음, 원값 53~54px — 탭·설명·다이얼 사이 (1427:132618) */
+  --color-glass-surface: rgb(
+    252 253 255 / 0.5
+  ); /* 디자인 변수 없음, 원값 rgba(252,253,255,0.5) — 리믹스 목록 유리 면 (1720:79876) */
+  --motion-expand: 320ms; /* 디자인 변수 없음 — 노드 펼침·접힘 시간 */
+  --motion-pop: 180ms; /* 디자인 변수 없음 — 메뉴가 열릴 때 시간 */
+  --ease-out-soft: cubic-bezier(
+    0.22,
+    1,
+    0.36,
+    1
+  ); /* 디자인 변수 없음 — 펼침·메뉴 움직임 곡선(빠르게 시작해 부드럽게 멈춤) */
+}
+/* ===== 리믹스 화면 재정합(#198) — Control 1720:80418 · Creator list 1720:80413 · Icon Menu remix_change 2513:226126 · Connection 1185:59843 ===== */
+:root {
+  --size-remix-control-done-width: 247px; /* 디자인 변수 없음, 원값 247px — 닫힌 "Remix with 이름" 알약 폭 (1720:80415) */
+  --stroke-weight-remix-thumb: 1.12px; /* 디자인 변수 없음, 원값 1.12px — 알약 안 32 썸네일 흰 테두리 (1720:80494) */
+  --stroke-weight-remix-avatar: 0.667px; /* 디자인 변수 없음, 원값 0.667px — 목록 32 사진 테두리 (1720:79891) */
+  --size-remix-list-width: 268px; /* 디자인 변수 없음, 원값 268px — 목록 줄 폭(스크롤 막대 자리 빼고) (1720:79889) */
+  --size-remix-scrollbar-width: 4px; /* 디자인 변수 없음, 원값 4px — 목록 스크롤 막대 굵기 (1720:79905) */
+  --space-remix-scrollbar-gap: 16px; /* 디자인 변수 없음, 원값 16px — 목록과 스크롤 막대 사이 (1720:79888) */
+  --space-remix-handle-gap: 6px; /* 디자인 변수 없음, 원값 6px — 접힌 손잡이와 리믹스 버튼 사이 (2513:225783) */
+  --size-remix-handle-height: 34px; /* 디자인 변수 없음, 원값 34px — 접힌 "Remix with" 손잡이 높이 (2513:225784) */
+  --space-remix-handle-padding: 2.118px; /* 디자인 변수 없음, 원값 2.118px — 손잡이 안 여백 (2513:225784) */
+  --shadow-remix-handle: 0 2.118px 10.588px 0 var(--color-shadow-weak); /* 원값 drop shadow 0 2.118 10.588 — 손잡이 (2513:225784) */
+  --size-connection: 60px; /* 디자인 변수 없음, 원값 60px — 닫힌 Connection 표시 (1187:61226) */
+  --size-connection-hook: 30px; /* 디자인 변수 없음, 원값 30px — 열린 Connection 양 끝 갈고리 (1705:20749·1705:20760) */
+  --space-connection-offset: 33px; /* 디자인 변수 없음, 원값 33px — 노드 왼쪽 위 모서리에서 표시까지(461−428, 39.5−7) (1187:61097) */
+  --size-connection-text-width: 280px; /* 디자인 변수 없음, 원값 280px — 열린 Connection 글 폭 (1705:20754) */
+  --size-connection-text-height: 38px; /* 디자인 변수 없음, 원값 38px — 열린 Connection 글 두 줄 높이 (1705:20754) */
+  --line-height-connection: 1.2; /* 디자인 변수 없음, 원값 1.2 — 열린 Connection 글 줄 높이 (1705:20754) */
+  --size-connection-dot: 6px; /* 디자인 변수 없음, 원값 6px — 말풍선 쪽 표시 점 (1705:20755) */
+  --opacity-connection-dot-off: 0.5; /* 디자인 변수 없음, 원값 50% — 지금 쪽이 아닌 점 (1705:20755) */
+  --shadow-connection-drop: 0 0 4px var(--color-shadow-weak); /* 원값 drop-shadow 0 0 4 — 열린 Connection 전체 (1708:20784) */
+  --size-prompt-remix-chip: 40px; /* 디자인 변수 없음, 원값 32 + 여백 4×2 — 프롬프트 바 리믹스 상대 칩 높이 (4898:93346) */
+}
+/* ===== 완료 모달 재정합(#205) — Done Modal 3182:176717 · Completion Modal 3182:176864 · Title Input-Modal 3182:176487 · active switch 3182:176310 ===== */
+:root {
+  --color-finish-placeholder: #a4a9b3; /* Color/Font Color/Helper Text 원값 — 완료 모달 입력칸 안내 글자 (3182:176476) */
+  --space-finish-header-top: 20px; /* 디자인 변수 없음, 원값 닫기 줄 24 − 겹침 4 — 완료 모달 제목 위 (1183:54953) */
+  --size-switch-thumb: 21.636px; /* 디자인 변수 없음, 원값 21.636px — 게시 토글 손잡이 지름 (3182:176310 Ellipse 2539) */
+  --space-switch-thumb-off: 2.545px; /* 디자인 변수 없음, 원값 2.545px — 꺼짐 손잡이 왼쪽 여백 (3182:176310) */
+  --space-switch-thumb-on: 3.182px; /* 디자인 변수 없음, 원값 40×22 켜짐(1226:67909) 오른쪽 2.5 를 50.909×28 로 키운 값 — 켜짐 손잡이 오른쪽 여백 */
 }

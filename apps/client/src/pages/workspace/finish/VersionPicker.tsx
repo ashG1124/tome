@@ -67,6 +67,8 @@ export function VersionPicker({ candidates, value, onChange, disabled }: Version
             'flex gap-[var(--space-padding-3)] overflow-x-auto',
             // 포커스 테두리(2px + 간격 2px)가 스크롤 영역에 잘리지 않도록 안쪽 여백을 두고 바깥으로 되돌린다.
             '-m-[var(--space-padding-2)] p-[var(--space-padding-2)]',
+            // 시안은 내용 폭(650)에서 잘린다(1183:54969). 키보드로 고르는 동안만 테두리가 보이게 자르기를 푼다.
+            '[clip-path:inset(0_var(--space-padding-2))] has-[input:focus-visible]:[clip-path:none]',
             '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
           ].join(' ')}
         >

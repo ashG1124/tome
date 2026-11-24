@@ -26,20 +26,7 @@ export interface DesignCase {
 
 const REF_DIR = 'design-ref/components/title-input-modal';
 
-// 입력칸 테두리는 시안(#C5CBD7 50%, 흰 바탕 1.26:1)보다 진한 --color-border-input(#898F9C, 3:1)이다.
-// 실측: done diffRatio 5.86%·largestBlob 1408 → max 6.4%(+0.5%p), maxBlob 1500.
-const BORDER_DIFF: AllowedDiff = {
-  max: 0.064,
-  maxBlob: 1500,
-  reason: '입력칸 테두리 3:1(--color-border-input #898F9C, 시안 #C5CBD7 50%)',
-};
-// default 는 안내 글자 색도 시안(#A4A9B3, 2.36:1)보다 진하다(#6A7281).
-// 실측: default diffRatio 5.88%·largestBlob 1408 → max 6.4%(+0.5%p).
-const DEFAULT_DIFF: AllowedDiff = {
-  ...BORDER_DIFF,
-  reason:
-    '입력칸 테두리 3:1(--color-border-input #898F9C, 시안 #C5CBD7 50%)과 안내 글자 색 진하게(#A4A9B3 → #6A7281)',
-};
+// 입력칸은 시안 Title Input-Modal 과 같은 모양(look="modal")으로 그려 허용 차이를 두지 않는다(#205).
 
 export const cases: DesignCase[] = [
   {
@@ -47,7 +34,6 @@ export const cases: DesignCase[] = [
     ref: `${REF_DIR}/property-1-default__3182-176484.png`,
     width: 650,
     height: 48,
-    allowedDiff: DEFAULT_DIFF,
   },
   {
     id: 'title-input/writing',
@@ -61,7 +47,6 @@ export const cases: DesignCase[] = [
     ref: `${REF_DIR}/property-1-done__3182-176486.png`,
     width: 650,
     height: 48,
-    allowedDiff: BORDER_DIFF,
   },
   // ---- 홈 서가(#23): 사진 없는 카드(좁을 때) 3종류와 + Project 칸
   {

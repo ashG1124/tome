@@ -134,8 +134,8 @@ test('one version disables both chevrons and editing remains available', async (
   const edit = page.locator('[data-id$=":k1"]').getByRole('button', { name: 'Edit node' });
   await edit.focus();
   await edit.click();
-  await expect(page.locator('.canvas-editor-panels')).toBeVisible();
-  await expect(page.locator('.node-edit-panel')).toBeVisible();
+  // 편집은 노드 카드 안에서 제자리로 펼쳐진다(#195)
+  await expect(page.locator('[data-id$=":k1"] .node-open')).toBeVisible();
   const dial = page.getByRole('slider', { name: 'Weighting', exact: true });
   await dial.focus();
   await page.keyboard.press('Home');
@@ -144,7 +144,7 @@ test('one version disables both chevrons and editing remains available', async (
   await apply.click();
   await expect(page.locator('.canvas-answer-versions [aria-live=polite]')).toHaveText('Answer 02');
   await expect(page.getByRole('button', { name: 'Previous version' })).toBeEnabled();
-  await expect(page.locator('.canvas-editor-panels')).toHaveCount(0);
+  await expect(page.locator('.node-open')).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath('05-editor-apply-and-history.png'),
     fullPage: true,

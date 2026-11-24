@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { COPY } from '../copy';
 import { HeaderSearch } from './HeaderSearch';
+import { ApiPhoto } from './ApiPhoto';
 import { ICON_URLS } from './icon-registry';
 
 export type AppHeaderSection = 'tome' | 'agora';
@@ -13,6 +14,8 @@ interface AppHeaderProps {
   profileTo: string;
   /** 아고라 링크 주소. 기본 /agora */
   agoraTo?: string;
+  /** 내 프로필 사진 주소(서버 avatarUrl). 없거나 받지 못하면 기본 프로필 그림을 그린다(#208). */
+  avatarUrl?: string | null;
 }
 
 /**
@@ -60,7 +63,18 @@ const profileIcon = ICON_URLS['profile-default'];
  * 앱 공통 헤더. 왼쪽 TÓME·AGORA 글자 로고(지금 있는 곳은 aria-current), 오른쪽 검색창과 내 프로필.
  * 검색창은 TOME 변형에서는 입력만, AGORA 변형에서는 Project/Creator/Topic 필터도 둔다(ETC 변형은 없음).
  */
-export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderProps) {
+export function AppHeader({
+  current,
+  profileTo,
+  agoraTo = '/agora',
+  avatarUrl = null,
+}: AppHeaderProps) {
+  const placeholder =
+    profileIcon === undefined ? (
+      <span aria-hidden="true" data-avatar-placeholder="" />
+    ) : (
+      <img src={profileIcon} alt="" className="block size-full rounded-[var(--radius-max)]" />
+    );
   return (
     <header className="flex h-[var(--size-header-height)] items-center justify-between px-[var(--space-header-x)]">
       <nav className="flex items-center gap-[var(--space-gap-3)]">
@@ -101,18 +115,18 @@ export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderP
             current === null
               ? 'box-content border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-fill-neutral)] p-[calc(var(--stroke-weight-light)*2)]'
               : '',
-            // 그림 파일이 없는 환경에서만 테두리 있는 빈 동그라미로 그린다
-            profileIcon === undefined
+            // 그림 파일도 내 사진도 없는 환경에서만 테두리 있는 빈 동그라미로 그린다
+            profileIcon === undefined && avatarUrl === null
               ? 'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)] bg-[color:var(--color-fill-neutral-weak)]'
               : '',
           ].join(' ')}
         >
-          {/* 기본 프로필(Profile Icon Container 1226:80942). 그라데이션 원색 그대로라 mask 가 아니라 img 로 그린다 */}
-          {profileIcon === undefined ? (
-            <span aria-hidden="true" data-avatar-placeholder="" />
-          ) : (
-            <img src={profileIcon} alt="" className="block size-full rounded-[var(--radius-max)]" />
-          )}
+          {/* 내 사진(토큰 붙여 받음). 없으면 기본 프로필(Profile Icon Container 1226:80942) — 그라데이션 원색 그대로라 img 로 그린다 */}
+          <ApiPhoto
+            path={avatarUrl}
+            className="block size-full rounded-[var(--radius-max)] object-cover"
+            fallback={placeholder}
+          />
         </Link>
       </div>
     </header>

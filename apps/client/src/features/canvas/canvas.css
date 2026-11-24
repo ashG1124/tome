@@ -408,7 +408,8 @@
   padding-left: var(--space-padding-4);
   opacity: 0;
 }
-.react-flow__node:is(:hover, :focus-within) .canvas-node-tool,
+/* 닫힌 노드에는 도구를 보이지 않는다(시안 open=off). 키보드로 들어오면 펼치기·코멘트 버튼이 보인다. */
+.react-flow__node:focus-within .canvas-node-tool,
 .canvas-node-tool:is([data-open], :focus-within) {
   opacity: 1;
 }
@@ -719,4 +720,50 @@
   height: var(--space-padding-4);
   border: 0;
   background: var(--color-node-line);
+}
+/* ---- Figma 정합(#195): 노드 누름 반응·펼친 노드 위로 올리기 */
+.canvas-card--output:not(.canvas-card--open) {
+  cursor: pointer;
+  transition:
+    border-color var(--motion-pop) var(--ease-out-soft),
+    background-color var(--motion-pop) var(--ease-out-soft),
+    transform var(--motion-pop) var(--ease-out-soft);
+}
+.canvas-card--output:not(.canvas-card--open, .canvas-card--row):hover {
+  border-color: var(--color-border-dark);
+}
+.canvas-card--output:not(.canvas-card--open, .canvas-card--row):active {
+  transform: scale(0.985);
+}
+.canvas-card--criterion,
+.canvas-card--mismatch {
+  cursor: default;
+}
+.canvas-card[data-covered] {
+  visibility: hidden;
+}
+.generation-canvas .react-flow__node:has(.canvas-card--open) {
+  z-index: 1001 !important;
+}
+.generation-canvas .react-flow__node.dragging .canvas-card {
+  cursor: grabbing;
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-card--output:not(.canvas-card--open) {
+    transition: none;
+  }
+  .canvas-card--output:not(.canvas-card--open, .canvas-card--row):active {
+    transform: none;
+  }
+}
+
+/* ---- #197: 끈 값은 노드를 접어도 보인다. 근거는 흐린 글 + 꺼진 스위치(시안 1226:67934), 나머지는 취소선 */
+.canvas-card--output[data-enabled='false'] .canvas-output-text {
+  color: var(--color-font-disable);
+}
+.canvas-card--output[data-enabled='false']:not(.canvas-card--evidence) .canvas-output-text {
+  text-decoration: line-through;
+}
+.canvas-card--output[data-enabled='false'] .canvas-node-line [data-icon] {
+  color: var(--color-font-disable);
 }

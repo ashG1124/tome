@@ -3,6 +3,7 @@ import type { CreateNodeCommentRequest, NodeComment } from '@tome/shared';
 import { AppError } from '../../common';
 import { EventsService } from '../events/events.service';
 import { AnswersService } from '../generation/answers.service';
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import type { AuthContext } from '../session/auth.decorators';
 import { type CommentRow, CommentsRepository } from './comments.repository';
@@ -16,7 +17,7 @@ function toComment(row: CommentRow, auth: AuthContext): NodeComment {
       kind: row.author.kind,
       displayName: row.author.displayName,
       bio: row.author.bio,
-      avatarUrl: null,
+      avatarUrl: creatorAvatarUrl(row.author),
     },
     body: row.body,
     createdAt: row.createdAt.toISOString(),

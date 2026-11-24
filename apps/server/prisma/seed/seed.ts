@@ -2,7 +2,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { loadEnv } from '../../src/config';
 import { PrismaClient } from '../../src/generated/prisma/client';
 import { seedCreatorIds } from '../../src/seed/creators';
-import { uploadSeedImages } from '../../src/seed/images';
+import { DEFAULT_SEED_ASSETS_DIR, uploadSeedImages } from '../../src/seed/images';
 import { loadSeedContent, upsertSeedCreators, upsertSeedTopics } from '../../src/seed/load';
 import { createObjectStorage } from '../../src/storage';
 import { loadSampleResults } from './sample-results';
@@ -15,11 +15,16 @@ async function main(): Promise<void> {
   });
   try {
     const storage = createObjectStorage(env);
-    const objects = await uploadSeedImages(storage);
-    console.log(`Uploaded ${objects} seed image objects.`);
+    const images = await uploadSeedImages(storage, {
+      assetsDir: env.SEED_ASSETS_DIR ?? DEFAULT_SEED_ASSETS_DIR,
+    });
+    console.log(
+      `Uploaded ${images.objects} seed image objects ` +
+        `(${images.figmaProjects} projects with design images, ${images.avatars.size} avatars).`,
+    );
     const summary = await prisma.$transaction(
       async (tx) => {
-        const creators = await upsertSeedCreators(tx);
+        const creators = await upsertSeedCreators(tx, images.avatars);
         const topics = await upsertSeedTopics(tx);
         const content = await loadSeedContent(tx, [
           ...seedCreatorIds('seed'),

@@ -1,4 +1,5 @@
 import type { CreatorSummary } from '@tome/shared';
+import { ApiPhoto } from '../../shared/ui';
 
 interface AvatarProps {
   creator: CreatorSummary;
@@ -14,10 +15,7 @@ export function Avatar({ creator, size }: AvatarProps) {
     'shadow-[var(--shadow-03)]',
     size === 'me' ? 'size-[var(--size-avatar-me)]' : 'size-[var(--size-avatar-other)]',
   ].join(' ');
-  if (creator.avatarUrl !== null) {
-    return <img src={creator.avatarUrl} alt="" className={`${box} object-cover`} />;
-  }
-  return (
+  const initial = (
     <span
       aria-hidden="true"
       className={`${box} flex items-center justify-center bg-[color:var(--color-fill-card)] [font:var(--text-body-b1-m)] text-[color:var(--color-font-sub-text)]`}
@@ -25,4 +23,6 @@ export function Avatar({ creator, size }: AvatarProps) {
       {creator.displayName.slice(0, 1)}
     </span>
   );
+  // 서버 사진은 로그인 토큰을 붙여 받는다(#208). 없거나 못 받으면 머리글자.
+  return <ApiPhoto path={creator.avatarUrl} className={`${box} object-cover`} fallback={initial} />;
 }

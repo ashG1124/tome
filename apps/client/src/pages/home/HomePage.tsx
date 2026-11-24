@@ -92,7 +92,11 @@ export function HomePage() {
   return (
     // 바깥 레이아웃 여백을 지우고 맨 위에 공통 헤더(TÓME 쪽 진하게)를 둔 뒤, 서가가 첫 화면 아래 끝까지 차게 한다
     <div className="-m-[var(--space-padding-8)] flex min-h-[100dvh] flex-col">
-      <AppHeader current="tome" profileTo={profileTo} />
+      <AppHeader
+        current="tome"
+        profileTo={profileTo}
+        avatarUrl={me.data?.creator.avatarUrl ?? null}
+      />
       <section
         aria-busy={projects.isPending || undefined}
         className="flex flex-1 flex-col px-[var(--space-header-x)] pt-[var(--space-shelf-top)]"
