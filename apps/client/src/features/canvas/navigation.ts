@@ -1,7 +1,7 @@
 import type { AnswerSummary, Node, NodeComment } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
-import { createContext, type ContextType } from 'react';
+import { createContext, type ContextType, type ReactNode } from 'react';
 import { GROUP_KINDS } from './edit-model';
 
 export interface CanvasEditorSelection {
@@ -51,6 +51,8 @@ export const CanvasNavigation = createContext<{
     canComment: (setId: string, answerId: string, nodeId: string) => boolean;
     comment: (setId: string, answerId: string, nodeId: string) => void;
     listComments?: (answerId: string) => Promise<readonly NodeComment[]>;
+    /** 열린 코멘트 창. selectedComment 노드 옆(노드 도구 오른쪽)에 그린다. */
+    commentPanel?: ReactNode;
   };
   remix?: CanvasRemixOptions;
   remixDisabled?: boolean;

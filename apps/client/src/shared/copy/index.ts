@@ -292,6 +292,9 @@ export const COPY = {
   'NH-05': 'No comments yet.',
   'NH-06': 'Loading comments…',
   'NH-07': 'Comment saved.',
+  // 노드 코멘트 다시 디자인(#221): 새 ID. 시안에 원문이 없어 공통 문구 톤으로 정함.
+  'NH-08': 'Delete this comment?',
+  'NH-09': 'Comment deleted.',
   // Connection(#127): 확정 ID.
   'RC-01': 'Connection',
   'RC-02': 'Apply',
@@ -407,10 +410,15 @@ export const CANVAS_HISTORY_COPY = {
   },
   comments: {
     title: COPY['A-02'],
-    submit: COPY['S-07a'],
+    input: COPY['S-07a'],
+    submit: COPY['A-08'],
     close: COPY['D-11'],
     empty: COPY['NH-05'],
     loading: COPY['NH-06'],
     saved: COPY['NH-07'],
+    remove: COPY['S-07b'],
+    confirmRemove: COPY['NH-08'],
+    cancel: COPY['D-09a'],
+    removed: COPY['NH-09'],
   },
 };

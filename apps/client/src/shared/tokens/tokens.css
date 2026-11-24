@@ -489,3 +489,8 @@
   --size-agora-topic-text-width: 418px; /* 디자인 변수 없음, 원값 418px — 핫토픽 카드 제목 칸 폭(넘치면 말줄임) (3099:130544) */
   --size-agora-creator-column: 293px; /* Figma 프레임 없음(Creator 탭) — Agora Example Creator List 칸 간격 308.75 − 간격 16 = 칸 폭(반올림) (3190:179201) */
 }
+/* ===== 노드 코멘트 창(#221) — Figma 프레임 없음. 코너·띠는 Comment corner 1185:59843·Corner 1480:135821, 창은 시스템 값으로 정함 ===== */
+:root {
+  --size-comment-panel-width: 340px; /* Figma 프레임 없음 — 노드 도구 옆 코멘트 창 폭(노드 300 기준) */
+  --size-comment-list-max-height: 312px; /* Figma 프레임 없음 — 코멘트 목록이 이보다 길면 목록 안에서 스크롤 */
+}

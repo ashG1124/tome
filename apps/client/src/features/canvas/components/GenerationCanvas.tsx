@@ -219,6 +219,56 @@ function CanvasContent({
     return () => window.clearTimeout(timer);
   }, [openId, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
 
+  // 코멘트 창이 열리면 노드 · 노드 도구 · 창이 화면 안에 오게 살짝 옮긴다(#221). 좌표는 React Flow store 기준.
+  const commentAnswer = history?.selectedComment?.answerId;
+  const commentNode = history?.selectedComment?.nodeId;
+  useEffect(() => {
+    if (!commentAnswer || !commentNode) return;
+    const frame = requestAnimationFrame(() => {
+      const target = flow
+        .getNodes()
+        .find(
+          (node) => node.data.answerId === commentAnswer && node.data.output?.id === commentNode,
+        );
+      const node = target ? flow.getInternalNode(target.id) : undefined;
+      if (!target || !node) return;
+      const css = getComputedStyle(document.documentElement);
+      const read = (name: string) => Number.parseFloat(css.getPropertyValue(name)) || 0;
+      const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      const {
+        width,
+        height,
+        transform: [tx, ty, zoom],
+      } = store.getState();
+      const margin = read('--space-padding-8');
+      const { x, y } = node.internals.positionAbsolute;
+      const w = node.measured.width ?? geometry.nodeWidth;
+      const h = node.measured.height ?? geometry.nodeHeight;
+      // 창은 캔버스 배율을 되돌려 화면 기준 크기로 그린다. 레이아웃 크기 ÷ 배율 = store 좌표 크기.
+      const panel = document.querySelector<HTMLElement>(
+        `[data-id="${CSS.escape(target.id)}"] .canvas-comments`,
+      );
+      const right =
+        x +
+        w +
+        2 * read('--space-padding-4') +
+        read('--size-node-tool') +
+        (panel?.offsetWidth ?? read('--size-comment-panel-width')) / zoom;
+      const bottom = y + Math.max(h, (panel?.offsetHeight ?? 0) / zoom);
+      // 아래쪽은 프롬프트 바·프리뷰가 떠 있으니 화면 높이의 1/5 을 비워 둔다.
+      const bottomSpace = height / 5;
+      let nextX = tx;
+      let nextY = ty;
+      if (right * zoom + tx > width - margin) nextX = width - margin - right * zoom;
+      if (x * zoom + nextX < margin) nextX = margin - x * zoom;
+      if (bottom * zoom + ty > height - bottomSpace) nextY = height - bottomSpace - bottom * zoom;
+      if (y * zoom + nextY < margin) nextY = margin - y * zoom;
+      if (Math.abs(nextX - tx) < 1 && Math.abs(nextY - ty) < 1) return;
+      void flow.setViewport({ x: nextX, y: nextY, zoom }, { duration: calm ? 0 : 280 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [commentAnswer, commentNode, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
+
   // 키보드로도 확대·축소할 수 있게 한다(화면 버튼을 없앤 대신). 입력칸 안에서는 글자 입력이 먼저다.
   const zoomByKey = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {

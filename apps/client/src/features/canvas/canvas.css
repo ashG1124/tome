@@ -470,19 +470,25 @@
   margin: 0;
   padding: var(--space-padding-4) var(--space-padding-7) var(--space-padding-4)
     var(--space-padding-4);
-  overflow: hidden;
   background: var(--color-fill-point);
-  color: var(--color-font-main-text);
-  font: var(--text-body-b1-m);
-  letter-spacing: var(--letter-spacing-default);
+  /* 시안 글자색은 흰색이지만 핑크 위 대비가 모자라 --color-font-point(진한 글자)를 쓴다 */
+  color: var(--color-font-point);
+  /* 시안 1480:135821: Medium 16, 줄 높이 1.2, 자간 -2% */
+  font: var(--font-weight-medium) var(--font-size-c1) / var(--line-height-connection)
+    var(--font-family-contents);
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+/* 두 줄에서 자른다. 자르기는 안쪽 글에 걸어서 셋째 줄이 아래 여백으로 비치지 않게 한다 */
+.canvas-comment-text > span {
+  display: -webkit-box;
+  overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
-.canvas-comment-band[data-open] .canvas-comment-text,
-.react-flow__node:is(:hover, :focus-within) .canvas-comment-text {
-  display: -webkit-box;
+.react-flow__node:hover .canvas-comment-text {
+  display: flex;
 }
 
 /* ---- Figma 정합(#176): 파생 2열. 시안 Work Space-Derive 1679:15197 */
