@@ -81,6 +81,12 @@ export function useNodeComments(answerId: string, nodeId: string, api: NodeComme
         (previous = []) => previous.filter((comment) => comment.id !== input.id),
       ),
   });
+  const addError =
+    add.variables?.answerId === answerId && add.variables.nodeId === nodeId
+      ? (add.error ?? undefined)
+      : undefined;
+  const removeError =
+    remove.variables?.answerId === answerId ? (remove.error ?? undefined) : undefined;
   return {
     comments: (query.data ?? [])
       .filter((comment) => comment.nodeId === nodeId)
@@ -89,12 +95,13 @@ export function useNodeComments(answerId: string, nodeId: string, api: NodeComme
     loading: query.isPending,
     adding: add.isPending,
     deleting: remove.isPending,
-    error:
-      query.error ??
-      (add.variables?.answerId === answerId && add.variables.nodeId === nodeId
-        ? add.error
-        : undefined) ??
-      (remove.variables?.answerId === answerId ? remove.error : undefined),
+    /** 지우는 중인 코멘트 id */
+    removingId: remove.isPending ? remove.variables?.id : undefined,
+    /** 저장 실패. 입력칸 바로 아래에 보인다. */
+    addError,
+    /** 삭제 실패. 목록 자리에 보인다. */
+    removeError,
+    error: query.error ?? addError ?? removeError,
     reload: () => void query.refetch(),
     submit: async (body: string) => {
       const parsed = CreateNodeCommentRequestSchema.safeParse({ nodeId, body });
