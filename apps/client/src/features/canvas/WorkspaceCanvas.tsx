@@ -1,5 +1,14 @@
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import type {
   AcceptAnswerResponse,
   Answer,
@@ -74,19 +83,32 @@ export interface WorkspaceCanvasProps {
   remix?: CanvasRemixOptions;
 }
 
+/** 펼침·접힘 애니메이션 시간(ms). 토큰 --motion-expand 를 읽고, 움직임 줄이기 설정이면 0 이다. */
+function expandDuration(): number {
+  if (typeof window === 'undefined') return 0;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 0;
+  const value = getComputedStyle(document.documentElement).getPropertyValue('--motion-expand');
+  return Number.parseFloat(value) || 0;
+}
+
 function EditorSession({
   base,
   nodeId,
+  slot,
   options,
   onClose,
+  onComment,
   onApplyingChange,
   previewOpen,
   onPreviewOpenChange,
 }: {
   base: Answer;
   nodeId: string;
+  /** 펼친 노드 카드 안의 자리. 편집 화면을 여기에 그린다. */
+  slot: HTMLElement | null;
   options: CanvasEditorOptions;
   onClose: () => void;
+  onComment?: () => void;
   onApplyingChange: (value: boolean) => void;
   previewOpen: boolean;
   onPreviewOpenChange: (open: boolean) => void;
@@ -114,6 +136,14 @@ function EditorSession({
     onApplyingChange(editor.applying);
     return () => onApplyingChange(false);
   }, [editor.applying, onApplyingChange]);
+  // 노드를 펼칠 때는 Preview 를 열지 않는다(시안 Remix 01: 노드가 열려 있어도 Preview 는 닫힌 알약).
+  // 값을 바꿔 미리보기를 만들기 시작하거나(빠르면 바로 준비됨) 실패하면 그때 연다.
+  const previewStatus = editor.preview.status;
+  useEffect(() => {
+    if (previewStatus === 'generating' || previewStatus === 'ready' || previewStatus === 'error')
+      onPreviewOpenChange(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 상태가 바뀔 때만 연다.
+  }, [previewStatus]);
   const progress = useQuery<GetJobResponse | null>({
     queryKey: ['revision-preview', base.id],
     queryFn: skipToken,
@@ -126,19 +156,23 @@ function EditorSession({
   const error = editor.applyError ?? (preview.status === 'error' ? preview.error : undefined);
   return (
     <>
-      <aside className="canvas-editor-panels">
-        <NodeEditPanel
-          key={nodeId}
-          node={node}
-          snapshot={editor.snapshot}
-          labels={labels}
-          disabled={editor.applying}
-          onChange={editor.edit}
-          onReorder={editor.reorder}
-          onReset={editor.reset}
-          onClose={onClose}
-        />
-      </aside>
+      {slot
+        ? createPortal(
+            <NodeEditPanel
+              key={nodeId}
+              node={node}
+              snapshot={editor.snapshot}
+              labels={labels}
+              disabled={editor.applying}
+              onChange={editor.edit}
+              onReorder={editor.reorder}
+              onReset={editor.reset}
+              onClose={onClose}
+              onComment={onComment}
+            />,
+            slot,
+          )
+        : null}
       <div className="canvas-preview-dock">
         <PreviewPanel
           title={labels.preview}
@@ -206,8 +240,28 @@ function PageCanvas({
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [selected, setSelected] = useState<{ setId: string; nodeId: string }>();
+  const [selected, setSelected] = useState<{ setId: string; nodeId: string; kind?: string }>();
+  const [closing, setClosing] = useState(false);
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const closeTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   const opener = useRef<HTMLElement | null>(null);
+  /** 펼친 노드를 접는다. 접히는 애니메이션이 끝난 뒤 편집을 닫는다. */
+  const closeEditor = useCallback((restoreFocus: boolean) => {
+    window.clearTimeout(closeTimer.current);
+    const finish = () => {
+      setClosing(false);
+      setSelected(undefined);
+      if (restoreFocus) opener.current?.focus({ preventScroll: true });
+    };
+    const duration = expandDuration();
+    if (duration <= 0) {
+      finish();
+      return;
+    }
+    setClosing(true);
+    closeTimer.current = window.setTimeout(finish, duration);
+  }, []);
   const selectedBase = sets.find((set) => set.id === selected?.setId)?.latestAnswer;
   const [geometry, setGeometry] = useState<CanvasGeometry | null>(null);
   useLayoutEffect(() => {
@@ -306,6 +360,8 @@ function PageCanvas({
                   disabled: busy || editingBusy,
                   select: (setId, answerId) => {
                     setCommentTarget(undefined);
+                    window.clearTimeout(closeTimer.current);
+                    setClosing(false);
                     setSelected(undefined);
                     versions.select(setId, answerId);
                   },
@@ -324,6 +380,8 @@ function PageCanvas({
                   comment: (setId, answerId, nodeId) => {
                     commentOpener.current =
                       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    window.clearTimeout(closeTimer.current);
+                    setClosing(false);
                     setSelected(undefined);
                     setCommentTarget({ setId, answerId, nodeId });
                   },
@@ -335,6 +393,11 @@ function PageCanvas({
               ? {
                   label: editor.labels?.title ?? NODE_EDITOR_COPY.title,
                   selected,
+                  closing,
+                  slot: setSlot,
+                  close: () => {
+                    if (selected && !editingBusy) closeEditor(false);
+                  },
                   canOpen: (setId, nodeId) => {
                     const base = sets.find((set) => set.id === setId)?.latestAnswer;
                     const node = base?.nodes.nodes.find((entry) => entry.id === nodeId);
@@ -349,10 +412,14 @@ function PageCanvas({
                   open: (setId, nodeId) => {
                     opener.current =
                       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                    const kind = sets
+                      .find((set) => set.id === setId)
+                      ?.latestAnswer?.nodes.nodes.find((entry) => entry.id === nodeId)?.kind;
+                    window.clearTimeout(closeTimer.current);
+                    setClosing(false);
                     setCommentTarget(undefined);
                     setStacked(false);
-                    setPreviewOpen(true);
-                    setSelected({ setId, nodeId });
+                    setSelected({ setId, nodeId, kind });
                   },
                 }
               : undefined
@@ -383,6 +450,24 @@ function PageCanvas({
           onPreviewOpenChange={setPreviewOpen}
           base={selectedBase}
           nodeId={selected.nodeId}
+          slot={slot}
+          onComment={
+            history && historyApi && selectedBase.status === 'accepted' && !busy && !editingBusy
+              ? () => {
+                  const target = selected;
+                  commentOpener.current =
+                    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                  window.clearTimeout(closeTimer.current);
+                  setClosing(false);
+                  setSelected(undefined);
+                  setCommentTarget({
+                    setId: target.setId,
+                    answerId: selectedBase.id,
+                    nodeId: target.nodeId,
+                  });
+                }
+              : undefined
+          }
           options={{
             ...editor,
             onAccepted: (answer) => {
@@ -413,16 +498,15 @@ function PageCanvas({
               );
               versions.resetSelection(answer.setId);
               setStacked(true);
+              window.clearTimeout(closeTimer.current);
+              setClosing(false);
               setSelected(undefined);
               editor.onAccepted?.(answer);
               void client.invalidateQueries({ queryKey: ['workspace', projectId] });
               requestAnimationFrame(() => opener.current?.focus({ preventScroll: true }));
             },
           }}
-          onClose={() => {
-            setSelected(undefined);
-            opener.current?.focus({ preventScroll: true });
-          }}
+          onClose={() => closeEditor(true)}
         />
       ) : null}
     </div>

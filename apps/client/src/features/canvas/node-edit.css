@@ -90,62 +90,6 @@
   background: var(--color-font-disable);
 }
 
-.node-edit-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-4);
-  padding: var(--space-padding-7);
-  border: var(--stroke-weight-light) solid var(--color-border-input);
-  border-radius: var(--radius-1);
-  background: var(--color-background-default);
-  color: var(--color-font-main-text);
-  font: var(--text-body-b1-r);
-  min-width: 0;
-}
-
-.node-edit-toolbar,
-.node-edit-priorities li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-gap-4);
-  flex-wrap: wrap;
-}
-
-.node-edit-toolbar > :first-child,
-.node-edit-priorities li > span {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.node-edit-priorities {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-4);
-}
-
-.node-edit-panel button:not([role='tab']):not([role='switch']) {
-  color: inherit;
-  background: var(--color-background-default);
-  border: var(--stroke-weight-light) solid var(--color-border-input);
-  border-radius: var(--radius-1);
-  padding: var(--space-padding-3) var(--space-padding-5);
-  font: inherit;
-  cursor: pointer;
-}
-
-.node-edit-panel button:disabled {
-  color: var(--color-font-disable);
-  cursor: not-allowed;
-}
-
-.node-edit-panel button:focus-visible {
-  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
-  outline-offset: var(--focus-outline-offset);
-}
-
 .node-preview-base {
   width: 100%;
   height: 100%;
@@ -159,27 +103,6 @@
 
 .node-preview-image.canvas-gradient .node-preview-base {
   opacity: 0.5;
-}
-
-.canvas-editor-panels {
-  position: absolute;
-  z-index: 2;
-  /* 오른쪽 아이콘 메뉴 줄(오른쪽 여백 + 버튼 폭 + 간격)의 왼쪽에 놓아 헤더 아이콘·페이지 버튼을 가리지 않는다. */
-  --canvas-editor-right: calc(
-    var(--space-padding-8) + var(--size-icon-menu-button) + var(--space-gap-5)
-  );
-  top: var(--space-padding-8);
-  right: var(--canvas-editor-right);
-  /* 아래는 프롬프트 바 자리를 비워 둔다 */
-  bottom: calc(var(--space-padding-8) * 4);
-  width: min(
-    var(--canvas-answer-width),
-    calc(100% - var(--canvas-editor-right) - var(--space-padding-8))
-  );
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-4);
 }
 
 .node-preview-image.canvas-gradient::after {
@@ -205,17 +128,6 @@
   pointer-events: none;
 }
 
-.node-edit-panel {
-  box-sizing: border-box;
-  width: min(100%, var(--canvas-node-width));
-  align-self: flex-end;
-  flex-shrink: 0;
-  border: 0;
-  border-radius: var(--radius-node);
-  box-shadow: var(--shadow-floating);
-  padding: var(--space-padding-7) calc(var(--space-padding-8) + var(--space-gap-4) / 2);
-}
-
 .node-edit-description {
   margin: 0;
   text-align: center;
@@ -223,7 +135,6 @@
   overflow-wrap: anywhere;
 }
 
-.node-edit-panel [role='tablist'],
 .node-edit-keyword [role='tablist'] {
   align-self: center;
   gap: 0;
@@ -232,7 +143,6 @@
   border-radius: var(--radius-max);
 }
 
-.node-edit-panel [role='tab'],
 .node-edit-keyword [role='tab'] {
   width: calc(var(--space-padding-7) * 5);
   height: var(--size-icon-empty);
@@ -243,7 +153,6 @@
   background: transparent;
 }
 
-.node-edit-panel [role='tab'][data-state='active'],
 .node-edit-keyword [role='tab'][data-state='active'] {
   color: var(--color-font-main-text);
   background: var(--color-fill-brand);
@@ -660,4 +569,297 @@
   width: var(--size-preview-pill-width);
   height: var(--size-preview-pill-height);
   background: var(--color-glass);
+}
+/* ---- Figma 정합(#195): 노드 제자리 펼침. 시안 Node open=on — 키워드 1427:132650, 초안 1427:133413,
+   근거 2971:69002, 데이터 유형 1226:67889, 우선순위 2971:66085, 노드 도구 1187:62182 */
+.canvas-card.canvas-card--open {
+  padding: 0;
+  overflow: visible;
+  text-align: center;
+  border-width: var(--stroke-weight-light);
+  border-radius: var(--radius-node);
+  cursor: default;
+}
+.canvas-node-open-slot {
+  position: relative;
+  width: 100%;
+}
+.node-open {
+  position: relative;
+  color: var(--color-font-main-text);
+  letter-spacing: var(--letter-spacing-default);
+}
+/* 높이 0 → 내용 높이로 펼친다. React Flow 가 매 프레임 높이를 재서 아래 노드도 함께 밀린다. */
+.node-open-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: node-open-expand var(--motion-expand) var(--ease-out-soft) both;
+}
+.canvas-node-open-slot[data-closing] .node-open-body {
+  animation: node-open-collapse var(--motion-expand) var(--ease-out-soft) both;
+}
+.node-open-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-padding-7);
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--canvas-node-open-padding-y);
+}
+@keyframes node-open-expand {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+@keyframes node-open-collapse {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+.node-open-title {
+  width: 100%;
+  margin: 0;
+  color: var(--color-font-strong);
+  font: var(--text-subtitle-st1-sb);
+  letter-spacing: var(--letter-spacing-body-b1);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* 가중치·의미해석: 탭 → 설명 → 숫자 휠 (1427:132618) */
+.node-open .node-edit-keyword {
+  width: 100%;
+}
+.node-open .node-edit-keyword-weight {
+  /* 탭 아래 54px(1427:132618). Tabs 묶음 간격(--space-padding-8)을 빼고 남은 만큼 띄운다 */
+  padding-top: calc(var(--canvas-node-open-gap-body) - var(--space-padding-8));
+  gap: 0;
+}
+.node-open .node-edit-control {
+  gap: var(--canvas-node-open-gap-body);
+}
+.node-open .node-edit-control > .node-edit-instructions {
+  position: static;
+  order: -1;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  color: var(--color-font-main-text);
+  text-align: center;
+}
+.node-open .node-edit-dial {
+  margin-inline: calc(-1 * var(--canvas-node-open-padding-y));
+}
+.node-open[data-kind='attribute'] .node-edit-keyword-weight {
+  width: 100%;
+  padding-top: 0;
+}
+/* 근거 문장: 굵은 글 + 켜짐 스위치 (2971:69002) */
+.node-open[data-kind='evidence'] .node-open-inner,
+.node-open[data-kind='priority'] .node-open-inner {
+  padding: var(--space-padding-6);
+}
+.node-open[data-kind='priority'] .node-open-inner {
+  padding-block: var(--space-padding-7);
+}
+.node-open[data-kind='dataType'] .node-open-inner {
+  gap: var(--canvas-node-open-padding-top);
+  padding: var(--canvas-node-open-padding-top) var(--space-padding-6) var(--space-padding-7);
+}
+.node-open-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-3);
+  width: 100%;
+}
+.node-open-sentence {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--color-font-strong);
+  font: var(--text-subtitle-st2-sb);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.canvas-node-switch.node-open-switch {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+.node-open-switch .node-open-switch-thumb {
+  display: none;
+}
+.node-open-switch:focus-visible,
+.node-open-check:focus-visible,
+.node-open-handle:focus-visible,
+.node-open-remove:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.node-open-switch:disabled {
+  cursor: not-allowed;
+  background: var(--color-gray-20);
+}
+/* 데이터 유형: 체크 목록 (1226:67282) */
+.node-open-checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-4);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.node-open-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-font-main-text);
+  font: var(--text-subtitle-st2-m);
+  letter-spacing: var(--letter-spacing-default);
+  text-align: left;
+  cursor: pointer;
+}
+.node-open-check[aria-checked='true'] {
+  font: var(--text-subtitle-st2-sb);
+}
+.node-open-check span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.node-open-check:disabled {
+  color: var(--color-font-disable);
+  cursor: not-allowed;
+}
+/* 검색 우선순위: 손잡이 · 굵은 글 · 빼기 (2971:66086) */
+.node-open-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-4);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.node-open-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-4);
+  border-radius: var(--radius-1);
+  transition: background-color var(--motion-pop) var(--ease-out-soft);
+}
+.node-open-list-item[data-over] {
+  background: var(--color-fill-card);
+}
+.node-open-list-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-font-strong);
+  font: var(--text-subtitle-st1-sb);
+  letter-spacing: var(--letter-spacing-body-b1);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.node-open-list-item[data-enabled='false'] .node-open-list-text {
+  color: var(--color-font-disable);
+  text-decoration: line-through;
+}
+.node-open-handle,
+.node-open-remove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-max);
+  background: transparent;
+  color: var(--color-font-sub-text);
+  cursor: pointer;
+}
+.node-open-handle {
+  cursor: grab;
+}
+.node-open-handle:active {
+  cursor: grabbing;
+}
+.node-open-remove[data-state='unchecked'] {
+  color: var(--color-font-disable);
+}
+.node-open-handle:disabled,
+.node-open-remove:disabled {
+  cursor: not-allowed;
+}
+/* 노드 도구: 펼친 카드 오른쪽 10px, 세로 가운데 (1427:132650 gap 10) */
+.node-open-tool {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--canvas-node-open-gap));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap-3);
+  padding: var(--space-padding-2);
+  border: var(--stroke-weight-light) solid var(--color-border-default);
+  border-radius: var(--radius-max);
+  background: var(--color-canvas-node);
+  transform: translateY(-50%);
+  animation: node-open-tool-in var(--motion-expand) var(--ease-out-soft) both;
+}
+.canvas-node-open-slot[data-closing] .node-open-tool {
+  animation: node-open-tool-out var(--motion-pop) var(--ease-out-soft) both;
+}
+.node-open-tool .canvas-node-tool-button {
+  transition:
+    background-color var(--motion-pop) var(--ease-out-soft),
+    color var(--motion-pop) var(--ease-out-soft),
+    transform var(--motion-pop) var(--ease-out-soft);
+}
+.node-open-tool .canvas-node-tool-button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.node-open-tool .canvas-node-tool-button:disabled {
+  color: var(--color-font-disable);
+  background: transparent;
+  cursor: not-allowed;
+}
+@keyframes node-open-tool-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(-1 * var(--canvas-node-open-gap)), -50%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+@keyframes node-open-tool-out {
+  to {
+    opacity: 0;
+    transform: translate(calc(-1 * var(--canvas-node-open-gap)), -50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-open-body,
+  .node-open-tool,
+  .canvas-node-open-slot[data-closing] .node-open-body,
+  .canvas-node-open-slot[data-closing] .node-open-tool {
+    animation: none;
+  }
 }
