@@ -276,7 +276,9 @@ export const NodeEditPanel = memo(function NodeEditPanel({
   else if (node.kind === 'evidence')
     body = (
       <div className="node-open-row">
-        <p className="node-open-sentence">{node.text}</p>
+        <p className="node-open-sentence" data-enabled={String(node.enabled)}>
+          {node.text}
+        </p>
         <NodeSwitch
           checked={node.enabled}
           label={labels.enabled}
@@ -308,6 +310,7 @@ export const NodeEditPanel = memo(function NodeEditPanel({
       ref={root}
       className="node-open nodrag nopan nowheel"
       data-kind={node.kind}
+      data-enabled={String(node.enabled)}
       aria-label={`${labels.title}: ${node.text}`}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !disabled) {

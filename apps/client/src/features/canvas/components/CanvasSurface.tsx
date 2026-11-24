@@ -67,6 +67,7 @@ export function CanvasSurface({
   answerFooter,
   open = false,
   covered = false,
+  enabled: enabledOverride,
   ...rest
 }: {
   data: CardData;
@@ -75,7 +76,10 @@ export function CanvasSurface({
   open?: boolean;
   /** 같은 묶음의 다른 줄이 펼쳐져 이 줄을 대신 덮는다(검색 우선순위). */
   covered?: boolean;
+  /** Apply 전 고친 켜짐 값. 없으면 답변의 값 */
+  enabled?: boolean;
 } & ComponentPropsWithoutRef<'article'>) {
+  const enabled = enabledOverride ?? data.output?.enabled;
   const lock = useRef(false);
   const [retrying, setRetrying] = useState(false);
   const retry = async () => {
@@ -106,7 +110,7 @@ export function CanvasSurface({
       {...rest}
       className={`canvas-card canvas-card--${data.kind} ${modifiers}`.trim()}
       data-readonly={data.kind === 'origin' || undefined}
-      data-enabled={data.output ? String(data.output.enabled) : undefined}
+      data-enabled={data.output ? String(enabled) : undefined}
       data-covered={covered || undefined}
       aria-label={data.label}
       aria-busy={data.state === 'running' || undefined}
@@ -122,7 +126,7 @@ export function CanvasSurface({
             {outputKind === 'evidence' ? (
               <span
                 className="canvas-node-switch"
-                data-on={String(data.output?.enabled !== false)}
+                data-on={String(enabled !== false)}
                 aria-hidden="true"
               />
             ) : null}

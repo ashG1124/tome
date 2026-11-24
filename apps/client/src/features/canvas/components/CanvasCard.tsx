@@ -69,6 +69,11 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
   const canEdit = !!data.output && !!navigation.editor?.canOpen(data.setId, data.output.id);
   const role = openRole(navigation.editor?.selected, data.setId, data.output, data.groupPosition);
   const editing = role === 'open';
+  const draft = navigation.editor?.draft;
+  const drafted =
+    data.output && draft?.setId === data.setId
+      ? draft.nodes.find((node) => node.id === data.output!.id)
+      : undefined;
   const commenting =
     !!data.output &&
     navigation.history?.selectedComment?.answerId === data.answerId &&
@@ -88,6 +93,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
       <CanvasSurface
         data={data}
         open={editing}
+        enabled={drafted?.enabled}
         covered={role === 'covered'}
         answerFooter={
           data.kind === 'answer' && data.answer && navigation.history ? (

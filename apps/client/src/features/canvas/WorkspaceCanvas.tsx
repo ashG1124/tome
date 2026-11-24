@@ -98,17 +98,21 @@ function EditorSession({
   options,
   onClose,
   onComment,
+  onDraft,
   onApplyingChange,
   previewOpen,
   onPreviewOpenChange,
 }: {
   base: Answer;
-  nodeId: string;
+  /** 지금 펼친 노드. 노드를 접어도 세션(고친 값·미리보기)은 남는다. */
+  nodeId?: string;
   /** 펼친 노드 카드 안의 자리. 편집 화면을 여기에 그린다. */
   slot: HTMLElement | null;
   options: CanvasEditorOptions;
   onClose: () => void;
   onComment?: () => void;
+  /** 고친 값(아직 Apply 전)을 캔버스의 접힌 노드에도 보이게 알린다. */
+  onDraft: (draft: { setId: string; nodes: NodeSnapshot['nodes'] } | undefined) => void;
   onApplyingChange: (value: boolean) => void;
   previewOpen: boolean;
   onPreviewOpenChange: (open: boolean) => void;
@@ -144,19 +148,23 @@ function EditorSession({
       onPreviewOpenChange(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 상태가 바뀔 때만 연다.
   }, [previewStatus]);
+  const snapshotNodes = editor.snapshot.nodes;
+  useEffect(() => {
+    onDraft({ setId: base.setId, nodes: snapshotNodes });
+  }, [base.setId, snapshotNodes, onDraft]);
+  useEffect(() => () => onDraft(undefined), [onDraft]);
   const progress = useQuery<GetJobResponse | null>({
     queryKey: ['revision-preview', base.id],
     queryFn: skipToken,
   });
   const next = progress.data?.job.nextStage;
   const stage = next ? (visibleStage(next) ?? 'draft') : null;
-  const node = editor.snapshot.nodes.find((entry) => entry.id === nodeId);
-  if (!node) return null;
+  const node = nodeId ? editor.snapshot.nodes.find((entry) => entry.id === nodeId) : undefined;
   const preview = editor.preview;
   const error = editor.applyError ?? (preview.status === 'error' ? preview.error : undefined);
   return (
     <>
-      {slot
+      {slot && node
         ? createPortal(
             <NodeEditPanel
               key={nodeId}
@@ -241,6 +249,13 @@ function PageCanvas({
   const [stacked, setStacked] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selected, setSelected] = useState<{ setId: string; nodeId: string; kind?: string }>();
+  // 편집 세션(고친 값·미리보기)이 붙은 세트. 노드를 접어도 남고, Apply·버전 이동 때 끝난다.
+  const [sessionSet, setSessionSet] = useState<string>();
+  const [draft, setDraft] = useState<{ setId: string; nodes: NodeSnapshot['nodes'] }>();
+  const endSession = useCallback(() => {
+    setSessionSet(undefined);
+    setDraft(undefined);
+  }, []);
   const [closing, setClosing] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const closeTimer = useRef<number | undefined>(undefined);
@@ -262,7 +277,7 @@ function PageCanvas({
     setClosing(true);
     closeTimer.current = window.setTimeout(finish, duration);
   }, []);
-  const selectedBase = sets.find((set) => set.id === selected?.setId)?.latestAnswer;
+  const sessionBase = sets.find((set) => set.id === sessionSet)?.latestAnswer;
   const [geometry, setGeometry] = useState<CanvasGeometry | null>(null);
   useLayoutEffect(() => {
     let active = true;
@@ -282,8 +297,8 @@ function PageCanvas({
     };
   }, []);
   const generationWorkspace = useMemo(
-    () => (selected ? { ...workspace, activeJob: undefined } : workspace),
-    [workspace, selected],
+    () => (sessionSet ? { ...workspace, activeJob: undefined } : workspace),
+    [workspace, sessionSet],
   );
   const { generation, announcement, busy, loadError, reload, error } = useGeneration(
     projectId,
@@ -363,6 +378,7 @@ function PageCanvas({
                     window.clearTimeout(closeTimer.current);
                     setClosing(false);
                     setSelected(undefined);
+                    endSession();
                     versions.select(setId, answerId);
                   },
                   pin: versions.togglePin,
@@ -394,6 +410,7 @@ function PageCanvas({
                   label: editor.labels?.title ?? NODE_EDITOR_COPY.title,
                   selected,
                   closing,
+                  draft,
                   slot: setSlot,
                   close: () => {
                     if (selected && !editingBusy) closeEditor(false);
@@ -419,6 +436,9 @@ function PageCanvas({
                     setClosing(false);
                     setCommentTarget(undefined);
                     setStacked(false);
+                    // 다른 세트의 노드를 열면 그 세트로 세션을 옮긴다(앞 세트의 Apply 전 값은 버린다).
+                    if (sessionSet !== setId) setDraft(undefined);
+                    setSessionSet(setId);
                     setSelected({ setId, nodeId, kind });
                   },
                 }
@@ -426,7 +446,7 @@ function PageCanvas({
           }
         />
       ) : null}
-      {editor && !(selected && selectedBase?.status === 'accepted') ? (
+      {editor && !(sessionSet && sessionBase?.status === 'accepted') ? (
         <div className="canvas-preview-dock">
           <PreviewPanel
             title={editor.labels?.preview ?? NODE_EDITOR_COPY.preview}
@@ -442,17 +462,18 @@ function PageCanvas({
           />
         </div>
       ) : null}
-      {editor && selected && selectedBase?.status === 'accepted' ? (
+      {editor && sessionSet && sessionBase?.status === 'accepted' ? (
         <EditorSession
-          key={selectedBase.id}
+          key={sessionBase.id}
           onApplyingChange={setEditingBusy}
           previewOpen={previewOpen}
           onPreviewOpenChange={setPreviewOpen}
-          base={selectedBase}
-          nodeId={selected.nodeId}
-          slot={slot}
+          base={sessionBase}
+          nodeId={selected?.setId === sessionSet ? selected.nodeId : undefined}
+          slot={selected?.setId === sessionSet ? slot : null}
+          onDraft={setDraft}
           onComment={
-            history && historyApi && selectedBase.status === 'accepted' && !busy && !editingBusy
+            history && historyApi && selected && !busy && !editingBusy
               ? () => {
                   const target = selected;
                   commentOpener.current =
@@ -462,7 +483,7 @@ function PageCanvas({
                   setSelected(undefined);
                   setCommentTarget({
                     setId: target.setId,
-                    answerId: selectedBase.id,
+                    answerId: sessionBase.id,
                     nodeId: target.nodeId,
                   });
                 }
@@ -501,6 +522,7 @@ function PageCanvas({
               window.clearTimeout(closeTimer.current);
               setClosing(false);
               setSelected(undefined);
+              endSession();
               editor.onAccepted?.(answer);
               void client.invalidateQueries({ queryKey: ['workspace', projectId] });
               requestAnimationFrame(() => opener.current?.focus({ preventScroll: true }));

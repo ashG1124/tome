@@ -71,6 +71,8 @@ export const MeaningPad = memo(function MeaningPad({
           aria-valuetext={coordinates.join(', ')}
           style={style}
           onKeyDown={(event) => {
+            // 키보드로 움직이면 포커스 테두리를 다시 보인다
+            delete event.currentTarget.dataset.pointer;
             const next = padForKey(value, event.key);
             if (!next) return;
             event.preventDefault();
@@ -82,6 +84,8 @@ export const MeaningPad = memo(function MeaningPad({
             event.preventDefault();
             event.stopPropagation();
             pointer.current = event.pointerId;
+            // 마우스로 누른 포커스는 테두리를 그리지 않는다(#197)
+            event.currentTarget.dataset.pointer = 'true';
             event.currentTarget.focus({ preventScroll: true });
             event.currentTarget.setPointerCapture?.(event.pointerId);
             update(event);
@@ -94,6 +98,9 @@ export const MeaningPad = memo(function MeaningPad({
           }}
           onPointerUp={release}
           onPointerCancel={release}
+          onBlur={(event) => {
+            delete event.currentTarget.dataset.pointer;
+          }}
           onLostPointerCapture={() => {
             pointer.current = null;
           }}

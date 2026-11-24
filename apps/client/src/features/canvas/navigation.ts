@@ -1,4 +1,4 @@
-import type { AnswerSummary, NodeComment } from '@tome/shared';
+import type { AnswerSummary, Node, NodeComment } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { createContext, type ContextType } from 'react';
@@ -15,6 +15,8 @@ export interface CanvasEditorConnection {
   selected?: CanvasEditorSelection;
   /** 접히는 중(애니메이션)이면 true */
   closing?: boolean;
+  /** Apply 전 고친 값. 접힌 노드도 이 값(켜짐·꺼짐)으로 그린다. */
+  draft?: { setId: string; nodes: readonly Node[] };
   canOpen: (setId: string, nodeId: string) => boolean;
   open: (setId: string, nodeId: string) => void;
   close?: () => void;
