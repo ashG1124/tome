@@ -20,7 +20,7 @@ export function WorkspaceHeader({ title, partnerName }: WorkspaceHeaderProps) {
   const logo = ICON_URLS.logo;
   const logoBox = 'block h-[var(--size-logo-height)] w-[var(--size-logo-width)]';
   return (
-    <header className="grid grid-cols-[1fr_auto_1fr] items-center p-[var(--space-padding-8)]">
+    <header className="grid grid-cols-[1fr_auto_1fr] items-center px-[var(--space-workspace-edge)] pt-[var(--space-workspace-edge)]">
       <Link
         to="/"
         state={{ flash: 'update' }}
@@ -43,10 +43,8 @@ export function WorkspaceHeader({ title, partnerName }: WorkspaceHeaderProps) {
                 띄어쓰기는 뒤 글자 안에 둬야 이름이 제목과 붙어 읽히지 않는다 */}
             <span
               aria-hidden="true"
-              className="ml-[var(--space-padding-5)] mr-[var(--space-padding-3)] text-[color:var(--color-font-helper-text)]"
-            >
-              |
-            </span>
+              className="ml-[var(--space-padding-7)] mr-[var(--space-gap-5)] inline-block h-[var(--size-title-divider-height)] w-[var(--stroke-weight-bold)] bg-[color:var(--color-font-main-text)] align-middle"
+            />
             {` ${COPY['RX-04']} ${partnerName}`}
           </>
         ) : null}

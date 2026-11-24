@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { COPY } from '../copy';
+import { HeaderSearch } from './HeaderSearch';
 import { ICON_URLS } from './icon-registry';
 
 export type AppHeaderSection = 'tome' | 'agora';
@@ -56,8 +57,8 @@ const sectionLink = (active: boolean) =>
 const profileIcon = ICON_URLS['profile-default'];
 
 /**
- * 앱 공통 헤더. 왼쪽 TÓME 로고·AGORA 글자(지금 있는 곳은 aria-current), 오른쪽 내 프로필.
- * 시안의 검색 칸은 이번 범위가 아니라 그리지 않는다.
+ * 앱 공통 헤더. 왼쪽 TÓME·AGORA 글자 로고(지금 있는 곳은 aria-current), 오른쪽 검색창과 내 프로필.
+ * 검색창은 TOME 변형에서는 입력만, AGORA 변형에서는 Project/Creator/Topic 필터도 둔다(ETC 변형은 없음).
  */
 export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderProps) {
   return (
@@ -73,38 +74,47 @@ export function AppHeader({ current, profileTo, agoraTo = '/agora' }: AppHeaderP
         </Link>
         <Link
           to={agoraTo}
+          aria-label={COPY['HD-01']}
           aria-current={current === 'agora' ? 'page' : undefined}
           className={sectionLink(current === 'agora')}
         >
-          {/* AGORA 는 그림 파일이 아니라 글자다(Figma Nav Links 1226:80898, 108×48). 서체 Open Sans */}
-          <span className="flex h-[var(--size-logo-agora-height)] w-[var(--size-logo-agora-width)] items-center [font:var(--text-header-nav)] tracking-[var(--letter-spacing-heading-h1)]">
-            {COPY['HD-01']}
-          </span>
+          {/* AGORA 글자 로고(1226:81012, 108×48). 로고 파일이 없는 환경에서는 같은 칸에 글자로 그린다 */}
+          {ICON_URLS['header-wordmark-agora'] !== undefined ? (
+            <Wordmark name="header-wordmark-agora" widthVar="w-[var(--size-logo-agora-width)]" />
+          ) : (
+            <span className="flex h-[var(--size-logo-agora-height)] w-[var(--size-logo-agora-width)] items-center [font:var(--text-header-nav)] tracking-[var(--letter-spacing-heading-h1)]">
+              {COPY['HD-01']}
+            </span>
+          )}
         </Link>
       </nav>
-      <Link
-        to={profileTo}
-        aria-label={COPY['HD-02']}
-        data-avatar-ring={current === null ? '' : undefined}
-        className={[
-          'inline-flex size-[var(--size-header-avatar)] items-center justify-center rounded-[var(--radius-max)]',
-          // ETC 변형(Profile Container 1226:80996): 지름 40 그림 둘레에 간격 2(선 굵기 2배)를 두고 진한 선 1을 두른다 = 이중 원
-          current === null
-            ? 'box-content border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-fill-neutral)] p-[calc(var(--stroke-weight-light)*2)]'
-            : '',
-          // 그림 파일이 없는 환경에서만 테두리 있는 빈 동그라미로 그린다
-          profileIcon === undefined
-            ? 'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)] bg-[color:var(--color-fill-neutral-weak)]'
-            : '',
-        ].join(' ')}
-      >
-        {/* 기본 프로필(Profile Icon Container 1226:80942). 그라데이션 원색 그대로라 mask 가 아니라 img 로 그린다 */}
-        {profileIcon === undefined ? (
-          <span aria-hidden="true" data-avatar-placeholder="" />
-        ) : (
-          <img src={profileIcon} alt="" className="block size-full rounded-[var(--radius-max)]" />
-        )}
-      </Link>
+      <div className="flex items-center gap-[var(--space-header-search-gap)]">
+        {/* Figma 변형: TOME = 검색창만, AGORA = 검색창 + 필터, ETC(current 없음) = 아바타만 */}
+        {current !== null ? <HeaderSearch withFilters={current === 'agora'} /> : null}
+        <Link
+          to={profileTo}
+          aria-label={COPY['HD-02']}
+          data-avatar-ring={current === null ? '' : undefined}
+          className={[
+            'inline-flex size-[var(--size-header-avatar)] items-center justify-center rounded-[var(--radius-max)]',
+            // ETC 변형(Profile Container 1226:80996): 지름 40 그림 둘레에 간격 2(선 굵기 2배)를 두고 진한 선 1을 두른다 = 이중 원
+            current === null
+              ? 'box-content border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-fill-neutral)] p-[calc(var(--stroke-weight-light)*2)]'
+              : '',
+            // 그림 파일이 없는 환경에서만 테두리 있는 빈 동그라미로 그린다
+            profileIcon === undefined
+              ? 'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-border-input)] bg-[color:var(--color-fill-neutral-weak)]'
+              : '',
+          ].join(' ')}
+        >
+          {/* 기본 프로필(Profile Icon Container 1226:80942). 그라데이션 원색 그대로라 mask 가 아니라 img 로 그린다 */}
+          {profileIcon === undefined ? (
+            <span aria-hidden="true" data-avatar-placeholder="" />
+          ) : (
+            <img src={profileIcon} alt="" className="block size-full rounded-[var(--radius-max)]" />
+          )}
+        </Link>
+      </div>
     </header>
   );
 }

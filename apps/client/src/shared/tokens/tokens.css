@@ -279,3 +279,151 @@
 :root {
   --canvas-node-surface-height: 60px;
 }
+
+/* #185-W Figma 재정합 — 워크스페이스 전체 화면 수치 (Rn2COoR4YCsCdUuYPsi8ju, 프레임 1728×1117, 메뉴바 34 제외) */
+:root {
+  --canvas-figma-column-gap: 95px; /* 1679:11662 단계 사이 연결선 구간(열 간격 395 = 300 + 95) */
+  --canvas-figma-prompt-gap: 171px; /* 1679:11666 질문 노드 → 1단계 곡선 구간 */
+  --canvas-figma-answer-gap: 203px; /* 1679:11661 5단계 오른쪽 끝 → 답변 카드 왼쪽 점 */
+  --canvas-figma-answer-width: 520px; /* 1226:70281 답변 카드 06(맨 앞) 폭 (높이 340) */
+  --canvas-figma-answer-height: 340px; /* 1226:70281 답변 카드 높이 */
+  --canvas-figma-frame-width: 1728px; /* 1679:10955 화면 프레임 폭 — 첫 화면 확대율의 기준 폭 */
+  --canvas-figma-view-zoom: 0.69623; /* 3924:67090 첫 화면 확대율(208.869/300) */
+  --canvas-figma-view-left: 74.55px; /* 3924:67109 첫 화면에서 1단계 열 왼쪽 */
+  --canvas-figma-view-pill-top: 162px; /* 3924:67090 첫 화면에서 단계 알약 위쪽(메뉴바 뺀 값) */
+  --color-step-pill-border: #ffe3d6; /* 1226:69439 단계 알약 테두리(하드코딩 값) */
+  --color-step-pill-glow: rgb(245 224 255); /* 1226:69439 단계 알약 연보라 광 */
+  --size-pill-handle-width: 54px; /* 1226:69423 단계 알약 위 손잡이 폭 */
+  --size-canvas-label: 21px; /* 1679:11623 그룹 소제목 높이(14px × 1.5) */
+  --size-node-tool: 40px; /* 1187:62180 노드 옆 도구 폭(항목 32 + 안쪽 여백 4×2) */
+  --size-answer-arrow: 40px; /* 1226:70468 ^ v 버튼 한 칸 */
+  --size-answer-pin: 44px; /* 1226:69621 핀 버튼 */
+  --space-answer-chip-edge: 17.5px; /* 1679:11606 칩 줄 위·왼쪽 여백 */
+  --size-prompt-pill-height: 59px; /* 1187:61878 입력 알약 높이 */
+  --radius-prompt-pill: 32px; /* 1187:61878 입력 알약 모서리 */
+  --size-preview-pill-width: 190px; /* 1271:121853 Preview 알약 폭 */
+  --size-preview-pill-height: 59px; /* 1271:121853 Preview 알약 높이 */
+  --space-workspace-edge: 20px; /* 1679:11033 로고·Preview 왼쪽 여백, 위 여백 */
+  --space-workspace-bottom: 33px; /* 1187:61873 프롬프트 바·Preview 아래 여백(1083 − 991 − 59) */
+  --blur-glass: 26px; /* 2351:170408 리믹스 패널 검색칸·목록 배경 흐림 */
+  --color-glass: rgb(252 253 255 / 0.5); /* 1187:61878 반투명 흰색(#FCFDFF 50%) */
+  --size-remix-search-height: 51px; /* 2351:170408 > 1720:79876 검색칸 높이 */
+  --size-remix-tabs-height: 33px; /* 1720:79883 Rising·Favorite 묶음 높이 */
+  --size-remix-tab-height: 25px; /* 1720:79886 탭 한 칸 높이 */
+  --size-remix-control-height: 48px; /* 1720:80489 Remix with 알약 높이 */
+  --size-avatar-thumb: 32px; /* 1720:80415 알약 안 썸네일 */
+  --space-remix-row-gap: 20px; /* 1720:79889 목록 항목 사이 */
+  --space-remix-icon-gap: 10px; /* 1720:80396 검색 아이콘과 글자 사이 */
+  --space-remix-panel-gap: 11px; /* 2351:170408 패널 오른쪽 끝(1648)과 IconMenu(1659) 사이 */
+  --space-icon-menu-right: 21px; /* 2332:159703 IconMenu 오른쪽 여백(1728 − 1659 − 48) */
+}
+
+:root {
+  --canvas-figma-derive-step-left: 320px; /* 1679:17902 파생 첫 화면에서 5단계 열 왼쪽 */
+  --canvas-figma-derive-pill-top: 172px; /* 1679:17902 파생 첫 화면에서 단계 알약 위쪽(메뉴바 뺀 값) */
+}
+
+:root {
+  --canvas-figma-derive-step-left: 320px; /* 1679:17902 파생 첫 화면에서 5단계 열 왼쪽 */
+  --canvas-figma-derive-pill-top: 172px; /* 1679:17902 파생 첫 화면에서 단계 알약 위쪽(메뉴바 뺀 값) */
+}
+
+:root {
+  --size-dot-gap: 15.6px; /* 1679:10956 점 격자 간격(PNG 실측 15.6) */
+  --size-dot: 3px; /* 1679:10956 점 지름(PNG 실측 3) */
+  --color-dot: #dadfe4; /* 1679:10956 점 색(PNG 실측) */
+  --canvas-figma-bg-radius-x: 120%; /* 1679:10956 흰 타원 그라디언트 가로 반경(2076/1728) */
+  --canvas-figma-bg-radius-y: 103%; /* 1679:10956 흰 타원 그라디언트 세로 반경(1113/1083) */
+  --canvas-figma-step-pill-height-first: 64px; /* 1679:11621 1단계 알약 높이 */
+}
+
+:root {
+  --size-icon-menu-divider: 27px; /* 2332:159744 IconMenu 구분선 폭 */
+}
+
+:root {
+  --size-remix-list-visible: 187px; /* 1720:79888 목록 보이는 높이(3명 49×3 + 간격 20×2) */
+  --size-title-divider-height: 17.5px; /* 2513:227781 제목 가운데 세로 구분선 높이 */
+}
+
+:root {
+  /* #185-A Figma 재정합 */
+  --size-header-search-width: 500px; /* 검색창 폭 1226:81052 */
+  --size-header-search-height: 52px; /* 검색창 높이 1226:81052 */
+  --size-header-filter-height: 34px; /* 선택된 필터 알약 높이 1226:81058 */
+  --space-header-search-gap: 20px; /* 검색창과 아바타 사이 1226:81051 */
+  --space-agora-content-x: 18px; /* 홈 콘텐츠 왼쪽 시작 3100:129597 */
+  --space-agora-feed-gap: 50px; /* 홈 섹션 사이 3100:129597 */
+  --space-agora-row-gap: 16px; /* 추천·크리에이터 카드 사이 3188:177922 */
+  --size-agora-creator-height: 67px; /* Creator 알약 높이 3190:178168 */
+  --gradient-agora-recommended-shade: linear-gradient(
+    to bottom,
+    rgb(102 102 102 / 0),
+    rgb(0 0 0 / 0.3)
+  ); /* 추천 카드 오버레이 3188:177923 */
+  --gradient-agora-card-shade: linear-gradient(
+    to bottom,
+    rgb(102 102 102 / 0),
+    rgb(0 0 0 / 0.7)
+  ); /* 핫토픽 상세·파생 카드 오버레이 3099:130542, 3099:130841 */
+  --space-agora-recommended-y: 18px; /* 추천 카드 안쪽 위아래 3188:177923 */
+  --size-avatar-recommended: 40px; /* 추천 카드 작성자 사진 3188:177882 */
+  --size-agora-topic-card-height: 308px; /* 핫토픽 카드 전체 높이 3100:129720 */
+  --space-agora-topic-title-top: 47px; /* 헤더 아래에서 Hot Topic 머리글까지 3099:130692 */
+  --space-agora-topic-title-bottom: 60px; /* 머리글 아래에서 카드까지 3099:130692→3099:130542 */
+  --space-agora-topic-gap: 12px; /* Hot Topic 머리글 두 줄 사이 3099:130692 */
+  --text-agora-poppins-title: var(--font-weight-medium) var(--font-size-h1) /
+    var(--line-height-default) var(--font-family-contents); /* 큰 제목 Medium 40 (Figma는 Poppins, 서체는 Open Sans로 통일) 3099:130694 */
+  --size-agora-topic-tile-ratio: 550 / 359; /* 핫토픽 상세 카드 비율 3099:130542 */
+  --space-agora-topic-text-x: 25px; /* 핫토픽 상세 카드 안쪽 왼쪽 3099:130542 */
+  --space-agora-topic-text-bottom: 28px; /* 핫토픽 상세 카드 안쪽 아래 3099:130542 */
+  --size-agora-metric-icon: 24px; /* 핫토픽 상세 카드 지표 아이콘 3099:130542 */
+  --space-agora-metric-gap: 14px; /* 지표 사이(14.37) 3099:130542 */
+  --space-agora-detail-gap: 37px; /* 상세 왼쪽·오른쪽 열 사이 3099:130760 */
+  --space-agora-detail-overlap: 4px; /* 상세 본문이 헤더 칸 안으로 파고드는 높이(Derivative 제목 y'96) 3099:130859 */
+  --size-agora-detail-hero-space: 622px; /* 상세 큰 그림 영역(y'96→작가 줄 y'718) 3099:130762 */
+  --size-agora-detail-hero-height: 827px; /* 상세 큰 그림 높이 3099:130761 */
+  --space-agora-detail-hero-top: 91px; /* 큰 그림이 본문 위로 올라오는 높이(y'5) 3099:130761 */
+  --size-agora-detail-avatar: 42px; /* 상세 작가 사진 3099:130765 */
+  --size-derive-button-height-figma: 47px; /* Go to derive 높이 3099:130770 */
+  --space-derive-button-left: 16px; /* Go to derive 왼쪽 안쪽 3099:130770 */
+  --space-derive-button-right: 20px; /* Go to derive 오른쪽 안쪽 3099:130770 */
+  --space-derive-button-y: 10px; /* Go to derive 위아래 안쪽 3099:130770 */
+  --radius-derive-button: 50px; /* Go to derive 모서리 3099:130770 */
+  --radius-agora-comment: 12px; /* 댓글 카드 모서리 3099:130867 */
+  --size-agora-comment-height: 143px; /* 댓글 카드 높이 3099:130867 */
+  --color-agora-avatar-ring: #0f172a; /* 댓글 작성자 사진 테두리 3099:130870 */
+  --space-agora-derivative-text-x: 22px; /* 파생 카드 안쪽 왼쪽 3099:130841 */
+  --space-agora-derivative-text-bottom: 23px; /* 파생 카드 안쪽 아래 3099:130841 */
+  --space-agora-derivative-title-gap: 16px; /* Derivative 제목과 첫 카드 3099:130859 */
+  --space-agora-detail-bottom: 40px; /* 상세 왼쪽 열 아래 여백 3099:130860 */
+  --space-agora-topic-bottom: 33px; /* 핫토픽 상세 아래 여백 3099:130540 */
+  --space-agora-derivative-list-top: 148px; /* Derivative 목록 시작(y' 148.2, 목록 높이 계산용) 3099:130841 */
+  --gradient-agora-hero-fade:
+    linear-gradient(-0.008deg, rgb(255 255 255 / 0) 72.08%, #fff 98.006%),
+    linear-gradient(90deg, rgb(255 255 255 / 0) 83.261%, #fff 98.265%),
+    linear-gradient(180deg, rgb(255 255 255 / 0) 36.414%, #fff 93.548%),
+    linear-gradient(180deg, rgb(255 255 255 / 0) 51.509%, #fff 101.74%),
+    linear-gradient(90deg, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)); /* 상세 큰 그림 흰 비네팅 3099:130761 */
+  --space-agora-bottom: 56px; /* 홈 아래 여백 3100:129594 */
+}
+
+/* #185-H Figma 재정합 */
+:root {
+  --color-shelf-new-project: #a4a9b3; /* Color/Font Color/Helper Text 원값 — + Project 점선·글자·+ (1269:81282) */
+  --color-shelf-mark-center: #c5cbd7; /* Color/Font Color/Disable — 격자 십자 마크 방사 그라디언트 중심 (1226:74486) */
+  --color-shelf-mark-edge: #f6f8fa; /* Color/Background/Weak — 격자 십자 마크 방사 그라디언트 바깥 (1226:74486) */
+  --color-shelf-focus: #a4a9b3; /* 키보드 포커스 테두리, Figma 톤(Helper Text) — 서가 카드 (리드 결정 #185) */
+}
+:root {
+  --space-recent-work-body-gap: 14px; /* 디자인 변수 없음, 원값 14px — Recent Work 열림 본문 제목·시간 사이 (1185:58650) */
+  --space-shelf-top: 12px; /* 디자인 변수 없음, 원값 12px — 헤더 아래에서 첫 격자 마크 줄까지 (1226:76573, 마크 y′112 − 헤더 100) */
+}
+:root {
+  --size-shelf-dash: 8px; /* 디자인 변수 없음, 원값 8px(PNG 실측) — + Project 점선 대시 길이 (1269:81282) */
+  --size-shelf-dash-gap: 7px; /* 디자인 변수 없음, 원값 7px(PNG 실측) — + Project 점선 대시 사이 (1269:81282) */
+}
+:root {
+  --letter-spacing-shelf-title: -0.02em; /* 서가 hover 제목 18px −0.36px = −2% (1311:127953) */
+  --letter-spacing-shelf-body: -0.02em; /* 서가 라벨·시간·+ Project 14px −0.28px = −2% (1311:127953, 1185:57987) */
+}

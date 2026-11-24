@@ -55,30 +55,49 @@ const LAYOUT = {
   pillTop: 18,
   /** 알약 맨 위에서 첫 카드(또는 첫 소제목 아래 카드)까지 */
   firstCard: 128,
-  /** 소제목 높이 + 카드까지의 간격 */
-  groupLabel: 28,
+  /** 소제목 높이(21) + 카드까지의 간격(8). 시안 1679:11623 */
+  groupLabel: 29,
   /** 같은 묶음의 카드 사이 */
   cardGap: 20,
-  /** 이전 묶음 마지막 카드 아래 → 다음 소제목 */
-  groupGap: 41,
+  /** 이전 묶음 마지막 카드 아래 → 다음 소제목. 시안 묶음 사이 gap 40 */
+  groupGap: 40,
   /** 한 줄 높이(18px × 1.5) */
   line: 27,
-  /** 한 줄짜리 카드 높이 */
-  card: 60,
+  /** 한 줄짜리 카드 높이: 한 줄 27 + 안쪽 위아래 16×2 + 테두리 1×2 */
+  card: 61,
   /** 카드 좌우 안쪽 여백 */
   cardPadding: 16,
   /** 묶음 행(우선순위·검증 기준) 사이 간격과 맨 위·맨 아래 안쪽 여백 */
   rowGap: 12,
   rowEdge: 20,
   /** 답변 그림 비율 11:7(canvas.css .canvas-image-slot). 파생 2열에서 위 카드 높이를 어림해 아래 카드를 놓는 데 쓴다. */
-  answerAspect: 7 / 11,
+  answerAspect: 340 / 520,
+  /** 열 맨 위(손잡이)에서 답변 카드 맨 앞 장 위쪽까지. 시안 1679:11606(카드 06 y369 − 열 y164) */
+  answerTop: 205,
+  /** 파생: 열 맨 위에서 원작자 머리글까지(위로 88), 원작 카드 맨 앞 장까지(+4). 시안 1679:17831 */
+  originHeading: -88,
+  originTop: 4,
+  /** 파생: 내 답변 머리글·카드까지. 시안 1720:100994 */
+  mineHeading: 388,
+  mineTop: 431,
+  /** 파생: 내 답변이 원작 답변보다 오른쪽으로 더 가 있는 거리(1002 − 823) */
+  mineShift: 179,
+  /** 머리글 한 줄 높이(20px × 1.5) → 카드 위 12 */
+  headingBox: 30,
 } as const;
+
+/** 열 맨 위(손잡이)에서 단계 알약 위쪽까지(손잡이 6 + 간격 12). 첫 화면 위치를 잡을 때 쓴다. */
+export const STEP_PILL_TOP = LAYOUT.pillTop;
 
 export interface CanvasGeometry {
   nodeWidth: number;
   nodeHeight: number;
   answerWidth: number;
   columnGap: number;
+  /** 질문 노드 오른쪽 끝 → 1단계 왼쪽 끝 */
+  promptGap: number;
+  /** 5단계 오른쪽 끝 → 답변 카드 왼쪽 끝 */
+  answerGap: number;
   rowGap: number;
   setGap: number;
   headerHeight: number;
@@ -210,6 +229,14 @@ export function buildCanvas(
   const stepEdges: Edge[] = [];
   let top = 0;
   const { nodeWidth, nodeHeight, columnGap, rowGap, setGap, headerHeight } = geometry;
+  const pitch = nodeWidth + columnGap;
+  // 1~5단계는 한 칸(300 + 95)씩, 질문 노드는 1단계 왼쪽 171 밖, 답변 열은 5단계 오른쪽 203 밖이다.
+  const columnX = (column: number) =>
+    column === 0
+      ? pitch - nodeWidth - geometry.promptGap
+      : column <= VISIBLE_STAGES.length
+        ? column * pitch
+        : VISIBLE_STAGES.length * pitch + nodeWidth + geometry.answerGap;
   const ordered = [...sets].sort((a, b) => a.position - b.position);
   for (const set of ordered) {
     // 파생 프로젝트의 원작 답변은 첫 세트(파생 때 원작 대표 답변이 복사된 세트) 옆에만 둔다.
@@ -243,14 +270,15 @@ export function buildCanvas(
         y?: number;
         minHeight?: number | false;
         draggable?: boolean;
+        xOffset?: number;
       } = {},
     ) => {
-      const { heading = false, y, minHeight, draggable = !heading } = opts;
+      const { heading = false, y, minHeight, draggable = !heading, xOffset } = opts;
       nodes.push({
         id: id(suffix),
         type: 'card',
         position: {
-          x: column * (nodeWidth + columnGap),
+          x: (xOffset ?? 0) + columnX(column),
           y: y ?? top + (heading ? 0 : headerHeight + row * (nodeHeight + rowGap)),
         },
         data: { ...data, setId: set.id, column, row, labels },
@@ -394,22 +422,31 @@ export function buildCanvas(
         ? current.error
         : undefined;
     const running = current && !['succeeded', 'failed', 'cancelled'].includes(current.job.status);
-    const answerParents = [...outputs.values()].filter((node) => node.stage === 'verify');
-    for (const parent of answerParents) {
-      edges.push({
-        id: id(`${parent.id}->answer`),
-        source: id(parent.id),
-        target: id('answer'),
-        type: 'smoothstep',
-        focusable: false,
-        selectable: false,
-        deletable: false,
-      });
-    }
+    // 시안(My work 3924:67090)은 5단계 알약 오른쪽 점에서 답변 카드 왼쪽 점으로 곡선 하나만 긋는다.
+    const lastHeading = id(`${VISIBLE_STAGES[VISIBLE_STAGES.length - 1]}-heading`);
+    edges.push({
+      id: id('verify-heading->answer'),
+      source: lastHeading,
+      target: id('answer'),
+      type: 'default',
+      focusable: false,
+      selectable: false,
+      deletable: false,
+    });
+    // 질문 노드에서 1단계 알약 왼쪽 점으로 가는 곡선(시안 1679:11666)
+    edges.push({
+      id: id('prompt->analyze-heading'),
+      source: id('prompt'),
+      target: id(`${VISIBLE_STAGES[0]}-heading`),
+      type: 'default',
+      focusable: false,
+      selectable: false,
+      deletable: false,
+    });
     const answerHeading = derive ? derive.mine : labels.answer(answer?.number ?? 1);
-    // 파생 2열: 위는 원작 답변(읽기 전용), 아래는 내 답변. 아래 카드는 위 카드 높이만큼 내려 놓는다.
-    const originHeight = geometry.answerWidth * LAYOUT.answerAspect;
-    const mineHeadingY = top + headerHeight + originHeight + rowGap;
+    // 파생 2열: 위는 원작 답변(읽기 전용), 아래는 내 답변. 위치는 시안 Derive 1679:17831·1720:100994 그대로다.
+    const originCardY = top + LAYOUT.originTop;
+    const mineCardY = top + LAYOUT.mineTop;
     if (derive && derivedFrom) {
       const creator = derivedFrom.creator;
       const deleted = derivedFrom.title === null || creator === null;
@@ -419,7 +456,7 @@ export function buildCanvas(
           6,
           -1,
           { kind: 'heading', variant: 'origin', label: derive.origin(creator.displayName) },
-          { heading: true, y: top },
+          { heading: true, y: top + LAYOUT.originHeading },
         );
       }
       add(
@@ -436,43 +473,29 @@ export function buildCanvas(
           origin: derivedFrom,
           state: 'done',
         },
-        { y: top + headerHeight, minHeight: false, draggable: false },
+        { y: originCardY, minHeight: false, draggable: false },
       );
-      // 마지막 단계에 노드가 아직 없으면(복사된 답변 등) 마지막 단계 자리 카드에서 두 답변 카드로 잇는다.
-      const sources = answerParents.length
-        ? answerParents.map((node) => node.id)
-        : ['verify-placeholder'];
-      for (const parent of sources) {
-        if (!answerParents.length)
-          edges.push({
-            id: id(`${parent}->answer`),
-            source: id(parent),
-            target: id('answer'),
-            type: 'smoothstep',
-            focusable: false,
-            selectable: false,
-            deletable: false,
-          });
-        if (deleted) continue;
+      if (!deleted)
         edges.push({
-          id: id(`${parent}->origin-answer`),
-          source: id(parent),
+          id: id('verify-heading->origin-answer'),
+          source: lastHeading,
           target: id('origin-answer'),
-          type: 'smoothstep',
+          type: 'default',
           className: 'canvas-edge--origin',
           focusable: false,
           selectable: false,
           deletable: false,
         });
-      }
     }
-    add(
-      'answer-heading',
-      6,
-      -1,
-      { kind: 'heading', variant: derive ? 'answer' : undefined, label: answerHeading },
-      { heading: true, y: derive ? mineHeadingY : undefined },
-    );
+    // 내 작업 화면에는 답변 카드 위에 머리글이 없다(칩이 번호를 말한다). 파생에서만 "My answer"를 단다.
+    if (derive)
+      add(
+        'answer-heading',
+        6,
+        -1,
+        { kind: 'heading', variant: 'answer', label: answerHeading },
+        { heading: true, y: top + LAYOUT.mineHeading, xOffset: LAYOUT.mineShift },
+      );
     add(
       'answer',
       6,
@@ -485,7 +508,7 @@ export function buildCanvas(
         error: imageError,
         onRetry: current?.onRetry,
       },
-      derive ? { y: mineHeadingY + headerHeight } : {},
+      derive ? { y: mineCardY, xOffset: LAYOUT.mineShift } : { y: top + LAYOUT.answerTop },
     );
     for (const node of outputs.values()) {
       const parents = node.parentIds.length
@@ -500,15 +523,15 @@ export function buildCanvas(
           source: id(parent),
           target: id(node.id),
           type: 'smoothstep',
+          className: 'canvas-edge--parent',
           focusable: false,
           selectable: false,
           deletable: false,
         });
       }
     }
-    const answerBottom = derive
-      ? 2 * (headerHeight + originHeight) + rowGap
-      : geometry.answerWidth + headerHeight;
+    const answerBottom =
+      (derive ? LAYOUT.mineTop : LAYOUT.answerTop) + geometry.answerWidth * LAYOUT.answerAspect;
     top += Math.max(columnBottom, answerBottom) + setGap;
     edges.push(...stepEdges);
     stepEdges.length = 0;

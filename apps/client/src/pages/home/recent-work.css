@@ -7,5 +7,5 @@
   --recent-work-card-height: 400px; /* 원값 400px — 열린 카드 높이 */
   --recent-work-open-size: 56px; /* 원값 12px 안쪽 여백 + 32px 아이콘 — 노란 ↗ 원 */
   --recent-work-offset-x: 21px; /* 시안 x 위치 */
-  --recent-work-offset-bottom: 0px; /* 시안은 화면 아래 끝에 붙는다 */
+  --recent-work-offset-bottom: 33px; /* 닫힘 버튼 아래 끝 y′1050 → 뷰포트 1083 에서 33px 위 (1226:78136) */
 }
