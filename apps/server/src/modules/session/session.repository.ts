@@ -7,6 +7,7 @@ export interface CreatorRow {
   kind: 'seed' | 'persona' | 'visitor';
   displayName: string;
   bio: string | null;
+  avatarKey: string | null;
 }
 
 export interface AccessCodeRow {
@@ -108,7 +109,7 @@ export class SessionRepository {
   findCreator(id: string): Promise<CreatorRow | null> {
     return this.prisma.creator.findUnique({
       where: { id },
-      select: { id: true, kind: true, displayName: true, bio: true },
+      select: { id: true, kind: true, displayName: true, bio: true, avatarKey: true },
     });
   }
 

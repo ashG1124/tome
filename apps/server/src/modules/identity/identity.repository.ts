@@ -22,6 +22,7 @@ const CREATOR_SELECT = {
   kind: true,
   displayName: true,
   bio: true,
+  avatarKey: true,
   identityPublic: true,
 } satisfies Prisma.CreatorSelect;
 export type IdentityCreatorRow = Prisma.CreatorGetPayload<{ select: typeof CREATOR_SELECT }>;

@@ -265,7 +265,10 @@ export function buildSeedPlan(): SeedPlan {
         libraryIndex,
         spec: r.spec,
       });
-      plan.stats.push({ projectId: r.id, ...initialStat(projectIndex, spec.kind) });
+      plan.stats.push({
+        projectId: r.id,
+        ...(r.spec.stat ?? initialStat(projectIndex, spec.kind)),
+      });
       projectIndex += 1;
 
       r.sets.forEach((set, n) => {

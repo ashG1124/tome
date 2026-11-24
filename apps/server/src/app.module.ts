@@ -5,6 +5,7 @@ import { AllExceptionsFilter } from './common';
 import { ConfigModule } from './config';
 import { AdminModule } from './modules/admin/admin.module';
 import { AgoraModule } from './modules/agora/agora.module';
+import { AvatarsModule } from './modules/avatars/avatars.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { EventsModule } from './modules/events/events.module';
 import { GenerationModule } from './modules/generation/generation.module';
@@ -35,6 +36,7 @@ import { StorageModule } from './storage';
     IdentityModule,
     AgoraModule,
     RemixModule,
+    AvatarsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

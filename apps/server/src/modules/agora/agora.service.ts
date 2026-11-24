@@ -20,6 +20,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import { OBJECT_STORAGE, type ObjectStorage, answerImageKey } from '../../storage';
 import { EventsService } from '../events/events.service';
 import { AnswersService } from '../generation/answers.service';
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { answerImageUrl, toAnswer, toAnswerSummary } from '../generation/generation.mappers';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { ProjectsService } from '../projects/projects.service';
@@ -52,6 +53,7 @@ interface CreatorLike {
   kind: CreatorSummary['kind'];
   displayName: string;
   bio: string | null;
+  avatarKey: string | null;
 }
 
 const toCreator = (c: CreatorLike): CreatorSummary => ({
@@ -59,7 +61,7 @@ const toCreator = (c: CreatorLike): CreatorSummary => ({
   kind: c.kind,
   displayName: c.displayName,
   bio: c.bio,
-  avatarUrl: null,
+  avatarUrl: creatorAvatarUrl(c),
 });
 
 function toComment(row: AgoraCommentRow, auth: AuthContext): AgoraComment {

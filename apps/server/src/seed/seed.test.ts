@@ -1,8 +1,9 @@
-import { EventEnvelopeSchema, NodeSnapshotSchema } from '@tome/shared';
+import { EventEnvelopeSchema, NodeSnapshotSchema, PROMPT_PRESETS } from '@tome/shared';
 import { describe, expect, it } from 'vitest';
 import { calculateIdentity, type CalcEvent } from '../modules/identity/identity-calc';
 import { SEED_CREATORS, SHOWCASE_CREATOR_ID } from './creators';
 import { buildSeedPlan, type SeedPlan } from './plan';
+import { figmaImageOf, TOPICS } from './specs';
 
 /** 계획만으로 창작자의 4축을 계산한다(DB 없이). */
 export function axesOf(plan: SeedPlan, creatorId: string) {
@@ -35,10 +36,10 @@ describe('seed plan (no DB)', () => {
 
   it('has the documented shape', () => {
     const seedProjects = plan.projects.filter((p) => p.ownerKind === 'seed');
-    expect(seedProjects).toHaveLength(15);
+    expect(seedProjects).toHaveLength(25);
     const personaProjects = plan.projects.filter((p) => p.ownerKind === 'persona');
     expect(personaProjects.filter((p) => p.ownerId !== SHOWCASE_CREATOR_ID)).toHaveLength(5);
-    expect(personaProjects.filter((p) => p.ownerId === SHOWCASE_CREATOR_ID)).toHaveLength(8);
+    expect(personaProjects.filter((p) => p.ownerId === SHOWCASE_CREATOR_ID)).toHaveLength(20);
     expect(plan.topics.length).toBeGreaterThanOrEqual(3);
     expect(plan.topics.length).toBeLessThanOrEqual(5);
     const seedIds = new Set(plan.creators.filter((c) => c.spec.kind === 'seed').map((c) => c.id));
@@ -82,22 +83,41 @@ describe('seed plan (no DB)', () => {
     }
   });
 
-  it('first project of each seed creator uses the preset prompt', () => {
-    const firsts = plan.creators
-      .filter((c) => c.spec.kind === 'seed')
-      .map((c) => plan.projects.find((p) => p.ownerId === c.id)!);
-    for (const project of firsts) {
+  it('projects with a preset key use the exact preset prompt (sample results can be reused)', () => {
+    const presetProjects = plan.projects.filter((p) => p.spec.presetKey !== undefined);
+    expect(
+      new Set(presetProjects.filter((p) => p.ownerKind === 'seed').map((p) => p.spec.presetKey))
+        .size,
+    ).toBeGreaterThanOrEqual(3);
+    for (const project of presetProjects) {
+      const preset = PROMPT_PRESETS.find((x) => x.key === project.spec.presetKey)!;
       const set = plan.sets.find((s) => s.projectId === project.id && s.position === 1)!;
-      expect(set.presetKey).toBe(project.spec.presetKey);
-      expect(set.prompt).toBe(project.spec.prompt);
+      expect(set.presetKey, project.key).toBe(preset.key);
+      expect(set.prompt, project.key).toBe(preset.prompt);
     }
   });
 
-  it('event counts are 60-150 per creator', () => {
+  it('every creator has at least 60 events', () => {
     for (const c of plan.creators) {
       const n = plan.events.filter((e) => e.creatorId === c.id).length;
       expect(n, c.key).toBeGreaterThanOrEqual(60);
-      expect(n, c.key).toBeLessThanOrEqual(150);
+    }
+  });
+
+  it('follows the design: topic titles, creator names with avatars, one design image per work', () => {
+    expect(plan.topics.map((t) => t.title)).toEqual(TOPICS.map((t) => t.title));
+    for (const creator of SEED_CREATORS) {
+      if (creator.kind === 'visitor') expect(creator.avatar).toBeNull();
+      else expect(creator.avatar, creator.displayName).toMatch(/^[a-z]+$/);
+    }
+    // 파생이 아닌 작업은 저마다 다른 시안 이미지를 쓰고, 파생은 원작 이미지를 쓴다.
+    const own = plan.projects.filter((p) => p.kind === 'original');
+    const images = own.map((p) => figmaImageOf(p.spec));
+    expect(images.every((name) => name !== null)).toBe(true);
+    expect(new Set(images).size).toBe(images.length);
+    for (const p of plan.projects.filter((x) => x.kind === 'derive')) {
+      const source = plan.projects.find((x) => x.id === p.derivedFromProjectId)!;
+      expect(figmaImageOf(p.spec)).toBe(figmaImageOf(source.spec));
     }
   });
 
@@ -204,7 +224,7 @@ describe('seed plan (no DB)', () => {
         expect(pick?.payload).toEqual({ partnerId: p.remixPartnerId });
       }
       expect(byKey('julian-2').remixPartnerId).toBe(
-        plan.creators.find((c) => c.key === 'seed-3')!.id,
+        plan.creators.find((c) => c.key === 'seed-2')!.id,
       );
     });
 

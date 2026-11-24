@@ -78,6 +78,8 @@ export interface GeneratedEvents {
 const BASE_TIME = Date.UTC(2026, 9, 26, 1, 0, 0);
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SESSIONS = 5;
+/** 전체 이벤트 중 구조 이벤트가 차지할 수 있는 최대 비율. */
+const STRUCTURAL_SHARE_MAX = 0.3;
 const REASONS = [
   'Matches the mood I wanted',
   'Keeps the main subject clear',
@@ -234,7 +236,17 @@ const domainOfId = (id: string): 'evidence' | 'intuitive' =>
 export function generateEvents(input: EventInput): GeneratedEvents {
   const rng = seededRandom(`events:${input.creatorKey}`);
   const sets = input.projects.flatMap((p) => p.sets);
-  const total = input.total;
+  // 구조 이벤트(세트 시작·버전 표시·완료·게시 등). 조작 이벤트 비율(약 68%)을 지키도록
+  // 목표 개수가 모자라면 구조 이벤트의 1/0.3 배까지 늘린다(프로젝트가 많은 창작자).
+  const structural =
+    sets.length * 1 +
+    sets.reduce((n, set) => n + set.acceptedAnswerIds.length * 2 - 1, 0) +
+    input.projects.reduce(
+      (n, p) =>
+        n + (p.prelude?.length ?? 0) + (p.finish === false ? 0 : 1) + (p.post === false ? 0 : 1),
+      0,
+    );
+  const total = Math.max(input.total, Math.ceil(structural / STRUCTURAL_SHARE_MAX));
   const counts = {
     a: Math.round(total * 0.24),
     b: 2 * Math.round((total * 0.2) / 2),
@@ -257,14 +269,6 @@ export function generateEvents(input: EventInput): GeneratedEvents {
       Math.floor(((i + 1) * manips.length) / sets.length) -
       Math.floor((i * manips.length) / sets.length),
   );
-  const structural =
-    sets.length * 1 +
-    sets.reduce((n, set) => n + set.acceptedAnswerIds.length * 2 - 1, 0) +
-    input.projects.reduce(
-      (n, p) =>
-        n + (p.prelude?.length ?? 0) + (p.finish === false ? 0 : 1) + (p.post === false ? 0 : 1),
-      0,
-    );
   const noiseTotal = Math.max(0, total - manips.length - structural);
   const noisePerSet = sets.map(
     (_, i) =>

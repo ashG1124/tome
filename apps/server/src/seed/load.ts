@@ -16,14 +16,20 @@ export interface LoadSummary {
 
 const json = (value: unknown): Prisma.InputJsonValue => value as Prisma.InputJsonValue;
 
-/** 계정 14개(seed 5·visitor 5·persona 4, persona 4번 = 쇼케이스)를 고정 id 로 upsert 한다. id·kind·seedOrder 는 그대로, 이름·소개만 바뀐다. */
-export async function upsertSeedCreators(tx: SeedTx): Promise<number> {
+/** 계정 14개(seed 5·visitor 5·persona 4, persona 4번 = 쇼케이스)를 고정 id 로 upsert 한다. id·kind·seedOrder 는 그대로, 이름·소개·프로필 이미지가 바뀐다. */
+export async function upsertSeedCreators(
+  tx: SeedTx,
+  avatars: ReadonlyMap<string, string> = new Map(),
+): Promise<number> {
   for (const creator of SEED_CREATORS) {
+    // 프로필 이미지는 이번에 올린 것만 이어 준다. 못 올렸으면(자산 폴더 없음) 지금 값을 그대로 둔다.
+    const avatarKey = avatars.get(creator.id);
     const fields = {
       kind: creator.kind,
       displayName: creator.displayName,
       bio: creator.bio,
       seedOrder: creator.seedOrder,
+      ...(avatarKey ? { avatarKey } : {}),
     };
     await tx.creator.upsert({
       where: { id: creator.id },

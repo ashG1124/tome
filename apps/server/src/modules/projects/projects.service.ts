@@ -1,3 +1,4 @@
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { Injectable } from '@nestjs/common';
 import type {
   CreateProjectRequest,
@@ -43,7 +44,16 @@ export function toSummary(row: ProjectRow): ProjectSummary {
     shelfPosition: row.shelfPosition,
     kind: row.kind,
   };
-  if (row.remixPartner) summary.remixPartner = { ...row.remixPartner, avatarUrl: null };
+  if (row.remixPartner) {
+    const partner = row.remixPartner;
+    summary.remixPartner = {
+      id: partner.id,
+      kind: partner.kind,
+      displayName: partner.displayName,
+      bio: partner.bio,
+      avatarUrl: creatorAvatarUrl(partner),
+    };
+  }
   return summary;
 }
 

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { Injectable } from '@nestjs/common';
 import type {
   ConsentResponse,
@@ -22,13 +23,12 @@ export const hashToken = (token: string): string =>
   createHash('sha256').update(token).digest('hex');
 
 function toCreatorSummary(row: CreatorRow): CreatorSummary {
-  // 이미지 경로 규칙은 뒤 단계에서 정한다. 지금은 비워 둔다.
   return {
     id: row.id,
     kind: row.kind,
     displayName: row.displayName,
     bio: row.bio,
-    avatarUrl: null,
+    avatarUrl: creatorAvatarUrl(row),
   };
 }
 

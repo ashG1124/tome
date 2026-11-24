@@ -17,6 +17,7 @@ const CREATOR_SELECT = {
   kind: true,
   displayName: true,
   bio: true,
+  avatarKey: true,
   seedOrder: true,
 } satisfies Prisma.CreatorSelect;
 

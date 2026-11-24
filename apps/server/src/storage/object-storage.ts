@@ -36,6 +36,9 @@ export function answerImageKey(
   return `answers/${answerId}/${variant}.${ext}`;
 }
 
+/** 창작자 프로필 이미지의 객체 키(창작자마다 하나, 항상 JPEG). */
+export const avatarImageKey = (creatorId: string): string => `avatars/${creatorId}.jpg`;
+
 /** content-disposition 에 넣어도 안전한 파일 이름(따옴표·경로 구분자·제어 문자를 뺀다). */
 export function safeDownloadName(name: string): string {
   const cleaned = name.replace(/[^A-Za-z0-9._-]/g, '_');

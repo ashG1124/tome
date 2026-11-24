@@ -27,7 +27,7 @@ const SUMMARY_SELECT = {
   deletedAt: true,
   hiddenAt: true,
   finishedAt: true,
-  remixPartner: { select: { id: true, kind: true, displayName: true, bio: true } },
+  remixPartner: { select: { id: true, kind: true, displayName: true, bio: true, avatarKey: true } },
 } satisfies Prisma.ProjectSelect;
 
 export type ProjectRow = Prisma.ProjectGetPayload<{ select: typeof SUMMARY_SELECT }>;
