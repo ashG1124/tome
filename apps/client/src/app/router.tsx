@@ -1,11 +1,7 @@
 import { createBrowserRouter, redirect, type RouteObject } from 'react-router';
 import { hasSession } from '../shared/api';
-import { AgoraHomePage, AgoraProjectPage, TopicListPage, TopicPage } from '../pages/agora';
-import { ConsentPage } from '../pages/consent';
-import { EnterPage } from '../pages/enter';
-import { ProfilePage } from '../pages/profile';
-import { WorkspacePage } from '../pages/workspace';
 import { Layout } from './layout';
+import { PageLoading } from './page-loading';
 import { RootPage, type RootLoaderData } from './root-page';
 
 /** 세션(토큰)이 없으면 전시 코드 입력 화면으로 보낸다. */
@@ -19,19 +15,55 @@ function rootLoader(): RootLoaderData {
   return { landing: !hasSession() };
 }
 
+/**
+ * 페이지는 길을 열 때 내려받는다(첫 화면에 필요한 모듈만 받게). loader 는 그대로 정적으로 둔다.
+ * 이름 있는 내보내기를 라우트의 Component 로 돌려준다.
+ */
 export const routes: RouteObject[] = [
   {
     element: <Layout />,
+    HydrateFallback: PageLoading,
     children: [
-      { path: '/enter', element: <EnterPage /> },
-      { path: '/consent', loader: requireSession, element: <ConsentPage /> },
+      {
+        path: '/enter',
+        lazy: async () => ({ Component: (await import('../pages/enter')).EnterPage }),
+      },
+      {
+        path: '/consent',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/consent')).ConsentPage }),
+      },
       { path: '/', loader: rootLoader, element: <RootPage /> },
-      { path: '/projects/:id', loader: requireSession, element: <WorkspacePage /> },
-      { path: '/creators/:id', loader: requireSession, element: <ProfilePage /> },
-      { path: '/agora', loader: requireSession, element: <AgoraHomePage /> },
-      { path: '/agora/topics', loader: requireSession, element: <TopicListPage /> },
-      { path: '/agora/topics/:id', loader: requireSession, element: <TopicPage /> },
-      { path: '/agora/projects/:id', loader: requireSession, element: <AgoraProjectPage /> },
+      {
+        path: '/projects/:id',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/workspace')).WorkspacePage }),
+      },
+      {
+        path: '/creators/:id',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/profile')).ProfilePage }),
+      },
+      {
+        path: '/agora',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/agora')).AgoraHomePage }),
+      },
+      {
+        path: '/agora/topics',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/agora')).TopicListPage }),
+      },
+      {
+        path: '/agora/topics/:id',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/agora')).TopicPage }),
+      },
+      {
+        path: '/agora/projects/:id',
+        loader: requireSession,
+        lazy: async () => ({ Component: (await import('../pages/agora')).AgoraProjectPage }),
+      },
       { path: '*', loader: () => redirect('/') },
     ],
   },

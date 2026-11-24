@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { clearSession, setSession } from '../shared/api';
 import { FAKE_NOTICE_VERSION, FAKE_TOKEN } from '../shared/api/fake/data';
 import { resetFake, setFakeConsented } from '../shared/api/fake/state';
@@ -21,6 +21,21 @@ function renderAt(path: string) {
   );
   return router;
 }
+
+/**
+ * 페이지는 길을 열 때 내려받는다. 테스트에서는 그 첫 변환(transform)이 느려서 리다이렉트 확인이 기본 대기 시간을 넘길 수 있으므로,
+ * 라우트가 쓰는 같은 모듈을 미리 불러 둔다(단언·대기 시간은 그대로).
+ */
+beforeAll(async () => {
+  await Promise.all([
+    import('../pages/agora'),
+    import('../pages/consent'),
+    import('../pages/enter'),
+    import('../pages/landing'),
+    import('../pages/profile'),
+    import('../pages/workspace'),
+  ]);
+}, 60_000);
 
 beforeEach(() => {
   localStorage.clear();
