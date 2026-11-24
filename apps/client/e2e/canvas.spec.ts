@@ -10,7 +10,7 @@ interface AdvanceCall {
 async function configureAdvance(
   page: Page,
   options: {
-    failOnce?: { stage: JobStage; code: 'AI_TIMEOUT' | 'STEP_IN_PROGRESS' };
+    failOnce?: { stage: JobStage; code: 'AI_TIMEOUT' | 'AI_UNAVAILABLE' | 'STEP_IN_PROGRESS' };
     holdImage?: boolean;
   },
 ) {
@@ -31,7 +31,7 @@ api.advanceJob = async (jobId, stage) => {
     canvasFailureUsed = true;
     const { ApiRequestError } = await import('/src/shared/api/index.ts');
     const code = canvasTestOptions.failOnce.code;
-    throw new ApiRequestError(code === 'STEP_IN_PROGRESS' ? 409 : 504, {
+    throw new ApiRequestError(code === 'STEP_IN_PROGRESS' ? 409 : code === 'AI_TIMEOUT' ? 504 : 503, {
       code, message: code, retryable: true,
       ...(code === 'STEP_IN_PROGRESS' ? { details: { retryAfterMs: 1000 } } : {}),
     });
@@ -118,7 +118,7 @@ test('progress, completion, keyboard navigation and three stacked sets', async (
 });
 
 test('retries one failed step while earlier results remain', async ({ page }, info) => {
-  await configureAdvance(page, { failOnce: { stage: 'draft', code: 'AI_TIMEOUT' } });
+  await configureAdvance(page, { failOnce: { stage: 'draft', code: 'AI_UNAVAILABLE' } });
   await openWorkspace(page);
   await generate(page);
   await expect(page.getByRole('alert')).toContainText('Something went wrong.');
@@ -134,6 +134,19 @@ test('retries one failed step while earlier results remain', async ({ page }, in
   const calls = await advanceCalls(page);
   expect(calls.filter((call) => call.stage === 'draft')).toHaveLength(2);
   expect(calls.filter((call) => call.stage === 'evidence')).toHaveLength(1);
+});
+
+test('retries a timed-out step once on its own without an error (#222)', async ({ page }) => {
+  await configureAdvance(page, { failOnce: { stage: 'draft', code: 'AI_TIMEOUT' } });
+  await openWorkspace(page);
+  await generate(page);
+  await expect(page.locator('.canvas-image')).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Generation canvas' }).getByRole('status'),
+  ).toHaveText('Step 5 of 5 done');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const calls = await advanceCalls(page);
+  expect(calls.filter((call) => call.stage === 'draft')).toHaveLength(2);
 });
 
 test('resumes persisted generation after reloading', async ({ page }) => {

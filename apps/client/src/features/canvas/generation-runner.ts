@@ -16,6 +16,11 @@ export interface GenerationRunnerOptions {
   onError: (stage: JobStage, error: unknown) => void;
 }
 
+/** AI_TIMEOUT 이면 오류를 보이기 전에 같은 단계를 몇 번 더 부를지(#222). 그림 모델이 가끔 느리다. */
+export const TIMEOUT_AUTO_RETRIES = 1;
+/** 자동 재시도 전 잠깐 쉬는 시간(ms). */
+const TIMEOUT_RETRY_DELAY_MS = 500;
+
 function delay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     if (signal.aborted) {
@@ -40,6 +45,8 @@ export async function runGeneration({
   onError,
 }: GenerationRunnerOptions): Promise<void> {
   let job = initial;
+  // 단계별 시간 초과 자동 재시도 횟수
+  const timeoutRetries = new Map<JobStage, number>();
   while (
     !signal.aborted &&
     job.nextStage &&
@@ -117,6 +124,14 @@ export async function runGeneration({
           signal,
         );
         continue;
+      }
+      if (error instanceof ApiRequestError && error.code === 'AI_TIMEOUT') {
+        const used = timeoutRetries.get(stage) ?? 0;
+        if (used < TIMEOUT_AUTO_RETRIES) {
+          timeoutRetries.set(stage, used + 1);
+          await delay(TIMEOUT_RETRY_DELAY_MS, signal);
+          continue;
+        }
       }
       onError(stage, error);
       return;
