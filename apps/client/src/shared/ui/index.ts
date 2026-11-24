@@ -5,6 +5,15 @@ export { Dialog } from './Dialog';
 export { ErrorNotice } from './ErrorNotice';
 export { Flash, type FlashKind } from './Flash';
 export { Icon } from './Icon';
+export {
+  AGORA_SEARCH_SCOPES,
+  agoraSearchQuery,
+  matchesQuery,
+  parseAgoraSearch,
+  useAgoraSearch,
+  type AgoraSearch,
+  type AgoraSearchScope,
+} from './agora-search';
 export { StatusBanner } from './StatusBanner';
 export { Switch } from './Switch';
 export { Tabs } from './Tabs';

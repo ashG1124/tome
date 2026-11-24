@@ -298,6 +298,15 @@ export const COPY = {
   'RC-04': 'Apply is not available yet.',
   'RC-05': 'Hiding connection…',
   'RC-06': 'Applied',
+  // Figma 재정합(#187): 임시 ID. AGS-03·04·05·06 은 헤더 검색창 원문(1226:81056, 1226:81058~81061). AGS-01·02·07·08 은 Figma에 없는 접근성·빈 결과 문구
+  'AGS-01': 'No results.',
+  'AGS-02': 'Results',
+  'AGS-03': 'Start typing to search',
+  'AGS-04': 'Project',
+  'AGS-05': 'Creator',
+  'AGS-06': 'Topic',
+  'AGS-07': 'Search',
+  'AGS-08': 'Search in',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
 } as const;

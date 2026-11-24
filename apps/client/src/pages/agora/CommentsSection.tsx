@@ -57,15 +57,15 @@ export function CommentsSection({ projectId, count, locale, timeZone }: Comments
   return (
     <section
       aria-labelledby={`${inputId}-title`}
-      className="flex flex-col gap-[var(--space-gap-5)]"
+      className="flex flex-col gap-[var(--space-gap-4)]"
     >
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-end justify-between">
         <h2
           id={`${inputId}-title`}
-          className="m-0 [font:var(--text-heading-h1)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-strong)]"
+          className="m-0 flex items-center gap-[var(--space-gap-1)] [font:var(--text-heading-h1)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-strong)]"
         >
-          {COPY['A-02']}{' '}
-          <span className="[font:var(--text-subtitle-st1-m)] text-[color:var(--color-font-sub-text)]">
+          {COPY['A-02']}
+          <span className="[font:var(--text-subtitle-st1-m)] [font-weight:var(--font-weight-regular)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-sub-text)]">
             ({count})
           </span>
         </h2>
@@ -73,7 +73,7 @@ export function CommentsSection({ projectId, count, locale, timeZone }: Comments
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="cursor-pointer border-0 bg-transparent p-0 [font:var(--text-body-b2-r)] text-[color:var(--color-font-sub-text)] underline"
+            className="cursor-pointer border-0 bg-transparent p-0 [font:var(--text-body-b2-r)] tracking-[var(--letter-spacing-body-b1)] text-[color:var(--color-font-sub-text)] underline"
           >
             {COPY['A-03']}
           </button>
@@ -85,25 +85,24 @@ export function CommentsSection({ projectId, count, locale, timeZone }: Comments
           {shown.map((comment) => (
             <li
               key={comment.id}
-              className="flex gap-[var(--space-gap-4)] rounded-[var(--radius-node)] bg-[color:var(--color-fill-neutral-weak)] p-[var(--space-padding-8)]"
+              className="flex min-h-[var(--size-agora-comment-height)] items-center gap-[var(--space-gap-4)] rounded-[var(--radius-agora-comment)] bg-[color:var(--color-background-lower)] p-[var(--space-padding-8)]"
             >
-              <AuthorAvatar
-                creator={comment.author}
-                sizeClass="size-[var(--size-avatar-comment)]"
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-padding-2)]">
-                <p className="m-0 flex items-baseline gap-[var(--space-padding-3)]">
+              <span className="box-border inline-flex size-[var(--size-avatar-comment)] shrink-0 self-start overflow-hidden rounded-[var(--radius-max)] border-[length:var(--stroke-weight-default)] border-solid border-[color:var(--color-agora-avatar-ring)]">
+                <AuthorAvatar creator={comment.author} sizeClass="size-full" />
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-gap-2)] self-center">
+                <p className="m-0 flex items-center gap-[var(--space-padding-3)]">
                   <span className="[font:var(--text-subtitle-st2-m)] tracking-[var(--letter-spacing-subtitle-st2)] text-[color:var(--color-font-strong)]">
                     {comment.author.displayName}
                   </span>
                   <time
                     dateTime={comment.createdAt}
-                    className="[font:var(--text-body-b2-r)] text-[color:var(--color-font-helper-text)]"
+                    className="[font:var(--text-body-b2-r)] tracking-[var(--letter-spacing-body-b1)] text-[color:var(--color-font-helper-text)]"
                   >
                     {formatCommentDate(comment.createdAt, locale, timeZone)}
                   </time>
                 </p>
-                <p className="m-0 [font:var(--text-body-b1-r)] break-words text-[color:var(--color-font-sub-text)]">
+                <p className="m-0 [font:var(--text-body-b1-r)] tracking-[var(--letter-spacing-body-b1)] break-words text-[color:var(--color-gray-700)]">
                   {comment.body}
                 </p>
               </div>
