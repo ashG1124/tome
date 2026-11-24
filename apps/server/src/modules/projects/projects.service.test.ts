@@ -27,12 +27,15 @@ describe('toSummary', () => {
     expect(toSummary(row({ coverAnswerId: 'a1' })).coverThumbUrl).toBe('/assets/answers/a1/thumb');
   });
 
-  it('includes remixPartner with a null avatar only when present', () => {
+  it('includes remixPartner only when present, with an avatar url only when it has an image', () => {
     const partner = { id: 'c1', kind: 'persona' as const, displayName: 'Mina', bio: null };
-    expect(toSummary(row({ remixPartner: partner })).remixPartner).toEqual({
+    expect(toSummary(row({ remixPartner: { ...partner, avatarKey: null } })).remixPartner).toEqual({
       ...partner,
       avatarUrl: null,
     });
+    expect(
+      toSummary(row({ remixPartner: { ...partner, avatarKey: 'avatars/c1.jpg' } })).remixPartner,
+    ).toEqual({ ...partner, avatarUrl: '/assets/creators/c1/avatar' });
     expect('remixPartner' in toSummary(row())).toBe(false);
   });
 

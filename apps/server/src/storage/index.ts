@@ -1,6 +1,7 @@
 export { LocalObjectStorage, LOCAL_ASSET_PREFIX } from './local-object-storage';
 export {
   answerImageKey,
+  avatarImageKey,
   IMAGE_FORMATS,
   type ImageMimeType,
   OBJECT_STORAGE,

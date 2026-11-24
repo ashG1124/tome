@@ -38,6 +38,8 @@ const BaseEnvSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   // 이미지 서명 URL 수명(초)
   ASSET_URL_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
+  // 시드 스크립트(db:seed)만 쓴다: 시안 이미지 폴더(seed/projects·seed/avatars 가 든 곳). 없으면 기본 위치를 본다.
+  SEED_ASSETS_DIR: z.string().min(1).optional(),
 });
 
 export const EnvSchema = BaseEnvSchema.superRefine((env, ctx) => {

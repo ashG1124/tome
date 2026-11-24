@@ -40,7 +40,7 @@ const DERIVED_ORIGIN_SELECT = {
       finishedAt: true,
       deletedAt: true,
       hiddenAt: true,
-      owner: { select: { id: true, kind: true, displayName: true, bio: true } },
+      owner: { select: { id: true, kind: true, displayName: true, bio: true, avatarKey: true } },
     },
   },
   derivedFromAnswer: {

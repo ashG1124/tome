@@ -11,18 +11,25 @@ export interface LoadSummary {
   answers: number;
   events: number;
   comments: number;
+  favorites: number;
 }
 
 const json = (value: unknown): Prisma.InputJsonValue => value as Prisma.InputJsonValue;
 
-/** 계정 13개(seed 5·visitor 5·persona 3)를 고정 id 로 upsert 한다. id·kind·seedOrder 는 그대로, 이름·소개만 바뀐다. */
-export async function upsertSeedCreators(tx: SeedTx): Promise<number> {
+/** 계정 14개(seed 5·visitor 5·persona 4, persona 4번 = 쇼케이스)를 고정 id 로 upsert 한다. id·kind·seedOrder 는 그대로, 이름·소개·프로필 이미지가 바뀐다. */
+export async function upsertSeedCreators(
+  tx: SeedTx,
+  avatars: ReadonlyMap<string, string> = new Map(),
+): Promise<number> {
   for (const creator of SEED_CREATORS) {
+    // 프로필 이미지는 이번에 올린 것만 이어 준다. 못 올렸으면(자산 폴더 없음) 지금 값을 그대로 둔다.
+    const avatarKey = avatars.get(creator.id);
     const fields = {
       kind: creator.kind,
       displayName: creator.displayName,
       bio: creator.bio,
       seedOrder: creator.seedOrder,
+      ...(avatarKey ? { avatarKey } : {}),
     };
     await tx.creator.upsert({
       where: { id: creator.id },
@@ -49,7 +56,9 @@ export async function upsertSeedTopics(tx: SeedTx): Promise<number> {
 /**
  * 주어진 창작자(seed 또는 persona)의 시드 콘텐츠를 계획과 같은 값으로 되돌린다.
  * 고정 id 로 upsert 하고 계획에 없는 세트·답변·이벤트는 지우므로 여러 번 돌려도 같다(중복 0).
+ * 이 창작자들의 즐겨찾기도 계획과 같게 맞춘다. 이 창작자들이 쓴 시드 댓글은 남의 프로젝트에 달려 있어도 다시 넣는다.
  * 다른 사람이 남긴 댓글·즐겨찾기·조회 이벤트는 건드리지 않는다(그 정리는 리셋이 한다).
+ * 파생 원작(seed 프로젝트)은 같은 호출로 넣거나 이미 있어야 한다.
  * 토픽(Topic) 행은 호출 전에 upsertSeedTopics 로 있어야 한다.
  */
 export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise<LoadSummary> {
@@ -61,7 +70,10 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
   const setIds = new Set(sets.map((s) => s.id));
   const answers = plan.answers.filter((a) => setIds.has(a.setId));
   const events = plan.events.filter((e) => owners.has(e.creatorId));
-  const comments = plan.comments.filter((c) => projectIds.has(c.projectId));
+  const comments = plan.comments.filter(
+    (c) => projectIds.has(c.projectId) || owners.has(c.authorId),
+  );
+  const favorites = plan.favorites.filter((f) => owners.has(f.creatorId));
   const topicRows = await tx.topic.findMany({ select: { id: true, seedOrder: true } });
   const topicBySeed = new Map(plan.topics.map((t) => [t.id, t.seedOrder]));
   const topicIdByOrder = new Map(topicRows.map((t) => [t.seedOrder, t.id]));
@@ -83,19 +95,21 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
     const topicOrder = project.topicId ? topicBySeed.get(project.topicId) : undefined;
     const fields = {
       ownerId: project.ownerId,
-      kind: 'original' as const,
+      kind: project.kind,
       title: project.title,
-      status: 'finished' as const,
+      status: project.status,
       finishedAt: project.finishedAt,
       postedAt: project.postedAt,
       selectionReason: project.selectionReason,
-      derivedFromProjectId: null,
+      derivedFromProjectId: project.derivedFromProjectId,
+      // 원작 답변은 아래 답변 적재 뒤에 잇는다(처음 적재 때 아직 없을 수 있다).
       derivedFromAnswerId: null,
-      remixPartnerId: null,
+      remixPartnerId: project.remixPartnerId,
+      // 상대 스냅샷은 처음 Connection 을 볼 때 서버가 고정한다(remix.service pinnedSnapshotId).
       remixPartnerSnapshotId: null,
       topicId: topicOrder === undefined ? null : (topicIdByOrder.get(topicOrder) ?? null),
       shelfPosition: project.shelfPosition,
-      lastEditedAt: project.finishedAt,
+      lastEditedAt: project.lastEditedAt,
       createdAt: project.createdAt,
       deletedAt: null,
       hiddenAt: null,
@@ -150,8 +164,8 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
       model: 'seed',
       isSample: false,
       sampleResultId: null,
-      copiedFromAnswerId: null,
-      pinned: false,
+      copiedFromAnswerId: answer.copiedFromAnswerId,
+      pinned: answer.pinned,
       createdById: answer.createdById,
       createdAt: answer.createdAt,
       acceptedAt: answer.status === 'accepted' ? answer.createdAt : null,
@@ -166,7 +180,10 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
   for (const project of projects) {
     await tx.project.update({
       where: { id: project.id },
-      data: { coverAnswerId: project.coverAnswerId },
+      data: {
+        coverAnswerId: project.coverAnswerId,
+        derivedFromAnswerId: project.derivedFromAnswerId,
+      },
     });
   }
 
@@ -195,6 +212,9 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
     });
   }
 
+  await tx.favorite.deleteMany({ where: { creatorId: { in: creatorIds } } });
+  await tx.favorite.createMany({ data: favorites });
+
   await tx.event.createMany({
     data: events.map((e) => ({ ...e, payload: json(e.payload) })),
     skipDuplicates: true,
@@ -206,5 +226,6 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
     answers: answers.length,
     events: events.length,
     comments: comments.length,
+    favorites: favorites.length,
   };
 }

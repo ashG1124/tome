@@ -10,7 +10,7 @@ import {
   runGenerate,
   type RunOptions,
 } from '../../scripts/generate-seed-results';
-import { CREATOR_SPECS } from './specs';
+import { CREATOR_SPECS, needsOwnImage } from './specs';
 
 /** 호출 수를 세는 mock. AI·네트워크 호출은 없다. */
 class CountingAi extends MockAiProvider {
@@ -43,8 +43,9 @@ class CountingAi extends MockAiProvider {
   }
 }
 
-const PROJECT_COUNT = CREATOR_SPECS.reduce((n, c) => n + c.projects.length, 0);
-const PRESET_PROJECTS = CREATOR_SPECS.flatMap((c) => c.projects).filter((p) => p.presetKey);
+const OWN_IMAGE_PROJECTS = CREATOR_SPECS.flatMap((c) => c.projects).filter(needsOwnImage);
+const PROJECT_COUNT = OWN_IMAGE_PROJECTS.length;
+const PRESET_PROJECTS = OWN_IMAGE_PROJECTS.filter((p) => p.presetKey);
 
 describe('generate-seed-results (dry-run, mock provider)', () => {
   let dir: string;
@@ -102,15 +103,13 @@ describe('generate-seed-results (dry-run, mock provider)', () => {
       ).toBeGreaterThan(0);
     }
     // 프로젝트 이미지가 모두 있고, 프리셋 첫 프로젝트는 대체 결과와 같은 파일이다.
-    for (const creator of CREATOR_SPECS) {
-      for (const project of creator.projects) {
-        expect(
-          (await stat(join(dir, 'project-images', `${project.key}.jpg`))).size,
-        ).toBeGreaterThan(0);
-        expect(
-          (await stat(join(dir, 'project-images', `${project.key}.thumb.jpg`))).size,
-        ).toBeGreaterThan(0);
-      }
+    for (const project of OWN_IMAGE_PROJECTS) {
+      expect((await stat(join(dir, 'project-images', `${project.key}.jpg`))).size).toBeGreaterThan(
+        0,
+      );
+      expect(
+        (await stat(join(dir, 'project-images', `${project.key}.thumb.jpg`))).size,
+      ).toBeGreaterThan(0);
     }
     for (const project of PRESET_PROJECTS) {
       const a = await readFile(join(dir, 'project-images', `${project.key}.jpg`));

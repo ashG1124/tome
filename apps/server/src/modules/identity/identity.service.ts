@@ -1,3 +1,4 @@
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { Injectable } from '@nestjs/common';
 import {
   type CompareEntry,
@@ -34,7 +35,7 @@ function toCreatorSummary(row: IdentityCreatorRow): CreatorSummary {
     kind: row.kind,
     displayName: row.displayName,
     bio: row.bio,
-    avatarUrl: null,
+    avatarUrl: creatorAvatarUrl(row),
   };
 }
 

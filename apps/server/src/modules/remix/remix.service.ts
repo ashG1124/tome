@@ -12,6 +12,7 @@ import {
 } from '@tome/shared';
 import { AppError } from '../../common';
 import { AgoraService } from '../agora/agora.service';
+import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { EventsService } from '../events/events.service';
 import { IdentityService } from '../identity/identity.service';
 import type { AuthContext } from '../session/auth.decorators';
@@ -32,7 +33,7 @@ function toSummary(row: CreatorRow): CreatorSummary {
     kind: row.kind,
     displayName: row.displayName,
     bio: row.bio,
-    avatarUrl: null,
+    avatarUrl: creatorAvatarUrl(row),
   };
 }
 
@@ -104,7 +105,7 @@ export class RemixService {
       id: row.id,
       displayName: row.displayName,
       bio: row.bio,
-      avatarUrl: null,
+      avatarUrl: creatorAvatarUrl(row),
       favorite: favorites.has(row.id),
       provisional: snapshots.get(row.id)?.provisional ?? true,
     }));
