@@ -75,7 +75,11 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     !!data.output &&
     !!data.answerId &&
     !!navigation.history?.canComment(data.setId, data.answerId, data.output.id);
-  const canEdit = !!data.output && !!navigation.editor?.canOpen(data.setId, data.output.id);
+  // 불일치 노드는 펼쳐 보기만 한다(F-003). 노드 도구의 편집 버튼은 두지 않고 카드를 눌러 연다.
+  const canEdit =
+    !!data.output &&
+    data.output.kind !== 'mismatch' &&
+    !!navigation.editor?.canOpen(data.setId, data.output.id);
   const role = openRole(navigation.editor?.selected, data.setId, data.output, data.groupPosition);
   const editing = role === 'open';
   const draft = navigation.editor?.draft;

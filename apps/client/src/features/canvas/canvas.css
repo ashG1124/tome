@@ -735,10 +735,6 @@
 .canvas-card--output:not(.canvas-card--open, .canvas-card--row):active {
   transform: scale(0.985);
 }
-.canvas-card--criterion,
-.canvas-card--mismatch {
-  cursor: default;
-}
 .canvas-card[data-covered] {
   visibility: hidden;
 }

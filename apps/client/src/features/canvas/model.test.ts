@@ -202,6 +202,37 @@ it('binds output nodes and read-only verification lists to the displayed answer 
   expect(outputs.every((node) => node.data.onRetry === undefined)).toBe(true);
 });
 
+it('leaves room for the not-measured note so skipped criteria rows do not overlap', () => {
+  const criteria: Node[] = [1, 2].map((n) => ({
+    id: `v${n}`,
+    kind: 'criterion',
+    stage: 'verify',
+    text: 'Short',
+    enabled: true,
+    parentIds: [],
+  }));
+  const answer = {
+    id: 'answer',
+    setId: set.id,
+    number: 1,
+    status: 'accepted',
+    imageUrl: '/a',
+    nodes: { schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [keyword] },
+    verification: { status: 'skipped', criteria, mismatches: [] },
+  } as unknown as NonNullable<PromptSet['latestAnswer']>;
+  const y = (status: 'skipped' | 'done') => {
+    const graph = buildCanvas(
+      [{ ...set, latestAnswer: { ...answer, verification: { ...answer.verification!, status } } }],
+      undefined,
+      labels,
+      geometry,
+    );
+    const at = (id: string) => graph.nodes.find((node) => node.data.output?.id === id)!.position.y;
+    return at('v2') - at('v1');
+  };
+  expect(y('skipped') - y('done')).toBe(21);
+});
+
 it('draws step pills, group labels and joins priority rows into one card', () => {
   const rows: Node[] = [1, 2, 3].map((n) => ({
     id: `s${n}`,

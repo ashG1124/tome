@@ -20,7 +20,9 @@ export function orderedAnswers(answers: readonly AnswerSummary[]): AnswerSummary
     (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.createdAt.localeCompare(b.createdAt),
   );
 }
-const answerKey = (token: string | null, id: string) => ['canvas-answer', token, id] as const;
+/** 캔버스에 보이는 답변(버전) 캐시 키. 검증 기록 저장도 이 캐시를 고친다. */
+export const answerKey = (token: string | null, id: string) =>
+  ['canvas-answer', token, id] as const;
 
 export function useAnswerHistory(
   projectId: string,

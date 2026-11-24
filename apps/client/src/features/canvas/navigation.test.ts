@@ -16,4 +16,14 @@ describe('openRole', () => {
     expect(openRole(priority, 's1', { id: 'p3', kind: 'priority' }, 'last')).toBe('covered');
     expect(openRole(priority, 's1', { id: 'd1', kind: 'dataType' }, 'only')).toBeNull();
   });
+  it('검증 기준도 묶음 첫 줄이 펼쳐지고, 불일치는 그 노드만 펼쳐진다', () => {
+    const criterion = { setId: 's1', nodeId: 'v2', kind: 'criterion' };
+    expect(openRole(criterion, 's1', { id: 'v1', kind: 'criterion' }, 'first')).toBe('open');
+    expect(openRole(criterion, 's1', { id: 'v2', kind: 'criterion' }, 'last')).toBe('covered');
+    expect(openRole(criterion, 's1', { id: 'm1', kind: 'mismatch' }, 'only')).toBeNull();
+    const mismatch = { setId: 's1', nodeId: 'm2', kind: 'mismatch' };
+    expect(openRole(mismatch, 's1', { id: 'm1', kind: 'mismatch' }, 'first')).toBeNull();
+    expect(openRole(mismatch, 's1', { id: 'm2', kind: 'mismatch' }, 'last')).toBe('open');
+    expect(openRole(mismatch, 's1', { id: 'v1', kind: 'criterion' }, 'first')).toBeNull();
+  });
 });

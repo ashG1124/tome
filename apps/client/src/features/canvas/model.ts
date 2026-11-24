@@ -70,6 +70,8 @@ const LAYOUT = {
   /** 묶음 행(우선순위·검증 기준) 사이 간격과 맨 위·맨 아래 안쪽 여백 */
   rowGap: 12,
   rowEdge: 20,
+  /** 카드 아래 작은 안내 한 줄(Not measured, 14px × 1.5). 5단계가 측정 전(skipped)이면 줄마다 붙는다. */
+  note: 21,
   /** 답변 그림 비율 11:7(canvas.css .canvas-image-slot). 파생 2열에서 위 카드 높이를 어림해 아래 카드를 놓는 데 쓴다. */
   answerAspect: 340 / 520,
   /** 열 맨 위(손잡이)에서 답변 카드 맨 앞 장 위쪽까지. 시안 1679:11606(카드 06 y369 − 열 y164) */
@@ -411,7 +413,10 @@ export function buildCanvas(
             },
             { y: cursor, minHeight: false },
           );
-          const height = estimateHeight(node, groupPosition, nodeWidth);
+          // 측정 전(skipped) 안내 줄만큼 높여야 검증 기준 줄끼리 겹치지 않는다(#212).
+          const height =
+            estimateHeight(node, groupPosition, nodeWidth) +
+            (state === 'skipped' ? LAYOUT.note : 0);
           cursor += height + (isRow(node) && !last ? 0 : LAYOUT.cardGap);
           previousKey = group.key;
         });
