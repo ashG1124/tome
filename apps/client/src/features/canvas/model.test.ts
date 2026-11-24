@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Node, PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
 import { fakeDeletedOriginDerivedFrom } from '../../shared/api/fake/agora';
 import {
+  stackColumn,
   buildCanvas,
   keyboardTarget,
   visibleStage,
@@ -327,5 +328,39 @@ describe('derive columns', () => {
     expect(headings(nodes)).toEqual([]);
     expect(nodes.some((n) => n.id === 'set-a:origin-answer')).toBe(false);
     expect(nodes.find((n) => n.id === 'set-a:answer')?.data.row).toBe(0);
+  });
+});
+
+describe('stackColumn (#215)', () => {
+  it('측정 높이로 카드 20·묶음 사이 40·소제목 아래 29 간격을 다시 맞춘다', () => {
+    const moved = stackColumn([
+      { id: 'g1', y: 100, height: 21, kind: 'heading' },
+      // 어림(61)보다 실제가 두 줄(88)이라 다음 카드가 겹쳐 있던 상황
+      { id: 'a', y: 129, height: 88, kind: 'card' },
+      { id: 'b', y: 210, height: 61, kind: 'card' },
+      { id: 'g2', y: 311, height: 21, kind: 'heading' },
+      { id: 'c', y: 340, height: 61, kind: 'card' },
+    ]);
+    expect(moved.get('a')).toBeUndefined();
+    expect(moved.get('b')).toBe(129 + 88 + 20);
+    expect(moved.get('g2')).toBe(237 + 61 + 40);
+    expect(moved.get('c')).toBe(338 + 29);
+  });
+  it('이어 붙는 줄(우선순위·검증 기준) 사이는 0, 묶음 끝 줄 뒤는 카드 간격', () => {
+    const moved = stackColumn([
+      { id: 'r1', y: 0, height: 50, kind: 'card', row: true, groupPosition: 'first' },
+      { id: 'r2', y: 60, height: 40, kind: 'card', row: true, groupPosition: 'last' },
+      { id: 'x', y: 100, height: 61, kind: 'card' },
+    ]);
+    expect(moved.get('r2')).toBe(50);
+    expect(moved.get('x')).toBe(50 + 40 + 20);
+  });
+  it('이미 규칙대로면 아무것도 옮기지 않는다', () => {
+    expect(
+      stackColumn([
+        { id: 'a', y: 0, height: 61, kind: 'card' },
+        { id: 'b', y: 81, height: 61, kind: 'card' },
+      ]).size,
+    ).toBe(0);
   });
 });
