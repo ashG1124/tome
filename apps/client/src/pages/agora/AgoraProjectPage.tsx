@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY } from '../../shared/copy';
-import { BusyMark, ErrorNotice } from '../../shared/ui';
+import { BusyMark, ErrorNotice, Icon } from '../../shared/ui';
 import { deriveFailure, derivedFromView } from './agora';
 import { AgoraFrame } from './AgoraFrame';
 import { AgoraImage } from './AgoraImage';
@@ -52,36 +52,48 @@ export function AgoraProjectPage() {
         />
       ) : null}
       {data ? (
-        <div className="flex items-start gap-[var(--space-agora-columns)]">
-          <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-padding-8)]">
-            <div
-              data-testid="agora-hero"
-              className="relative h-[var(--size-agora-hero-height)] overflow-hidden [mask-composite:intersect] [mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent),linear-gradient(to_bottom,transparent,black_14%,black_86%,transparent)]"
-            >
-              <AgoraImage path={data.coverImageUrl} />
+        <div className="-mt-[var(--space-agora-detail-overlap)] flex items-start gap-[var(--space-agora-detail-gap)] px-[var(--space-header-x)]">
+          <div className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gutter)] pb-[var(--space-agora-detail-bottom)]">
+            {/* 큰 그림(3099:130761): 헤더 뒤까지 깔리고 가장자리가 흰색으로 사라진다. 아래 작가 줄은 그림 위에 겹쳐 놓인다. */}
+            <div className="relative h-[var(--size-agora-detail-hero-space)]">
+              <div
+                data-testid="agora-hero"
+                className="absolute -top-[var(--space-agora-detail-hero-top)] -left-[var(--space-header-x)] -z-10 h-[var(--size-agora-detail-hero-height)] w-[calc(100%+var(--space-header-x))] overflow-hidden"
+              >
+                <AgoraImage path={data.coverImageUrl} />
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-[image:var(--gradient-agora-hero-fade)]"
+                />
+              </div>
             </div>
-            <p className="m-0 flex items-center gap-[var(--space-padding-3)] [font:var(--text-subtitle-st1-m)] text-[color:var(--color-font-strong)]">
-              <AuthorAvatar creator={data.author} sizeClass="size-[var(--size-avatar-other)]" />
-              {data.author.displayName}
-            </p>
-            <div className="flex items-end justify-between gap-[var(--space-gap-5)]">
-              <div className="flex min-w-0 flex-col gap-[var(--space-padding-2)]">
-                <h1 className="m-0 [font:var(--text-heading-t1)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-strong)]">
+            <div className="-mt-[var(--grid-gutter)] flex items-end justify-between gap-[var(--space-gap-5)]">
+              <div className="flex min-w-0 flex-col gap-[var(--space-gap-4)]">
+                <div className="flex items-center gap-[var(--space-gap-4)]">
+                  <AuthorAvatar
+                    creator={data.author}
+                    sizeClass="size-[var(--size-agora-detail-avatar)]"
+                  />
+                  <p className="m-0 [font:var(--text-heading-h2)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-main-text)]">
+                    {data.author.displayName}
+                  </p>
+                  {source?.kind === 'source' ? (
+                    <p className="m-0 [font:var(--text-body-b2-r)] text-[color:var(--color-font-sub-text)]">
+                      {COPY['A-06']}{' '}
+                      <Link to={`/agora/projects/${encodeURIComponent(source.projectId)}`}>
+                        {source.title}
+                      </Link>
+                    </p>
+                  ) : null}
+                  {source?.kind === 'deleted' ? (
+                    <p className="m-0 [font:var(--text-body-b2-r)] text-[color:var(--color-font-sub-text)]">
+                      {COPY['A-06']} {COPY['S-06']}
+                    </p>
+                  ) : null}
+                </div>
+                <h1 className="m-0 [font:var(--text-agora-poppins-title)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-main-text)]">
                   {data.project.title}
                 </h1>
-                {source?.kind === 'source' ? (
-                  <p className="m-0 [font:var(--text-body-b2-r)] text-[color:var(--color-font-sub-text)]">
-                    {COPY['A-06']}{' '}
-                    <Link to={`/agora/projects/${encodeURIComponent(source.projectId)}`}>
-                      {source.title}
-                    </Link>
-                  </p>
-                ) : null}
-                {source?.kind === 'deleted' ? (
-                  <p className="m-0 [font:var(--text-body-b2-r)] text-[color:var(--color-font-sub-text)]">
-                    {COPY['A-06']} {COPY['S-06']}
-                  </p>
-                ) : null}
               </div>
               <button
                 type="button"
@@ -91,16 +103,13 @@ export function AgoraProjectPage() {
                 disabled={derive.isPending}
                 aria-busy={derive.isPending || undefined}
                 className={[
-                  'inline-flex h-[var(--size-derive-button-height)] shrink-0 cursor-pointer items-center gap-[var(--space-padding-3)]',
-                  'rounded-[var(--radius-max)] border-0 bg-[color:var(--color-fill-brand)] px-[var(--space-padding-8)]',
-                  '[font:var(--text-subtitle-st2-m)] tracking-[var(--letter-spacing-subtitle-st2)] text-[color:var(--color-font-strong)]',
+                  'inline-flex h-[var(--size-derive-button-height-figma)] shrink-0 cursor-pointer items-center gap-[var(--space-gap-3)]',
+                  'rounded-[var(--radius-derive-button)] border-0 bg-[color:var(--color-fill-brand)] py-[var(--space-derive-button-y)] pr-[var(--space-derive-button-right)] pl-[var(--space-derive-button-left)]',
+                  '[font:var(--text-subtitle-st2-m)] tracking-[var(--letter-spacing-subtitle-st2)] text-[color:var(--color-font-main-text)]',
                   'disabled:cursor-not-allowed disabled:bg-[color:var(--color-gray-20)] disabled:text-[color:var(--color-font-disable)]',
                 ].join(' ')}
               >
-                <span
-                  aria-hidden="true"
-                  className="size-[var(--space-padding-4)] bg-current [clip-path:polygon(0_0,100%_50%,0_100%)]"
-                />
+                <Icon name="go-to-derive-play" size={24} />
                 {COPY['A-05']}
                 <BusyMark busy={derive.isPending} />
               </button>
@@ -115,7 +124,7 @@ export function AgoraProjectPage() {
           </div>
           <aside
             aria-labelledby="agora-derivatives"
-            className="flex w-[var(--size-agora-side)] shrink-0 flex-col gap-[var(--space-gap-5)]"
+            className="flex w-[var(--size-agora-side)] shrink-0 flex-col gap-[var(--space-agora-derivative-title-gap)]"
           >
             <h2
               id="agora-derivatives"
@@ -124,9 +133,9 @@ export function AgoraProjectPage() {
               {COPY['A-04']}
             </h2>
             {data.derivatives.length > 0 ? (
-              <ul className="m-0 flex list-none flex-col gap-[var(--grid-gutter)] p-0">
+              <ul className="m-0 -mx-[var(--space-padding-2)] -my-[var(--space-padding-2)] flex max-h-[calc(100dvh-var(--space-agora-derivative-list-top)-var(--space-agora-detail-bottom))] list-none flex-col gap-[var(--grid-gutter)] overflow-y-auto p-[var(--space-padding-2)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {data.derivatives.map((card) => (
-                  <li key={card.id}>
+                  <li key={card.id} className="shrink-0">
                     <ProjectTile card={card} variant="derivative" />
                   </li>
                 ))}
