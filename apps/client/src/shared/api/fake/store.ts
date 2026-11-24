@@ -314,7 +314,17 @@ function resolvePrompt(body: CreateProjectRequest): string | undefined {
 // ---- 서가 ----
 
 export function listProjects(s: FakeStore): ProjectSummary[] {
-  return shelf(s).map((p) => ({ ...p.summary }));
+  return shelf(s).map((p) => ({ ...p.summary, coverThumbUrl: thumbOf(p) }));
+}
+
+/** 서가 썸네일: 대표 버전이 있으면 그것, 없으면(작업 중) 가장 최근에 확정된 답변의 축소본(서버와 같다, #211). */
+function thumbOf(record: ProjectRecord): string | null {
+  if (record.summary.coverThumbUrl !== null) return record.summary.coverThumbUrl;
+  const latest = answersOf(record).reduce<Answer | undefined>(
+    (best, answer) => (!best || answer.createdAt >= best.createdAt ? answer : best),
+    undefined,
+  );
+  return latest?.thumbUrl ?? null;
 }
 
 /** 새 프로젝트는 서가 맨 앞(0번). 프롬프트가 있으면 Page 0 에 세트 1개와 job 까지 만든다. */
