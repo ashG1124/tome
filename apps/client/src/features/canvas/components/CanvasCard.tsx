@@ -48,6 +48,15 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     pointing.current = false;
     navigation.focus(id, !fromPointer);
   };
+  /** 펼치기 전 닫힌 카드 높이를 캔버스에 적어 두고 연다. 펼친 노드는 이 높이에서 늘어나고, 접을 때 이 높이로 돌아간다. */
+  const openFrom = (card: Element | null) => {
+    if (!data.output) return;
+    if (card instanceof HTMLElement)
+      card
+        .closest<HTMLElement>('.generation-canvas')
+        ?.style.setProperty('--node-closed-height', `${card.offsetHeight}px`);
+    navigation.editor?.open(data.setId, data.output.id);
+  };
   const markPointer = () => {
     pointing.current = true;
     // 포커스가 바뀌지 않은 누름이면 다음 키보드 포커스에 남지 않게 바로 지운다(포커스는 이보다 먼저 온다).
@@ -121,7 +130,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
             return;
           if (editing) return;
           if (data.output && navigation.editor?.canOpen(data.setId, data.output.id))
-            navigation.editor.open(data.setId, data.output.id);
+            openFrom(event.currentTarget);
         }}
         onKeyDown={(event) => {
           if (
@@ -193,7 +202,9 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
                 aria-label={navigation.editor!.label}
                 aria-expanded={editing}
                 data-active={editing || undefined}
-                onClick={() => navigation.editor?.open(data.setId, data.output!.id)}
+                onClick={() =>
+                  openFrom(document.querySelector(`[data-canvas-card="${CSS.escape(id)}"]`))
+                }
               >
                 <Icon name="edit" size={24} />
               </button>

@@ -102,6 +102,8 @@ function EditorSession({
   onApplyingChange,
   previewOpen,
   onPreviewOpenChange,
+  onPreviewAutoOpen,
+  closing = false,
 }: {
   base: Answer;
   /** 지금 펼친 노드. 노드를 접어도 세션(고친 값·미리보기)은 남는다. */
@@ -116,6 +118,10 @@ function EditorSession({
   onApplyingChange: (value: boolean) => void;
   previewOpen: boolean;
   onPreviewOpenChange: (open: boolean) => void;
+  /** 미리보기가 만들어질 때 Preview 를 연다. 사용자가 닫아 둔 상태면 열지 않는다. */
+  onPreviewAutoOpen: () => void;
+  /** 펼친 노드가 접히는 중 */
+  closing?: boolean;
 }) {
   const labels = { ...NODE_EDITOR_COPY, ...options.labels };
   const client = useQueryClient();
@@ -145,7 +151,7 @@ function EditorSession({
   const previewStatus = editor.preview.status;
   useEffect(() => {
     if (previewStatus === 'generating' || previewStatus === 'ready' || previewStatus === 'error')
-      onPreviewOpenChange(true);
+      onPreviewAutoOpen();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 상태가 바뀔 때만 연다.
   }, [previewStatus]);
   const snapshotNodes = editor.snapshot.nodes;
@@ -177,6 +183,7 @@ function EditorSession({
               onReset={editor.reset}
               onClose={onClose}
               onComment={onComment}
+              closing={closing}
             />,
             slot,
           )
@@ -248,6 +255,15 @@ function PageCanvas({
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // 사용자가 Preview 를 직접 닫았으면, 미리보기를 다시 만들어도 저절로 열지 않는다(요청·결과는 그대로 둔다).
+  const previewDismissed = useRef(false);
+  const changePreviewOpen = useCallback((open: boolean) => {
+    previewDismissed.current = !open;
+    setPreviewOpen(open);
+  }, []);
+  const autoOpenPreview = useCallback(() => {
+    if (!previewDismissed.current) setPreviewOpen(true);
+  }, []);
   const [selected, setSelected] = useState<{ setId: string; nodeId: string; kind?: string }>();
   // 편집 세션(고친 값·미리보기)이 붙은 세트. 노드를 접어도 남고, Apply·버전 이동 때 끝난다.
   const [sessionSet, setSessionSet] = useState<string>();
@@ -457,7 +473,7 @@ function PageCanvas({
             canApply={false}
             stacked={false}
             open={previewOpen}
-            onOpenChange={setPreviewOpen}
+            onOpenChange={changePreviewOpen}
             onApply={async () => {}}
           />
         </div>
@@ -467,7 +483,9 @@ function PageCanvas({
           key={sessionBase.id}
           onApplyingChange={setEditingBusy}
           previewOpen={previewOpen}
-          onPreviewOpenChange={setPreviewOpen}
+          onPreviewOpenChange={changePreviewOpen}
+          onPreviewAutoOpen={autoOpenPreview}
+          closing={closing}
           base={sessionBase}
           nodeId={selected?.setId === sessionSet ? selected.nodeId : undefined}
           slot={selected?.setId === sessionSet ? slot : null}

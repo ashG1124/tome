@@ -586,14 +586,9 @@
   color: var(--color-font-main-text);
   letter-spacing: var(--letter-spacing-default);
 }
-/* 높이 0 → 내용 높이로 펼친다. React Flow 가 매 프레임 높이를 재서 아래 노드도 함께 밀린다. */
+/* 높이는 닫힌 카드 높이 → 내용 높이로 스크립트가 움직인다(useExpandHeight). 0까지 접히지 않아 제목이 사라지지 않는다. */
 .node-open-body {
-  display: grid;
-  grid-template-rows: 1fr;
-  animation: node-open-expand var(--motion-expand) var(--ease-out-soft) both;
-}
-.canvas-node-open-slot[data-closing] .node-open-body {
-  animation: node-open-collapse var(--motion-expand) var(--ease-out-soft) both;
+  overflow: hidden;
 }
 .node-open-inner {
   display: flex;
@@ -604,23 +599,20 @@
   overflow: hidden;
   padding: var(--canvas-node-open-padding-y);
 }
-@keyframes node-open-expand {
+/* 제목 아래 내용(탭·설명·휠·목록)만 부드럽게 나타나고 사라진다. 제목과 근거 문장은 그대로 보인다. */
+.node-open-title ~ * {
+  animation: node-open-fade-in var(--motion-expand) var(--ease-out-soft) both;
+}
+.canvas-node-open-slot[data-closing] .node-open-title ~ * {
+  animation: node-open-fade-out var(--motion-pop) var(--ease-out-soft) both;
+}
+@keyframes node-open-fade-in {
   from {
-    grid-template-rows: 0fr;
     opacity: 0;
   }
-  to {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
 }
-@keyframes node-open-collapse {
-  from {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
+@keyframes node-open-fade-out {
   to {
-    grid-template-rows: 0fr;
     opacity: 0;
   }
 }
@@ -854,9 +846,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .node-open-body,
+  .node-open-title ~ *,
   .node-open-tool,
-  .canvas-node-open-slot[data-closing] .node-open-body,
+  .canvas-node-open-slot[data-closing] .node-open-title ~ *,
   .canvas-node-open-slot[data-closing] .node-open-tool {
     animation: none;
   }
