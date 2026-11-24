@@ -102,7 +102,10 @@ for (let index = 1; index <= 8; index++)
 const pill = (width: number, partner: string | undefined, open: boolean) => () => (
   <div style={{ padding: 20 }}>
     <div style={{ width }}>
-      <RemixLabel partner={partner} open={open} />
+      <RemixLabel
+        partner={partner === undefined ? undefined : { displayName: partner, avatarUrl: null }}
+        open={open}
+      />
     </div>
   </div>
 );

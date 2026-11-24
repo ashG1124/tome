@@ -1,53 +1,72 @@
+/*
+ * 리믹스 Connection(1185:59843). 닫힌 표시는 노드 왼쪽 위 모서리에 걸친 60×60 갈고리 두 개(1187:61226),
+ * 열면 두 갈고리 사이에 주황 말풍선이 들어간다(1708:20784). 오른쪽 아래 갈고리는 표시 버튼이 그대로 맡는다.
+ */
 .canvas-connections {
   position: absolute;
-  top: calc(-1 * var(--canvas-node-surface-height) / 2);
-  right: 0;
+  top: calc(-1 * var(--space-connection-offset));
+  left: calc(-1 * var(--space-connection-offset));
   display: flex;
-}
-.canvas-connection:has(> button[aria-expanded='true']) {
-  z-index: 2;
 }
 .canvas-connection {
   position: relative;
   z-index: 1;
+  width: var(--size-connection);
+  height: var(--size-connection);
+}
+.canvas-connection[data-open] {
+  z-index: 2;
+}
+/* 말풍선이 옆 열 노드 밑에 깔리지 않게 연 노드를 위로 올린다 */
+.generation-canvas .react-flow__node:has(.canvas-connection[data-open]) {
+  z-index: 1000 !important;
+}
+/* 말풍선이 열린 동안 노드 도구(코멘트·펼치기)가 말풍선을 가리지 않게 숨긴다. 닫으면 다시 보인다 */
+.react-flow__node:has(.canvas-connection[data-open]) .canvas-node-tool {
+  visibility: hidden;
 }
 .canvas-connection-trigger {
   position: relative;
   display: block;
-  width: var(--canvas-node-surface-height);
-  height: var(--canvas-node-surface-height);
+  width: var(--size-connection);
+  height: var(--size-connection);
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
 }
+/* 갈고리 한 개(30×30, 굵기 4.8 · 안쪽 반지름 9 — connection-left 1705:20749). 오른쪽 아래 것은 180° 돌린 모양 */
+.canvas-connection-trigger::before,
+.canvas-connection-trigger::after,
+.canvas-connection-hook {
+  background: var(--color-tome-orange-5);
+  clip-path: polygon(
+    84% 0%,
+    84% 54%,
+    83.743% 57.916%,
+    82.978% 61.765%,
+    81.716% 65.481%,
+    79.981% 69%,
+    77.801% 72.263%,
+    75.213% 75.213%,
+    72.263% 77.801%,
+    69% 79.981%,
+    65.481% 81.716%,
+    61.765% 82.978%,
+    57.916% 83.743%,
+    54% 84%,
+    0% 84%,
+    0% 100%,
+    100% 100%,
+    100% 0%
+  );
+}
 .canvas-connection-trigger::before,
 .canvas-connection-trigger::after {
   content: '';
   position: absolute;
-  width: 50%;
-  height: 50%;
-  background: var(--color-tome-orange-5);
-  clip-path: polygon(
-    0% 83.33333%,
-    50% 83.33333%,
-    54.35087% 83.04816%,
-    58.6273% 82.19753%,
-    62.75611% 80.79598%,
-    66.66667% 78.86751%,
-    70.29205% 76.44511%,
-    73.57023% 73.57023%,
-    76.44511% 70.29205%,
-    78.86751% 66.66667%,
-    80.79598% 62.75611%,
-    82.19753% 58.6273%,
-    83.04816% 54.35087%,
-    83.33333% 50%,
-    83.33333% 0%,
-    100% 0%,
-    100% 100%,
-    0% 100%
-  );
+  width: var(--size-connection-hook);
+  height: var(--size-connection-hook);
 }
 .canvas-connection-trigger::before {
   top: 0;
@@ -58,6 +77,14 @@
   right: 0;
   transform: rotate(180deg);
 }
+.canvas-connection[data-open] .canvas-connection-trigger {
+  filter: drop-shadow(var(--shadow-connection-drop));
+}
+/* 왼쪽으로 열면 왼쪽 위 갈고리는 말풍선 쪽으로 옮겨 가고, 오른쪽으로 열면 오른쪽 아래 갈고리가 옮겨 간다 */
+.canvas-connection[data-open]:not([data-side='end']) .canvas-connection-trigger::before,
+.canvas-connection[data-open][data-side='end'] .canvas-connection-trigger::after {
+  visibility: hidden;
+}
 .canvas-connection :is(button):focus-visible {
   outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
   outline-offset: var(--focus-outline-offset);
@@ -65,50 +92,145 @@
 .canvas-connection-trigger:disabled {
   cursor: not-allowed;
 }
+
+/* 말풍선: 오른쪽 아래 끝이 표시 버튼의 오른쪽 아래 갈고리에 붙는다(Inner Container 1705:20748) */
 .canvas-connection-popover {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + var(--space-gap-3));
-  width: min(var(--canvas-answer-width), 70vw);
-  box-sizing: border-box;
-  padding: var(--space-padding-6);
-  border-radius: var(--radius-node);
-  background: var(--color-tome-orange-5);
-  color: var(--color-font-main-text);
-  box-shadow: var(--shadow-connection);
-  font: var(--text-body-b1-m);
-  overflow-wrap: anywhere;
-  max-height: min(calc(var(--canvas-node-surface-height) * 6), 60vh);
-  overflow-y: auto;
+  right: var(--size-connection-hook);
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-padding-2);
+  width: max-content;
+  filter: drop-shadow(var(--shadow-connection-drop));
 }
-.canvas-connection-popover header,
-.canvas-connection-actions {
+.canvas-connection[data-side='end'] .canvas-connection-popover {
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: var(--size-connection-hook);
+  flex-direction: column-reverse;
+  align-items: flex-start;
+}
+.canvas-connection-row {
+  display: flex;
+}
+.canvas-connection-hook {
+  flex: none;
+  width: var(--size-connection-hook);
+  height: var(--size-connection-hook);
+}
+.canvas-connection-hook[data-hook='start'] {
+  align-self: flex-start;
+}
+.canvas-connection-hook[data-hook='end'] {
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+.canvas-connection:not([data-side='end']) .canvas-connection-hook[data-hook='end'],
+.canvas-connection[data-side='end'] .canvas-connection-hook[data-hook='start'] {
+  display: none;
+}
+/* Message Container 1705:20751: 주황 면, 여백 8·10, 사이 12 */
+.canvas-connection-message {
   display: flex;
   align-items: center;
   gap: var(--space-gap-4);
-}
-.canvas-connection-popover header strong {
-  flex: 1;
-}
-.canvas-connection-popover button {
-  border: 0;
-  border-radius: var(--radius-max);
   padding: var(--space-padding-3) var(--space-padding-4);
-  background: var(--color-shadow-medium);
+  background: var(--color-tome-orange-5);
   color: var(--color-font-main-text);
-  font: inherit;
+}
+.canvas-connection-photo {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-avatar-remix);
+  height: var(--size-avatar-remix);
+  overflow: hidden;
+  border-radius: var(--radius-max);
+  background: var(--color-fill-brand-weak);
+  color: var(--color-font-sub-text);
+  font: var(--text-body-b2-m);
+}
+.canvas-connection-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 글 + 쪽 표시 점(1705:20753): 누르면 1쪽(예측) ↔ 2쪽(근거) */
+.canvas-connection-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-gap-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
 }
-.canvas-connection-popover button:disabled {
-  cursor: not-allowed;
+.canvas-connection-text {
+  display: flex;
+  align-items: center;
+  width: var(--size-connection-text-width);
+  min-height: var(--size-connection-text-height);
+  text-align: left;
+  font: var(--font-weight-medium) var(--font-size-c1) / var(--line-height-connection)
+    var(--font-family-contents);
+  letter-spacing: var(--letter-spacing-body-b1);
+  overflow-wrap: anywhere;
+}
+.canvas-connection-dots {
+  display: flex;
+  gap: var(--space-gap-1);
+}
+.canvas-connection-dots > span {
+  width: var(--size-connection-dot);
+  height: var(--size-connection-dot);
+  border-radius: var(--radius-max);
+  background: var(--color-font-on-fill);
+  opacity: var(--opacity-connection-dot-off);
+}
+.canvas-connection-dots > span[data-on] {
+  opacity: 1;
+}
+/* Apply 알약(1705:20758): DIM 면, 흰 글자, 여백 6·16 */
+.canvas-connection-pill {
+  flex: none;
+  padding: var(--space-gap-2) var(--space-padding-6);
+  border: 0;
+  border-radius: var(--radius-max);
+  background: var(--color-background-dim);
+  color: var(--color-font-on-fill);
+  font: var(--text-body-b1-r);
+  letter-spacing: var(--letter-spacing-body-b1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* 비활성은 공통 규칙(35 ②): 회색 면 + 흐린 글자 */
+.canvas-connection-pill:disabled {
+  background: var(--color-gray-20);
   color: var(--color-font-disable);
+  cursor: not-allowed;
 }
-.canvas-connection-help {
+/* 이유 한 줄(Apply 준비 중)·오류 문장. 시안에 없는 공통 상태 규칙(ADR-023)이라 말풍선 위에 작은 띠로 둔다 */
+.canvas-connection-note {
+  margin: 0;
+  padding: var(--space-padding-2) var(--space-padding-5);
+  border-radius: var(--radius-max);
+  background: var(--color-background-default);
+  color: var(--color-font-sub-text);
   font: var(--text-body-b2-r);
+  white-space: nowrap;
 }
-
-/* 첫 화면이 시안처럼 1단계부터 시작하므로, 왼쪽 두 열의 말풍선은 노드 왼쪽 끝에 맞춰 오른쪽으로 편다(화면 밖으로 안 나가게). */
-.canvas-connections:is([data-column='1'], [data-column='2']) .canvas-connection-popover {
-  right: auto;
-  left: calc(var(--canvas-node-surface-height) - var(--canvas-node-width));
+.canvas-connection-note[role='alert'] {
+  display: flex;
+  align-items: center;
+  gap: var(--space-gap-1);
+  max-width: var(--size-connection-text-width);
+  color: var(--color-peach-text);
+  white-space: normal;
 }
