@@ -26,7 +26,9 @@ export function DialogButton({
       className={[
         'box-border inline-flex w-[var(--size-dialog-button)] cursor-pointer items-center justify-center',
         'gap-[var(--space-padding-3)] rounded-[var(--radius-max)] border border-solid border-transparent',
-        'py-[var(--space-padding-3)] [font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-body-b1)]',
+        // 시안 높이 40 = 위아래 8 + 글자 24(1183:54990). 비활성 테두리 자리 1px 를 위아래 여백에서 뺀다.
+        'px-[var(--space-padding-7)] py-[calc(var(--space-padding-3)-var(--stroke-weight-light))]',
+        '[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-body-b1)]',
         variant === 'primary'
           ? 'bg-[color:var(--color-fill-neutral)] text-[color:var(--color-font-on-fill)]'
           : 'bg-[color:var(--color-shadow-weak)] text-[color:var(--color-font-main-text)]',

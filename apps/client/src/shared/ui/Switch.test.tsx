@@ -29,6 +29,18 @@ describe('Switch', () => {
     expect(sw.getAttribute('aria-checked')).toBe('false');
   });
 
+  it('시안처럼 바깥선 없이 면 색과 흰 손잡이만 있다(3182:176310)', () => {
+    render(<Controlled />);
+    const sw = screen.getByRole('switch', { name: 'Post it?' });
+    expect(sw.className).toContain('border-0');
+    expect(sw.className).not.toContain('border-[color:var(--color-border-input)]');
+    expect(sw.className).toContain('focus-visible:outline-[color:var(--color-border-input)]!');
+    expect(sw.className).toContain('data-[state=checked]:bg-[color:var(--color-tome-yellow-7)]');
+    const thumb = sw.firstElementChild as HTMLElement;
+    expect(thumb.className).toContain('size-[var(--size-switch-thumb)]');
+    expect(thumb.className).not.toContain('shadow');
+  });
+
   it('비활성이면 눌러도 바뀌지 않는다', () => {
     render(<Controlled disabled />);
     const sw = screen.getByRole('switch', { name: 'Post it?' });

@@ -48,11 +48,16 @@ function shelfCard(extra: Partial<ProjectSummary>): ReactNode {
 
 /** cases.ts 의 id → 그릴 화면 */
 export const renders: Record<string, () => ReactNode> = {
+  // 시안 Title Input-Modal(3182:176487) = 완료 모달 입력칸 모양(look="modal", #205)
   'title-input/default': () => (
-    <TitleInput aria-label="Title" value="" placeholder={SAMPLE} onChange={() => {}} />
+    <TitleInput look="modal" aria-label="Title" value="" placeholder={SAMPLE} onChange={() => {}} />
   ),
-  'title-input/writing': () => <TitleInput aria-label="Title" value={SAMPLE} onChange={() => {}} />,
-  'title-input/done': () => <TitleInput aria-label="Title" value={SAMPLE} onChange={() => {}} />,
+  'title-input/writing': () => (
+    <TitleInput look="modal" aria-label="Title" value={SAMPLE} onChange={() => {}} />
+  ),
+  'title-input/done': () => (
+    <TitleInput look="modal" aria-label="Title" value={SAMPLE} onChange={() => {}} />
+  ),
   'home-thumbnail/my-work': () => shelfCard({}),
   'home-thumbnail/remix': () =>
     shelfCard({
