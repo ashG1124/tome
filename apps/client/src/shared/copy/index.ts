@@ -137,10 +137,11 @@ export const COPY = {
   // ---- 생성 캔버스(#26): 확정 ID(#128).
   'CV-01': 'Generation canvas',
   'CV-02': 'Prompt',
-  'CV-03': 'Question analysis',
-  'CV-04': 'Search',
-  'CV-05': 'Evidence',
-  'CV-06': 'Draft',
+  // 단계 알약 이름: 시안 1679:10955 / 3924:67090 문구 그대로(#186)
+  'CV-03': 'Question Analysis',
+  'CV-04': 'Search for Materials',
+  'CV-05': 'Evidence Extraction',
+  'CV-06': 'Generate Draft',
   'CV-07': 'Verification',
   'CV-08': 'Answer {number}',
   'CV-09': 'Step {number}',
@@ -300,6 +301,10 @@ export const COPY = {
   'RC-06': 'Applied',
   G1: 'Finish a set first, then you can complete the project.',
   G2: "You're going a bit fast. Please wait a moment before trying again.",
+  // Figma 재정합(#186): 임시 ID. 시안 문구 그대로, 이름 자리는 {name}.
+  'FG-01': 'Hello, {name}. What shall we get started on?', // 프롬프트 바 자리 문구 1187:61881
+  'FG-02': 'Find a creator', // 리믹스 검색칸 자리 문구 1720:80397
+  'FG-03': 'Voice input', // 마이크 낭독 이름(시안에는 글자 없음)
 } as const;
 
 export type CopyKey = keyof typeof COPY;

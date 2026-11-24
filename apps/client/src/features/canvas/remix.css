@@ -106,3 +106,9 @@
 .canvas-connection-help {
   font: var(--text-body-b2-r);
 }
+
+/* 첫 화면이 시안처럼 1단계부터 시작하므로, 왼쪽 두 열의 말풍선은 노드 왼쪽 끝에 맞춰 오른쪽으로 편다(화면 밖으로 안 나가게). */
+.canvas-connections:is([data-column='1'], [data-column='2']) .canvas-connection-popover {
+  right: auto;
+  left: calc(var(--canvas-node-surface-height) - var(--canvas-node-width));
+}

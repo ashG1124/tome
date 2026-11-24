@@ -68,6 +68,9 @@ describe('WorkspaceHeader 리믹스 상대(#41)', () => {
       level: 1,
       name: `Studio desk lamp ${COPY['RX-04']} Lind`,
     });
-    expect(heading.querySelector('[aria-hidden="true"]')?.textContent).toBe('|');
+    // 구분 막대는 글자가 아니라 세로 선(2×17.5)이다
+    const divider = heading.querySelector('[aria-hidden="true"]');
+    expect(divider).not.toBeNull();
+    expect(divider?.textContent).toBe('');
   });
 });

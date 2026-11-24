@@ -647,3 +647,17 @@
 .node-preview-panel > [role='status']:empty {
   position: absolute;
 }
+
+/* ---- Figma 전체 화면 재정합(#186): Preview 알약 1271:121853 — 왼쪽 20, 아래 33, 190×59 ---- */
+.canvas-preview-dock {
+  left: var(--space-workspace-edge);
+  bottom: var(--space-workspace-bottom);
+}
+.node-preview-panel {
+  letter-spacing: var(--letter-spacing-body-b1);
+}
+.node-preview-toolbar {
+  width: var(--size-preview-pill-width);
+  height: var(--size-preview-pill-height);
+  background: var(--color-glass);
+}
