@@ -128,6 +128,8 @@ describe('IconMenu', () => {
 
 describe('IconMenu 리믹스 칸(#41)', () => {
   function Harness({ partnerName }: { partnerName?: string }) {
+    const partner =
+      partnerName === undefined ? undefined : { displayName: partnerName, avatarUrl: null };
     const [open, setOpen] = useState(false);
     return (
       <>
@@ -138,7 +140,7 @@ describe('IconMenu 리믹스 칸(#41)', () => {
           onAddPage={vi.fn()}
           remix={{
             open,
-            partnerName,
+            partner,
             panelId: 'remix-panel',
             onOpen: () => setOpen(true),
             onClose: () => setOpen(false),
@@ -197,11 +199,44 @@ describe('IconMenu 리믹스 칸(#41)', () => {
     expect(document.activeElement).toBe(outside);
   });
 
-  it('상대가 있고 닫혀 있으면 "Remix with 이름" 알약을 보이고, 누르면 다시 연다', () => {
+  const handle = () =>
+    screen.getByRole('button', { name: `${COPY['RX-01']} Lind`, expanded: false });
+
+  it('상대가 있고 닫혀 있으면 접힌 손잡이(Remix 03)만 보이고, 누르면 "Remix with 이름" 알약(Remix 04)이 펼쳐진다', () => {
     render(<Harness partnerName="Lind" />);
+    const knob = handle();
+    expect(knob.hasAttribute('data-remix-handle')).toBe(true);
+    expect(screen.queryByText(`${COPY['RX-01']} Lind`)).toBeNull();
+    fireEvent.click(knob);
     const pill = screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) });
+    expect(pill.hasAttribute('data-remix-handle')).toBe(false);
+    expect(pill.textContent).toContain(`${COPY['RX-01']} Lind`);
+    // 펼친 알약으로 포커스가 옮겨 간다
+    expect(document.activeElement).toBe(pill);
     fireEvent.click(pill);
     expect(remixButton().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('펼친 알약은 Esc 로 다시 접히고 포커스는 손잡이로, 바깥을 누르면 접힌다', () => {
+    render(<Harness partnerName="Lind" />);
+    fireEvent.click(handle());
+    const pill = screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) });
+    fireEvent.keyDown(pill, { key: 'Escape' });
+    expect(screen.queryByText(`${COPY['RX-01']} Lind`)).toBeNull();
+    expect(document.activeElement).toBe(handle());
+    fireEvent.click(handle());
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'outside' }));
+    expect(screen.queryByText(`${COPY['RX-01']} Lind`)).toBeNull();
+    expect(handle()).toBeTruthy();
+  });
+
+  it('패널을 닫으면 알약이 아니라 손잡이로 돌아간다', () => {
+    render(<Harness partnerName="Lind" />);
+    fireEvent.click(handle());
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) }));
+    fireEvent.click(screen.getByRole('button', { name: 'pick' }));
+    expect(handle()).toBeTruthy();
+    expect(screen.queryByText(`${COPY['RX-01']} Lind`)).toBeNull();
   });
 
   it('상대가 없으면 닫혀 있을 때 알약이 없다', () => {

@@ -145,6 +145,8 @@ export function useNodeEditor({
   return {
     snapshot,
     edit,
+    /** 노드 묶음을 통째로 바꾼다(리믹스 Connection Apply, #151). 바뀐 것이 없으면 그대로다 */
+    replace: update,
     reorder,
     reset,
     apply,
@@ -164,7 +166,15 @@ export function useNodeEditor({
   };
 }
 
-export function createEditorRequests(base: Answer, client: QueryClient) {
+/**
+ * 미리보기 요청(revise)·확정(accept). appliedIds 를 주면 revise 에 appliedConnectionIds 로 싣는다(#151).
+ * 같은 노드 값이라도 실은 Connection 이 다르면 다른 시도로 본다.
+ */
+export function createEditorRequests(
+  base: Answer,
+  client: QueryClient,
+  appliedIds: () => readonly string[] = () => [],
+) {
   let queue: Promise<unknown> = Promise.resolve();
   let attempt:
     | {
@@ -183,7 +193,8 @@ export function createEditorRequests(base: Answer, client: QueryClient) {
   return {
     preview: async (nodes: NodeSnapshot, signal: AbortSignal): Promise<Answer> => {
       if (signal.aborted) throw abort();
-      const snapshot = JSON.stringify(nodes);
+      const applied = [...new Set(appliedIds())].sort();
+      const snapshot = JSON.stringify([nodes, applied]);
       if (!attempt || attempt.snapshot !== snapshot) {
         attempt = { snapshot, key: newIdempotencyKey(), steps: [] };
       }
@@ -202,7 +213,9 @@ export function createEditorRequests(base: Answer, client: QueryClient) {
               if (signal.aborted) throw abort();
               const response = await api.createRevision(
                 base.setId,
-                { baseAnswerId: base.id, nodes },
+                applied.length > 0
+                  ? { baseAnswerId: base.id, nodes, appliedConnectionIds: applied }
+                  : { baseAnswerId: base.id, nodes },
                 current.key,
               );
               current.job = response.job;

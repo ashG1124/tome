@@ -84,6 +84,24 @@ describe('RemixPanel', () => {
     expect(screen.getByText(`${COPY['RX-01']} Lind`)).toBeTruthy();
   });
 
+  it('목록은 시안 폭(268) 칸에 그리고, 기본 스크롤 막대 대신 4px 막대 자리를 둔다', async () => {
+    setup();
+    await row('Lind');
+    const list = screen.getByRole('group', { name: COPY['RX-01'] }).querySelector('ul');
+    expect(list?.className).toContain('w-[var(--size-remix-list-width)]');
+    expect(list?.className).toContain('[scrollbar-width:none]');
+    // jsdom 은 높이가 0 이라 넘치지 않으므로 막대는 숨어 있다
+    expect(document.querySelector<HTMLElement>('[data-remix-scroll-thumb]')?.hidden).toBe(true);
+  });
+
+  it('사진이 없으면 목록·알약 동그라미에 이름 머리글자를 쓴다', async () => {
+    setup({ partner: LIND });
+    const lind = await row('Lind');
+    expect(lind.querySelector('[aria-hidden="true"]')?.textContent).toBe('L');
+    const pill = screen.getByText(`${COPY['RX-01']} Lind`).parentElement?.parentElement;
+    expect(pill?.lastElementChild?.textContent).toBe('L');
+  });
+
   it('저장 중이면 후보를 누를 수 없다', async () => {
     setup({ choosing: true });
     expect(((await row('Lind')) as HTMLButtonElement).disabled).toBe(true);

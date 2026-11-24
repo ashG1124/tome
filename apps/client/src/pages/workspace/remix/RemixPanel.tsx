@@ -1,65 +1,132 @@
 import * as RadixTabs from '@radix-ui/react-tabs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreatorSummary, Id, RemixCandidate } from '@tome/shared';
-import { useState } from 'react';
-import { api, errorCopyKey } from '../../../shared/api';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { api, errorCopyKey, useApiImage } from '../../../shared/api';
 import { COPY } from '../../../shared/copy';
 import { ErrorNotice, Icon } from '../../../shared/ui';
 import { candidateListState, initialOf, REMIX_TAB_LABEL, REMIX_TABS, type RemixTab } from './remix';
 
 const CANDIDATES_KEY = 'remix-candidates';
 
-/** 사진 자리. 사진 주소가 아직 없어서(서버도 null) 이름 머리글자를 쓴다. 시안 1720:79890: 32 원, 테두리 0.667 */
-export function RemixAvatar({ name }: { name: string | undefined }) {
+/** 알약·목록에 그릴 사람(이름 + 사진 주소). 사진이 없으면(null) 이름 머리글자를 쓴다. */
+export type RemixPerson = Pick<CreatorSummary, 'displayName' | 'avatarUrl'>;
+
+/**
+ * 둥근 사진. 사진 주소가 있으면 사진을, 없거나 못 받으면 이름 머리글자를 그린다.
+ * 장식이라 이름은 옆 글자가 읽힌다. 테두리·바탕은 쓰는 곳이 정한다.
+ */
+export function PersonPhoto({ person, className }: { person: RemixPerson; className: string }) {
   return (
     <span
       aria-hidden="true"
       className={[
-        'box-border flex size-[var(--size-avatar-remix)] shrink-0 items-center justify-center rounded-[var(--radius-max)]',
-        'border border-solid border-[length:var(--stroke-weight-light)] border-[color:var(--color-grayscale-3)]',
-        'bg-[color:var(--color-background-default)] [font:var(--text-body-b2-m)] text-[color:var(--color-font-sub-text)]',
+        'box-border flex shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-max)] border-solid',
+        '[font:var(--text-body-b2-m)] text-[color:var(--color-font-sub-text)]',
+        className,
       ].join(' ')}
     >
-      {name === undefined ? '' : initialOf(name)}
+      {person.avatarUrl === null ? (
+        initialOf(person.displayName)
+      ) : (
+        <PhotoImage path={person.avatarUrl} fallback={initialOf(person.displayName)} />
+      )}
     </span>
   );
 }
 
+/** 사진 주소가 있을 때만 그림을 받는다. 못 받으면 머리글자로 돌아간다. */
+function PhotoImage({ path, fallback }: { path: string; fallback: string }) {
+  const image = useRef<HTMLImageElement>(null);
+  const { directSrc, failed } = useApiImage(path, image);
+  if (failed) return fallback;
+  return <img ref={image} src={directSrc} alt="" className="size-full object-cover" />;
+}
+
+/** 목록 사진(1720:79891): 32 원, 회색 테두리 0.667 */
+export function RemixAvatar({ person }: { person: RemixPerson }) {
+  return (
+    <PersonPhoto
+      person={person}
+      className={[
+        'size-[var(--size-avatar-remix)] border-[length:var(--stroke-weight-remix-avatar)] border-[color:var(--color-grayscale-3)]',
+        'bg-[color:var(--color-background-default)]',
+      ].join(' ')}
+    />
+  );
+}
+
 /**
- * 위쪽 알약 Control(1720:80418): 리믹스 글리프 + "Remix with" + 오른쪽 32 썸네일.
- * 열려 있으면 노란 면(#fff294, 312×48), 닫혀 있고 상대가 있으면 반투명 흰 면(Remix 04 1720:80415)이다.
+ * 위쪽 알약 Control(1720:80418): 리믹스 글리프 + "Remix with" + 오른쪽 32 썸네일(흰 테두리 1.12).
+ * 열려 있으면 노란 면(#fff294, 312×48, 1720:80489), 닫혀 있고 상대가 있으면 반투명 흰 면(247×48, 1720:80415)이다.
+ * 상대가 없으면 썸네일은 Brand(Weak) 면, 상대가 있으면 상대 사진을 보인다(프로필 이미지 노출 규칙 1720:80841).
  */
-export function RemixLabel({ partner, open }: { partner: string | undefined; open: boolean }) {
+export function RemixLabel({ partner, open }: { partner: RemixPerson | undefined; open: boolean }) {
   return (
     <span
       className={[
-        'box-border flex h-[var(--size-remix-control-height)] items-center rounded-[var(--radius-max)]',
+        'box-border flex h-[var(--size-remix-control-height)] items-center gap-[var(--space-padding-7)] rounded-[var(--radius-max)]',
         'py-[var(--space-padding-3)] pr-[var(--space-padding-5)] pl-[var(--space-padding-3)]',
         '[font:var(--text-body-b1-r)] tracking-[var(--letter-spacing-body-b1)] text-[color:var(--color-font-sub-text)]',
         'backdrop-blur-[var(--blur-background)]',
         open
           ? 'w-full bg-[color:var(--color-fill-brand)] shadow-[var(--shadow-icon-menu)]'
-          : 'w-fit max-w-full bg-[color:var(--color-glass)] shadow-[var(--shadow-floating)]',
+          : 'w-[var(--size-remix-control-done-width)] max-w-full bg-[color:var(--color-glass)] shadow-[var(--shadow-floating)]',
       ].join(' ')}
     >
       <span className="flex min-w-0 flex-1 items-center gap-[var(--space-padding-2)] pl-[var(--space-padding-2)]">
         <Icon name="glyph-remix" />
         <span className="min-w-0 truncate text-left">
-          {partner === undefined ? COPY['RX-01'] : `${COPY['RX-01']} ${partner}`}
+          {partner === undefined ? COPY['RX-01'] : `${COPY['RX-01']} ${partner.displayName}`}
         </span>
       </span>
-      <span
-        aria-hidden="true"
-        className={[
-          'ml-[var(--space-padding-7)] box-border flex size-[var(--size-avatar-thumb)] shrink-0 items-center justify-center',
-          'rounded-[var(--radius-max)] border-[length:calc(var(--stroke-weight-light)*1.12)] border-solid border-[color:var(--color-background-default)]',
-          'bg-[color:var(--color-fill-brand-weak)] [font:var(--text-body-b2-m)] text-[color:var(--color-font-sub-text)]',
-        ].join(' ')}
-      >
-        {partner === undefined ? '' : initialOf(partner)}
-      </span>
+      {partner === undefined ? (
+        <span
+          aria-hidden="true"
+          className={[
+            'box-border size-[var(--size-avatar-thumb)] shrink-0 rounded-[var(--radius-max)] border-solid',
+            'border-[length:var(--stroke-weight-remix-thumb)] border-[color:var(--color-background-default)] bg-[color:var(--color-fill-brand-weak)]',
+          ].join(' ')}
+        />
+      ) : (
+        <PersonPhoto
+          person={partner}
+          className={[
+            'size-[var(--size-avatar-thumb)] border-[length:var(--stroke-weight-remix-thumb)] border-[color:var(--color-background-default)]',
+            'bg-[color:var(--color-fill-brand-weak)]',
+          ].join(' ')}
+        />
+      )}
     </span>
   );
+}
+
+/**
+ * 목록 오른쪽 스크롤 막대(1720:79905: 굵기 4, Grayscale/3, 둥근 끝). 기본 스크롤 막대는 숨기고 이 막대를 그린다.
+ * 막대 길이는 보이는 높이 ÷ 전체 높이, 위치는 스크롤 위치를 따른다. 넘치지 않으면 숨긴다.
+ * 화면 상태가 아니라 DOM 값이라 다시 그리지 않고 막대 스타일만 바꾼다.
+ */
+function useScrollThumb(contentKey: unknown) {
+  const list = useRef<HTMLUListElement>(null);
+  const thumb = useRef<HTMLSpanElement>(null);
+  const measure = useCallback(() => {
+    const box = list.current;
+    const bar = thumb.current;
+    if (box === null || bar === null) return;
+    const { scrollHeight, clientHeight, scrollTop } = box;
+    if (clientHeight === 0 || scrollHeight <= clientHeight) {
+      bar.hidden = true;
+      return;
+    }
+    const size = (clientHeight * clientHeight) / scrollHeight;
+    const offset = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - size);
+    bar.hidden = false;
+    bar.style.height = `${size}px`;
+    bar.style.transform = `translateY(${offset}px)`;
+  }, []);
+  // 목록 높이는 고정(최대 3명)이라 내용이 바뀔 때와 스크롤할 때만 다시 잰다.
+  useLayoutEffect(() => measure(), [measure, contentKey]);
+  return { list, thumb, measure };
 }
 
 interface CandidateRowProps {
@@ -96,7 +163,7 @@ function CandidateRow({
           'disabled:cursor-not-allowed',
         ].join(' ')}
       >
-        <RemixAvatar name={creator.displayName} />
+        <RemixAvatar person={creator} />
         <span className="flex min-w-0 flex-1 flex-col gap-[var(--space-gap-1)]">
           <span className="flex items-center gap-[var(--space-gap-1)] [font:var(--text-body-b1-r)] tracking-[var(--letter-spacing-body-b1)] text-[color:var(--color-font-main-text)]">
             <span className="truncate">{creator.displayName}</span>
@@ -172,6 +239,7 @@ export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: Rem
               creator.displayName.toLowerCase().includes(needle) ||
               (creator.bio ?? '').toLowerCase().includes(needle),
           );
+  const { list: listRef, thumb: thumbRef, measure: measureScroll } = useScrollThumb(shown);
 
   return (
     <div
@@ -180,7 +248,7 @@ export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: Rem
       aria-label={COPY['RX-01']}
       className="flex w-[var(--size-remix-panel-width)] flex-col gap-[var(--space-gap-4)]"
     >
-      <RemixLabel partner={partner?.displayName} open />
+      <RemixLabel partner={partner} open />
       <RadixTabs.Root
         value={tab}
         onValueChange={(next) => {
@@ -256,22 +324,38 @@ export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: Rem
                 {COPY['S-04']}
               </p>
             ) : (
-              <ul
-                aria-busy={state.kind === 'loading' || undefined}
-                className="m-0 flex max-h-[var(--size-remix-list-visible)] list-none flex-col gap-[var(--space-remix-row-gap)] overflow-y-auto p-0 pr-[var(--space-gap-4)] [scrollbar-color:var(--color-grayscale-3)_transparent] [scrollbar-width:thin]"
-              >
-                {shown.map((creator) => (
-                  <CandidateRow
-                    key={creator.id}
-                    creator={creator}
-                    selected={partner?.id === creator.id}
-                    choosing={choosing}
-                    favoriteBusy={favorite.isPending && favorite.variables.id === creator.id}
-                    onChoose={onChoose}
-                    onToggleFavorite={(target) => favorite.mutate(target)}
+              // 목록(268) + 사이 16 + 스크롤 막대 4 (Content 1720:79888). 합이 288 이라 시안처럼 오른쪽 여백(16) 안으로 8 들어간다
+              <div className="flex items-stretch gap-[var(--space-remix-scrollbar-gap)]">
+                <ul
+                  ref={listRef}
+                  onScroll={measureScroll}
+                  aria-busy={state.kind === 'loading' || undefined}
+                  className="m-0 flex max-h-[var(--size-remix-list-visible)] w-[var(--size-remix-list-width)] shrink-0 list-none flex-col gap-[var(--space-remix-row-gap)] overflow-y-auto p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {shown.map((creator) => (
+                    <CandidateRow
+                      key={creator.id}
+                      creator={creator}
+                      selected={partner?.id === creator.id}
+                      choosing={choosing}
+                      favoriteBusy={favorite.isPending && favorite.variables.id === creator.id}
+                      onChoose={onChoose}
+                      onToggleFavorite={(target) => favorite.mutate(target)}
+                    />
+                  ))}
+                </ul>
+                <span
+                  aria-hidden="true"
+                  className="relative w-[var(--size-remix-scrollbar-width)] shrink-0"
+                >
+                  <span
+                    ref={thumbRef}
+                    data-remix-scroll-thumb=""
+                    hidden
+                    className="absolute inset-x-0 top-0 rounded-[var(--radius-max)] bg-[color:var(--color-grayscale-3)]"
                   />
-                ))}
-              </ul>
+                </span>
+              </div>
             )}
             {chooseError !== null ? (
               <ErrorNotice message={COPY[errorCopyKey(chooseError)]} />

@@ -446,3 +446,26 @@
     1
   ); /* 디자인 변수 없음 — 펼침·메뉴 움직임 곡선(빠르게 시작해 부드럽게 멈춤) */
 }
+/* ===== 리믹스 화면 재정합(#198) — Control 1720:80418 · Creator list 1720:80413 · Icon Menu remix_change 2513:226126 · Connection 1185:59843 ===== */
+:root {
+  --size-remix-control-done-width: 247px; /* 디자인 변수 없음, 원값 247px — 닫힌 "Remix with 이름" 알약 폭 (1720:80415) */
+  --stroke-weight-remix-thumb: 1.12px; /* 디자인 변수 없음, 원값 1.12px — 알약 안 32 썸네일 흰 테두리 (1720:80494) */
+  --stroke-weight-remix-avatar: 0.667px; /* 디자인 변수 없음, 원값 0.667px — 목록 32 사진 테두리 (1720:79891) */
+  --size-remix-list-width: 268px; /* 디자인 변수 없음, 원값 268px — 목록 줄 폭(스크롤 막대 자리 빼고) (1720:79889) */
+  --size-remix-scrollbar-width: 4px; /* 디자인 변수 없음, 원값 4px — 목록 스크롤 막대 굵기 (1720:79905) */
+  --space-remix-scrollbar-gap: 16px; /* 디자인 변수 없음, 원값 16px — 목록과 스크롤 막대 사이 (1720:79888) */
+  --space-remix-handle-gap: 6px; /* 디자인 변수 없음, 원값 6px — 접힌 손잡이와 리믹스 버튼 사이 (2513:225783) */
+  --size-remix-handle-height: 34px; /* 디자인 변수 없음, 원값 34px — 접힌 "Remix with" 손잡이 높이 (2513:225784) */
+  --space-remix-handle-padding: 2.118px; /* 디자인 변수 없음, 원값 2.118px — 손잡이 안 여백 (2513:225784) */
+  --shadow-remix-handle: 0 2.118px 10.588px 0 var(--color-shadow-weak); /* 원값 drop shadow 0 2.118 10.588 — 손잡이 (2513:225784) */
+  --size-connection: 60px; /* 디자인 변수 없음, 원값 60px — 닫힌 Connection 표시 (1187:61226) */
+  --size-connection-hook: 30px; /* 디자인 변수 없음, 원값 30px — 열린 Connection 양 끝 갈고리 (1705:20749·1705:20760) */
+  --space-connection-offset: 33px; /* 디자인 변수 없음, 원값 33px — 노드 왼쪽 위 모서리에서 표시까지(461−428, 39.5−7) (1187:61097) */
+  --size-connection-text-width: 280px; /* 디자인 변수 없음, 원값 280px — 열린 Connection 글 폭 (1705:20754) */
+  --size-connection-text-height: 38px; /* 디자인 변수 없음, 원값 38px — 열린 Connection 글 두 줄 높이 (1705:20754) */
+  --line-height-connection: 1.2; /* 디자인 변수 없음, 원값 1.2 — 열린 Connection 글 줄 높이 (1705:20754) */
+  --size-connection-dot: 6px; /* 디자인 변수 없음, 원값 6px — 말풍선 쪽 표시 점 (1705:20755) */
+  --opacity-connection-dot-off: 0.5; /* 디자인 변수 없음, 원값 50% — 지금 쪽이 아닌 점 (1705:20755) */
+  --shadow-connection-drop: 0 0 4px var(--color-shadow-weak); /* 원값 drop-shadow 0 0 4 — 열린 Connection 전체 (1708:20784) */
+  --size-prompt-remix-chip: 40px; /* 디자인 변수 없음, 원값 32 + 여백 4×2 — 프롬프트 바 리믹스 상대 칩 높이 (4898:93346) */
+}
