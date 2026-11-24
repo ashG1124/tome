@@ -53,7 +53,7 @@ export function RecentWork({ project }: { project: ProjectSummary }) {
               <Icon name="arrow-outward" size={32} />
             </Link>
           </div>
-          <div className="flex flex-col gap-[var(--space-gap-4)] p-[var(--space-padding-3)]">
+          <div className="flex flex-col gap-[var(--space-recent-work-body-gap)] p-[var(--space-padding-3)]">
             <h2 className="m-0 line-clamp-2 [font:var(--text-heading-h1)] tracking-[var(--letter-spacing-heading-h1)] break-words text-[color:var(--color-font-main-text)]">
               {project.title}
             </h2>

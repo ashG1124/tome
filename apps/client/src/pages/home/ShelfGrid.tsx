@@ -1,39 +1,33 @@
 import type { CSSProperties } from 'react';
 
-// 무늬 한 칸 = 카드 한 칸 + 칸 사이 틈. 크기는 모두 토큰에서 온다.
+// 한 칸 = 카드 한 칸 + 칸 사이 틈(가로 128, 세로 212). 크기는 모두 토큰에서 온다.
 const PITCH = `calc(var(--size-shelf-card-width) + var(--grid-gutter)) calc(var(--size-shelf-card-height) + var(--grid-gutter))`;
-const MARK = 'var(--size-shelf-grid-mark)';
 const HALF = 'calc(var(--size-shelf-grid-mark) / 2)';
-const LINE_START = 'calc(var(--size-shelf-grid-mark) / 2 - var(--size-shelf-grid-line) / 2)';
-const LINE_END = 'calc(var(--size-shelf-grid-mark) / 2 + var(--size-shelf-grid-line) / 2)';
-// 무늬 색. 마스크는 투명도만 보므로 마스크 안에서도 같은 토큰을 "불투명한 칠"로 쓴다.
-const INK = 'var(--color-grayscale-3)';
 
-/** 가운데(HALF)가 가장 진하고 양끝(0, MARK)으로 갈수록 옅어지는 띠 */
-const fade = (direction: string) =>
-  `linear-gradient(${direction}, transparent 0, ${INK} ${HALF}, transparent ${MARK})`;
-/** 가운데에 선 굵기만큼만 칠한 띠 */
-const line = (direction: string) =>
-  `linear-gradient(${direction}, transparent ${LINE_START}, ${INK} ${LINE_START}, ${INK} ${LINE_END}, transparent ${LINE_END})`;
+// Figma 격자 마크(1226:74486)의 십자 모양. 가로 128 × 세로 212 한 칸 안의 왼쪽 위 20×20 자리에만 그려서
+// 마스크로 쓴다. 안의 숫자는 그림 좌표라서 CSS 크기가 아니다.
+const MARK_TILE =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 212' preserveAspectRatio='none'>" +
+  "<path d='M13.81 9.19C12.15 9.19 10.81 7.85 10.81 6.19V0H9.19V6.19C9.19 7.85 7.85 9.19 6.19 9.19H0V10.81H6.19C7.85 10.81 9.19 12.15 9.19 13.81V20H10.81V13.81C10.81 12.15 12.15 10.81 13.81 10.81H20V9.19H13.81Z'/></svg>";
 
-// 아래 층부터 합친다: (가로선 + 세로선) 을 세로 옅어짐, 가로 옅어짐과 겹치는 부분만 남기면
-// 가운데가 진하고 끝으로 갈수록 옅어지는 + 무늬가 된다.
-const MASK = [fade('to right'), fade('to bottom'), line('to bottom'), line('to right')].join(', ');
+const MASK = `url("${MARK_TILE}")`;
 
 const STYLE: CSSProperties = {
-  backgroundColor: INK,
+  // 마크 한 개마다 가운데(#C5CBD7)에서 바깥(#F6F8FA)으로 퍼지는 방사 그라디언트
+  backgroundImage: `radial-gradient(circle ${HALF} at ${HALF} ${HALF}, var(--color-shelf-mark-center), var(--color-shelf-mark-edge))`,
+  backgroundSize: PITCH,
+  backgroundRepeat: 'repeat',
   maskImage: MASK,
   WebkitMaskImage: MASK,
-  maskComposite: 'intersect, intersect, add, add',
-  WebkitMaskComposite: 'source-in, source-in, source-over, source-over',
   maskSize: PITCH,
   WebkitMaskSize: PITCH,
+  maskRepeat: 'repeat',
+  WebkitMaskRepeat: 'repeat',
 };
 
 /**
- * 홈 서가 뒤에 까는 점선 격자. 카드 칸 사이 틈이 만나는 곳마다 + 무늬가 하나씩 놓인다.
- * 서가 자리보다 (틈 반 칸 + 무늬 반 개)만큼 사방으로 넓게 깐다. 그래야 첫 칸 바깥쪽 틈의
- * 무늬도 잘리지 않고, 무늬 가운데가 틈의 한가운데에 온다(무늬 한 칸의 왼쪽 위 = 이 요소의 왼쪽 위).
+ * 홈 서가 뒤 격자(Figma 1226:76573). 점선 선은 없고, 칸 모서리가 만나는 곳마다 20×20 십자 마크만 놓인다.
+ * 이 요소의 왼쪽 위가 첫 마크의 왼쪽 위이고, 마크는 가로 128·세로 212 간격으로 반복된다.
  * 장식이라 화면 낭독기에서 숨기고, 마우스도 그대로 통과시킨다.
  */
 export function ShelfGrid() {
@@ -41,7 +35,7 @@ export function ShelfGrid() {
     <div
       aria-hidden="true"
       data-shelf-grid=""
-      className="pointer-events-none absolute -inset-[calc(var(--grid-gutter)/2_+_var(--size-shelf-grid-mark)/2)] -z-10"
+      className="pointer-events-none absolute inset-0 -z-10"
       style={STYLE}
     />
   );

@@ -407,3 +407,23 @@
     linear-gradient(90deg, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)); /* 상세 큰 그림 흰 비네팅 3099:130761 */
   --space-agora-bottom: 56px; /* 홈 아래 여백 3100:129594 */
 }
+
+/* #185-H Figma 재정합 */
+:root {
+  --color-shelf-new-project: #a4a9b3; /* Color/Font Color/Helper Text 원값 — + Project 점선·글자·+ (1269:81282) */
+  --color-shelf-mark-center: #c5cbd7; /* Color/Font Color/Disable — 격자 십자 마크 방사 그라디언트 중심 (1226:74486) */
+  --color-shelf-mark-edge: #f6f8fa; /* Color/Background/Weak — 격자 십자 마크 방사 그라디언트 바깥 (1226:74486) */
+  --color-shelf-focus: #a4a9b3; /* 키보드 포커스 테두리, Figma 톤(Helper Text) — 서가 카드 (리드 결정 #185) */
+}
+:root {
+  --space-recent-work-body-gap: 14px; /* 디자인 변수 없음, 원값 14px — Recent Work 열림 본문 제목·시간 사이 (1185:58650) */
+  --space-shelf-top: 12px; /* 디자인 변수 없음, 원값 12px — 헤더 아래에서 첫 격자 마크 줄까지 (1226:76573, 마크 y′112 − 헤더 100) */
+}
+:root {
+  --size-shelf-dash: 8px; /* 디자인 변수 없음, 원값 8px(PNG 실측) — + Project 점선 대시 길이 (1269:81282) */
+  --size-shelf-dash-gap: 7px; /* 디자인 변수 없음, 원값 7px(PNG 실측) — + Project 점선 대시 사이 (1269:81282) */
+}
+:root {
+  --letter-spacing-shelf-title: -0.02em; /* 서가 hover 제목 18px −0.36px = −2% (1311:127953) */
+  --letter-spacing-shelf-body: -0.02em; /* 서가 라벨·시간·+ Project 14px −0.28px = −2% (1311:127953, 1185:57987) */
+}

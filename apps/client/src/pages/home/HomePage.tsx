@@ -5,7 +5,7 @@ import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY, SKELETON_COPY } from '../../shared/copy';
 import { AppHeader, ErrorNotice, Flash, Icon, type FlashKind } from '../../shared/ui';
 import { FLASH_MS, flashFromState } from './flash';
-import { columnsFor, opensToLeft } from './layout';
+import { columnsFor, opensToLeft, pushStyle } from './layout';
 import { NewProjectCell } from './NewProjectCell';
 import { RecentWork } from './RecentWork';
 import { ShelfCard } from './ShelfCard';
@@ -57,6 +57,8 @@ export function HomePage() {
   const [order, setOrder] = useState<readonly string[] | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const dragFrom = useRef<number | null>(null);
+  // 넓어진 카드(마우스·키보드 포커스)의 서가 번호. 같은 줄에서 그 뒤 카드를 오른쪽으로 민다.
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [list, setList] = useState<HTMLOListElement | null>(null);
   const columns = useShelfColumns(list);
 
@@ -93,7 +95,7 @@ export function HomePage() {
       <AppHeader current="tome" profileTo={profileTo} />
       <section
         aria-busy={projects.isPending || undefined}
-        className="flex flex-1 flex-col gap-[var(--space-gap-5)] px-[var(--space-padding-8)] pb-[var(--space-padding-8)]"
+        className="flex flex-1 flex-col px-[var(--space-header-x)] pt-[var(--space-shelf-top)]"
       >
         <h1 className="sr-only">{SKELETON_COPY.home}</h1>
         {/* 플래시: 화면 위 가운데에 떠 있고 내용을 밀지 않는다 */}
@@ -108,13 +110,13 @@ export function HomePage() {
         ) : null}
         {saveFailed ? <ErrorNotice message={COPY['E-03']} /> : null}
         {/* 서가 자리: 남은 높이를 다 쓰고, 뒤에 격자 무늬를 깐 다음 그 위에 카드를 놓는다 */}
-        <div className="relative isolate flex flex-1 flex-col gap-[var(--space-gap-5)]">
+        <div className="relative isolate flex flex-1 flex-col overflow-x-clip pb-[var(--grid-gutter)]">
           <ShelfGrid />
           {projects.data ? (
             <ol
               ref={setList}
               className={[
-                'm-0 grid list-none p-0',
+                'm-0 grid list-none px-[var(--grid-gutter)] pt-[var(--grid-gutter)] pb-0',
                 'grid-cols-[repeat(auto-fill,var(--size-shelf-card-width))] gap-[var(--grid-gutter)]',
               ].join(' ')}
             >
@@ -129,6 +131,12 @@ export function HomePage() {
                     dragFrom.current = index;
                     event.dataTransfer?.setData('text/plain', project.id);
                   }}
+                  onMouseEnter={() => setOpenIndex(index)}
+                  onMouseLeave={() => setOpenIndex((value) => (value === index ? null : value))}
+                  onFocus={() => setOpenIndex(index)}
+                  onBlur={() => setOpenIndex((value) => (value === index ? null : value))}
+                  style={pushStyle(index + 1, openIndex === null ? null : openIndex + 1, columns)}
+                  className="motion-safe:transition-[transform,opacity] motion-safe:duration-[250ms] motion-safe:ease-out"
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={dropOn(index)}
                 >
