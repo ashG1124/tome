@@ -73,6 +73,11 @@ function recentView(
 }
 
 const NODE_TYPES = { card: CanvasCard };
+/**
+ * 노드는 끌 수 없게 했지만(nodesDraggable=false) 클릭은 받아야 한다. React Flow 는 끌기·선택·클릭 처리가 모두 없는 노드에
+ * pointer-events:none 을 주므로, 빈 클릭 처리기를 둬 노드가 눌리게 한다(실제 처리는 카드 안 onClick).
+ */
+const KEEP_NODE_POINTER = () => {};
 const EDGE_TYPES = {};
 
 export interface GenerationCanvasProps {
@@ -295,6 +300,8 @@ function CanvasContent({
           edgesFocusable={false}
           nodesFocusable={false}
           nodesConnectable={false}
+          nodesDraggable={false}
+          onNodeClick={KEEP_NODE_POINTER}
           elementsSelectable={false}
           deleteKeyCode={null}
           minZoom={0.2}

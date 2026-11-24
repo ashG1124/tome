@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import * as RadixSwitch from '@radix-ui/react-switch';
 import type { Node, NodeSnapshot } from '@tome/shared';
 import { Icon, Tabs } from '../../../shared/ui';
@@ -34,6 +34,55 @@ export interface NodeEditPanelProps {
   onClose: () => void;
   /** 코멘트를 남길 수 있으면 노드 도구 맨 위에 코멘트 버튼을 둔다. */
   onComment?: () => void;
+  /** 접히는 중이면 true — 닫힌 카드 높이로 줄어든다 */
+  closing?: boolean;
+}
+
+/** 펼침 움직임 값(토큰 --motion-expand·--ease-out-soft). 움직임 줄이기면 null */
+function expandMotion(element: Element): { duration: number; easing: string } | null {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null;
+  const css = getComputedStyle(element);
+  const duration = Number.parseFloat(css.getPropertyValue('--motion-expand'));
+  if (!duration) return null;
+  return { duration, easing: css.getPropertyValue('--ease-out-soft').trim() || 'ease-out' };
+}
+
+/**
+ * 닫힌 카드 높이(--node-closed-height)에서 내용 높이로 늘어나고, 접힐 때 다시 그 높이로 줄어든다.
+ * 높이가 0까지 내려가지 않아 제목 글자가 사라졌다 나타나지 않는다. React Flow 가 매 프레임 높이를 재서 아래 노드도 함께 밀린다.
+ */
+function useExpandHeight(closing: boolean) {
+  const body = useRef<HTMLDivElement>(null);
+  const closedHeight = () => {
+    const element = body.current;
+    if (!element) return 0;
+    return (
+      Number.parseFloat(getComputedStyle(element).getPropertyValue('--node-closed-height')) || 0
+    );
+  };
+  useLayoutEffect(() => {
+    const element = body.current;
+    if (!element || typeof element.animate !== 'function') return;
+    const motion = expandMotion(element);
+    const from = closedHeight();
+    if (!motion || !from) return;
+    const to = element.scrollHeight;
+    const animation = element.animate([{ height: `${from}px` }, { height: `${to}px` }], motion);
+    return () => animation.cancel();
+  }, []);
+  useLayoutEffect(() => {
+    const element = body.current;
+    if (!closing || !element || typeof element.animate !== 'function') return;
+    const motion = expandMotion(element);
+    const to = closedHeight();
+    if (!motion || !to) return;
+    const animation = element.animate(
+      [{ height: `${element.getBoundingClientRect().height}px` }, { height: `${to}px` }],
+      { ...motion, fill: 'forwards' },
+    );
+    return () => animation.cancel();
+  }, [closing]);
+  return body;
 }
 
 /** 노드 안 켜짐 스위치(시안 active switch 1226:67917, 40×22). Radix Switch 를 감싼다. */
@@ -239,8 +288,10 @@ export const NodeEditPanel = memo(function NodeEditPanel({
   onReset,
   onClose,
   onComment,
+  closing = false,
 }: NodeEditPanelProps) {
   const root = useRef<HTMLElement>(null);
+  const bodyRef = useExpandHeight(closing);
   useEffect(() => {
     root.current
       ?.querySelector<HTMLElement>(
@@ -276,7 +327,9 @@ export const NodeEditPanel = memo(function NodeEditPanel({
   else if (node.kind === 'evidence')
     body = (
       <div className="node-open-row">
-        <p className="node-open-sentence">{node.text}</p>
+        <p className="node-open-sentence" data-enabled={String(node.enabled)}>
+          {node.text}
+        </p>
         <NodeSwitch
           checked={node.enabled}
           label={labels.enabled}
@@ -308,6 +361,7 @@ export const NodeEditPanel = memo(function NodeEditPanel({
       ref={root}
       className="node-open nodrag nopan nowheel"
       data-kind={node.kind}
+      data-enabled={String(node.enabled)}
       aria-label={`${labels.title}: ${node.text}`}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !disabled) {
@@ -317,7 +371,7 @@ export const NodeEditPanel = memo(function NodeEditPanel({
         }
       }}
     >
-      <div className="node-open-body">
+      <div ref={bodyRef} className="node-open-body">
         <div className="node-open-inner">{body}</div>
       </div>
       <div className="node-open-tool" role="group" aria-label={labels.title}>

@@ -756,3 +756,14 @@
     transform: none;
   }
 }
+
+/* ---- #197: 끈 값은 노드를 접어도 보인다. 근거는 흐린 글 + 꺼진 스위치(시안 1226:67934), 나머지는 취소선 */
+.canvas-card--output[data-enabled='false'] .canvas-output-text {
+  color: var(--color-font-disable);
+}
+.canvas-card--output[data-enabled='false']:not(.canvas-card--evidence) .canvas-output-text {
+  text-decoration: line-through;
+}
+.canvas-card--output[data-enabled='false'] .canvas-node-line [data-icon] {
+  color: var(--color-font-disable);
+}

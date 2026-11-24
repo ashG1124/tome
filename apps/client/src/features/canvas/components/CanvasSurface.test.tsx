@@ -127,3 +127,34 @@ it('leaves an empty slot without a chip when only the original answer is gone', 
   expect(container.querySelector('.canvas-answer-chip')).toBeNull();
   expect(screen.queryByRole('status')).toBeNull();
 });
+it('shows an unapplied off value on the closed node (struck-through priority, off evidence switch)', () => {
+  const output = (kind: 'priority' | 'evidence') => ({
+    kind: 'output' as const,
+    setId: 'set',
+    column: kind === 'priority' ? 2 : 3,
+    row: 0,
+    label: 'Light over form',
+    text: 'Light over form',
+    labels: CANVAS_COPY,
+    state: 'done' as const,
+    output: {
+      id: kind,
+      stage: kind === 'priority' ? ('research' as const) : ('evidence' as const),
+      kind,
+      text: 'Light over form',
+      enabled: true,
+      parentIds: [],
+    },
+  });
+  const { container, rerender } = render(
+    <CanvasSurface data={output('priority')} enabled={false} />,
+    {
+      wrapper,
+    },
+  );
+  expect(container.querySelector('article')?.getAttribute('data-enabled')).toBe('false');
+  rerender(<CanvasSurface data={output('evidence')} enabled={false} />);
+  expect(container.querySelector('.canvas-node-switch')?.getAttribute('data-on')).toBe('false');
+  rerender(<CanvasSurface data={output('evidence')} />);
+  expect(container.querySelector('.canvas-node-switch')?.getAttribute('data-on')).toBe('true');
+});

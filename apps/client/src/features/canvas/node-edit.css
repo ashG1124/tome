@@ -46,7 +46,8 @@
   opacity: 0;
 }
 
-.node-edit-dial:focus-within {
+/* 키보드로 들어왔을 때만 테두리를 보인다(마우스로 누를 때는 없음, #197) */
+.node-edit-dial:has(.node-edit-range:focus-visible) {
   outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
   outline-offset: var(--focus-outline-offset);
 }
@@ -364,10 +365,6 @@
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
-.node-edit-control:focus-within .node-edit-axis {
-  background: var(--color-background-default);
-}
-
 /* ---- Figma 정합(#169): Preview 패널. 시안 preview 1192:64346 — 닫힘 알약 190×59, 열림 카드 440×280 + 알약 폭 100% */
 .canvas-preview-dock {
   position: absolute;
@@ -589,14 +586,9 @@
   color: var(--color-font-main-text);
   letter-spacing: var(--letter-spacing-default);
 }
-/* 높이 0 → 내용 높이로 펼친다. React Flow 가 매 프레임 높이를 재서 아래 노드도 함께 밀린다. */
+/* 높이는 닫힌 카드 높이 → 내용 높이로 스크립트가 움직인다(useExpandHeight). 0까지 접히지 않아 제목이 사라지지 않는다. */
 .node-open-body {
-  display: grid;
-  grid-template-rows: 1fr;
-  animation: node-open-expand var(--motion-expand) var(--ease-out-soft) both;
-}
-.canvas-node-open-slot[data-closing] .node-open-body {
-  animation: node-open-collapse var(--motion-expand) var(--ease-out-soft) both;
+  overflow: hidden;
 }
 .node-open-inner {
   display: flex;
@@ -607,23 +599,20 @@
   overflow: hidden;
   padding: var(--canvas-node-open-padding-y);
 }
-@keyframes node-open-expand {
+/* 제목 아래 내용(탭·설명·휠·목록)만 부드럽게 나타나고 사라진다. 제목과 근거 문장은 그대로 보인다. */
+.node-open-title ~ * {
+  animation: node-open-fade-in var(--motion-expand) var(--ease-out-soft) both;
+}
+.canvas-node-open-slot[data-closing] .node-open-title ~ * {
+  animation: node-open-fade-out var(--motion-pop) var(--ease-out-soft) both;
+}
+@keyframes node-open-fade-in {
   from {
-    grid-template-rows: 0fr;
     opacity: 0;
   }
-  to {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
 }
-@keyframes node-open-collapse {
-  from {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
+@keyframes node-open-fade-out {
   to {
-    grid-template-rows: 0fr;
     opacity: 0;
   }
 }
@@ -648,7 +637,8 @@
 .node-open .node-edit-control {
   gap: var(--canvas-node-open-gap-body);
 }
-.node-open .node-edit-control > .node-edit-instructions {
+/* 가중치에만 설명 줄을 보인다. 의미해석은 시안처럼 패드 위에 글이 없다(낭독용으로만 남김, #197) */
+.node-open .node-edit-keyword-weight .node-edit-control > .node-edit-instructions {
   position: static;
   order: -1;
   width: auto;
@@ -856,10 +846,23 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .node-open-body,
+  .node-open-title ~ *,
   .node-open-tool,
-  .canvas-node-open-slot[data-closing] .node-open-body,
+  .canvas-node-open-slot[data-closing] .node-open-title ~ *,
   .canvas-node-open-slot[data-closing] .node-open-tool {
     animation: none;
   }
+}
+
+/* ---- #197: 마우스로 누른 패드는 테두리를 그리지 않는다(키보드로 움직이면 다시 보인다) */
+.node-edit-pad[data-pointer]:focus-visible {
+  outline: none;
+}
+/* 끈 값: 펼친 노드에서도 꺼진 것이 보인다(시안 [Step3] active=off 1226:67934) */
+.node-open[data-enabled='false'] .node-open-title {
+  color: var(--color-font-disable);
+  text-decoration: line-through;
+}
+.node-open-sentence[data-enabled='false'] {
+  color: var(--color-font-disable);
 }
