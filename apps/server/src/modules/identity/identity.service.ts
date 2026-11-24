@@ -4,12 +4,14 @@ import {
   type CompareEntry,
   type CompareResponse,
   type CreatorProfileResponse,
+  type CreatorReach,
   type CreatorSummary,
   type IdentityAxes,
   IdentityAxesSchema,
   IdentityMetricsSchema,
   type IdentityResponse,
   type IdentitySnapshot,
+  LIMITS,
 } from '@tome/shared';
 import { AppError } from '../../common';
 import type { Prisma } from '../../generated/prisma/client';
@@ -36,6 +38,14 @@ function toCreatorSummary(row: IdentityCreatorRow): CreatorSummary {
     displayName: row.displayName,
     bio: row.bio,
     avatarUrl: creatorAvatarUrl(row),
+  };
+}
+
+/** 머리글 "Remixed by N"·"Derived by N": 사람 수와 최근 순 앞 몇 명. */
+function toReach(rows: IdentityCreatorRow[]): CreatorReach {
+  return {
+    count: rows.length,
+    creators: rows.slice(0, LIMITS.PROFILE_REACH_AVATARS).map(toCreatorSummary),
   };
 }
 
@@ -95,6 +105,8 @@ export class IdentityService {
       creator: toCreatorSummary(creator),
       works,
       identity: visible ? await this.ensureSnapshot(creatorId) : null,
+      remixedBy: toReach(await this.repo.listRemixers(creatorId)),
+      derivedBy: toReach(await this.repo.listDerivers(creatorId)),
     };
   }
 

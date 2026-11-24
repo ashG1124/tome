@@ -18,6 +18,8 @@ export const LIMITS = {
   AXIS_SCORE_MIN: -100,
   AXIS_SCORE_MAX: 100,
   EVENT_BATCH_MAX: 50,
+  // 프로필 머리글 Remixed by·Derived by 옆에 겹쳐 보여 주는 사진 수(Figma 4181:35728)
+  PROFILE_REACH_AVATARS: 3,
 } as const;
 
 export const IdSchema = z.uuid();

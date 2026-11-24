@@ -1,27 +1,65 @@
+import type { CompareEntry, CreatorSummary, IdentityAxes } from '@tome/shared';
 import { describe, expect, it } from 'vitest';
 import { COPY } from '../../shared/copy';
-import type { ChartKey, Quadrant } from './identity';
-import { bubbleText } from './labels';
+import { axisName, creatorDescription, quadrantName } from './labels';
 
-const QUADRANTS: readonly Quadrant[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+const MILLA: CreatorSummary = {
+  id: 'c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f',
+  kind: 'seed',
+  displayName: 'Milla',
+  bio: null,
+  avatarUrl: null,
+};
 
-describe('bubbleText', () => {
-  it('좌표 2장 × 사분면 4개, 8개 모두 문구가 있고 서로 다르다', () => {
-    const texts = (['ai', 'decision'] as ChartKey[]).flatMap((chart) =>
-      QUADRANTS.map((quadrant) => bubbleText(chart, quadrant)),
+const entry = (axes: IdentityAxes, bio: string | null = null): CompareEntry => ({
+  creator: { ...MILLA, bio },
+  axes,
+  provisional: false,
+});
+
+describe('creatorDescription', () => {
+  it('한 줄 소개가 있으면 그대로 쓴다', () => {
+    const axes = { scaleIntensity: -40, aiRelation: 60, decisionBasis: -20, direction: 80 };
+    expect(creatorDescription(entry(axes, 'Keeps the evidence nodes.'))).toBe(
+      'Keeps the evidence nodes.',
     );
-    expect(texts.every((text) => typeof text === 'string' && text.length > 0)).toBe(true);
-    expect(new Set(texts).size).toBe(8);
   });
 
-  it('사분면별 문구 ID 가 맞다(리드 확정 표)', () => {
-    expect(bubbleText('ai', 'top-right')).toBe(COPY['P-18-ai-top-right']);
-    expect(bubbleText('ai', 'bottom-left')).toBe(COPY['P-18-ai-bottom-left']);
-    expect(bubbleText('decision', 'top-left')).toBe(COPY['P-18-decision-top-left']);
-    expect(bubbleText('decision', 'bottom-right')).toBe(COPY['P-18-decision-bottom-right']);
+  it('소개가 없으면 사분면 조각을 이어 Figma 꼴(4181:35656)로 만든다', () => {
+    // ai: 위(가볍게)·오른쪽(내가 주도) / decision: 아래(넓게)·오른쪽(직관, 근거 점수 −)
+    const axes = { scaleIntensity: -40, aiRelation: 60, decisionBasis: -20, direction: 80 };
+    expect(creatorDescription(entry(axes))).toBe(
+      'Takes the lead and nudges gently — trusts gut, explores far.',
+    );
+    // ai: 위·왼쪽 / decision: 위(좁힘)·왼쪽(근거)
+    const mina = { scaleIntensity: -40, aiRelation: -60, decisionBasis: 30, direction: -50 };
+    expect(creatorDescription(entry(mina))).toBe(
+      'Lets the AI lead and nudges gently — trusts data, narrows down.',
+    );
   });
 
-  it('사분면이 없으면(축 위·점수 없음) 말풍선도 없다', () => {
-    expect(bubbleText('ai', null)).toBeNull();
+  it('한쪽 좌표만 있으면 그 조각만, 아무 점수도 없으면 null', () => {
+    const none = { scaleIntensity: null, aiRelation: null, decisionBasis: null, direction: null };
+    expect(creatorDescription(entry({ ...none, aiRelation: 50, scaleIntensity: 50 }))).toBe(
+      'Takes the lead and edits boldly.',
+    );
+    expect(creatorDescription(entry({ ...none, decisionBasis: 50, direction: 50 }))).toBe(
+      'Trusts data, explores far.',
+    );
+    expect(creatorDescription(entry(none))).toBeNull();
+  });
+});
+
+describe('quadrantName', () => {
+  it('필터 칸 이름은 "세로 쪽, 가로 쪽" 축 이름이다', () => {
+    expect(quadrantName('ai', 'bottom-left')).toBe(`${COPY['P-31b']}, ${COPY['P-31c']}`);
+    expect(quadrantName('decision', 'top-right')).toBe(`${COPY['P-31e']}, ${COPY['P-32b']}`);
+  });
+});
+
+describe('axisName', () => {
+  it('숨김 표의 축 이름은 − 쪽 – + 쪽(판단 근거는 + 가 Evidence)', () => {
+    expect(axisName('aiRelation')).toBe(`${COPY['P-13c']} – ${COPY['P-13d']}`);
+    expect(axisName('decisionBasis')).toBe(`${COPY['P-13h']} – ${COPY['P-13g']}`);
   });
 });

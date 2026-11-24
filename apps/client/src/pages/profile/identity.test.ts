@@ -1,5 +1,5 @@
 import type {
-  CompareResponse,
+  CompareEntry,
   CreatorSummary,
   IdentityAxes,
   IdentityMetrics,
@@ -7,16 +7,19 @@ import type {
 } from '@tome/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_FILTER,
   MIN_EVENTS_FOR_AXES,
   axisRows,
+  chartPeople,
   chartPoint,
-  compareMarkers,
+  filterCreators,
+  isFilterActive,
+  similarityOf,
   formatDay,
   identityView,
   depthPercentOf,
   metricsView,
   quadrantOf,
-  bubbleSide,
 } from './identity';
 
 const AXES: IdentityAxes = {
@@ -199,42 +202,100 @@ describe('axisRows', () => {
   });
 });
 
-describe('compareMarkers', () => {
-  const compare: CompareResponse = {
-    me: { creator: ME, axes: AXES, provisional: true },
-    others: [
-      {
-        creator: WILLIAM,
-        axes: { scaleIntensity: 20, aiRelation: -50, decisionBasis: 30, direction: -60 },
-        provisional: false,
-      },
-      {
-        creator: JUDY,
-        axes: { scaleIntensity: null, aiRelation: 10, decisionBasis: 40, direction: 10 },
-        provisional: false,
-      },
-    ],
-  };
+const EMPTY: IdentityAxes = {
+  scaleIntensity: null,
+  aiRelation: null,
+  decisionBasis: null,
+  direction: null,
+};
 
-  it('점수가 없는 사람은 빼고, 나는 맨 마지막에 둔다', () => {
-    const markers = compareMarkers(compare, 'ai');
-    expect(markers.map((m) => m.creator.displayName)).toEqual(['William', 'Julian']);
-    expect(markers.at(-1)?.me).toBe(true);
-    expect(markers[0]?.point).toEqual({ left: 25, top: 60 });
-  });
+function entry(who: CreatorSummary, axes: IdentityAxes): CompareEntry {
+  return { creator: who, axes, provisional: false };
+}
 
-  it('좌표마다 따로 계산한다', () => {
-    expect(compareMarkers(compare, 'decision').map((m) => m.creator.displayName)).toEqual([
+describe('chartPeople', () => {
+  it('점수가 없는 사람은 빼고, 좌표마다 따로 계산한다', () => {
+    const entries = [
+      entry(WILLIAM, { ...AXES, decisionBasis: null }),
+      entry(JUDY, AXES),
+      entry(ME, EMPTY),
+    ];
+    expect(chartPeople(entries, 'ai').map((p) => p.creator.displayName)).toEqual([
       'William',
       'Judy',
-      'Julian',
     ]);
+    expect(chartPeople(entries, 'decision').map((p) => p.creator.displayName)).toEqual(['Judy']);
   });
 });
 
-describe('bubbleSide', () => {
-  it('보통은 아바타 위, 위쪽 가장자리 근처면 아래에 둔다', () => {
-    expect(bubbleSide({ left: 10, top: 70 })).toBe('above');
-    expect(bubbleSide({ left: 90, top: 29 })).toBe('below');
+describe('similarityOf', () => {
+  it('같으면 100, 정반대 끝이면 0, 축마다 차이 평균으로 센다', () => {
+    expect(similarityOf(AXES, AXES)).toBe(100);
+    const far: IdentityAxes = {
+      scaleIntensity: -100,
+      aiRelation: -100,
+      decisionBasis: -100,
+      direction: -100,
+    };
+    const near: IdentityAxes = {
+      scaleIntensity: 100,
+      aiRelation: 100,
+      decisionBasis: 100,
+      direction: 100,
+    };
+    expect(similarityOf(far, near)).toBe(0);
+    // 축 하나만 50 차이(200 중 25%) → 평균 6.25% → 94(반올림)
+    expect(similarityOf(AXES, { ...AXES, direction: 30 })).toBe(94);
+  });
+
+  it('둘 다 가진 축만 보고, 같이 가진 축이 없으면 null', () => {
+    expect(similarityOf(AXES, { ...EMPTY, aiRelation: 60 })).toBe(100);
+    expect(similarityOf(AXES, EMPTY)).toBeNull();
+  });
+});
+
+describe('filterCreators', () => {
+  const entries = [
+    // ai: 위-오른쪽, decision: 아래-왼쪽(근거 +)
+    entry(WILLIAM, { scaleIntensity: -30, aiRelation: 40, decisionBasis: 50, direction: 60 }),
+    // ai: 아래-왼쪽, decision: 위-오른쪽
+    entry(JUDY, { scaleIntensity: 70, aiRelation: -50, decisionBasis: -40, direction: -20 }),
+    entry(creator('c3d4e5f6-a7b8-4c9d-8e0f-1a2b3c4d5e6f', 'Milla'), EMPTY),
+  ];
+
+  it('기본 필터는 아무도 거르지 않는다', () => {
+    expect(isFilterActive(DEFAULT_FILTER)).toBe(false);
+    expect(filterCreators(entries, AXES, DEFAULT_FILTER)).toHaveLength(3);
+  });
+
+  it('이름 검색은 앞뒤 공백과 대소문자를 무시한다', () => {
+    const filter = { ...DEFAULT_FILTER, query: '  jU ' };
+    expect(isFilterActive(filter)).toBe(true);
+    expect(filterCreators(entries, AXES, filter).map((e) => e.creator.displayName)).toEqual([
+      'Judy',
+    ]);
+  });
+
+  it('사분면은 좌표마다 고르고, 둘 다 고르면 둘 다 맞아야 한다', () => {
+    const ai = { ...DEFAULT_FILTER, quadrants: { ai: 'top-right', decision: null } } as const;
+    expect(filterCreators(entries, AXES, ai).map((e) => e.creator.displayName)).toEqual([
+      'William',
+    ]);
+    const both = {
+      ...DEFAULT_FILTER,
+      quadrants: { ai: 'top-right', decision: 'top-right' },
+    } as const;
+    expect(filterCreators(entries, AXES, both)).toEqual([]);
+  });
+
+  it('닮은 정도 위 끝을 낮추면 그보다 닮은 사람과 셀 수 없는 사람을 뺀다', () => {
+    const similarities = entries.map((e) => similarityOf(AXES, e.axes));
+    const max = Math.min(...similarities.filter((v): v is number => v !== null));
+    const filter = { ...DEFAULT_FILTER, similarityMax: max };
+    const kept = filterCreators(entries, AXES, filter);
+    expect(kept).toHaveLength(1);
+    expect(similarityOf(AXES, kept[0]!.axes)).toBe(max);
+    // 기준 점수가 없으면(기록 중) 닮은 정도로 거를 때 아무도 남지 않는다
+    expect(filterCreators(entries, null, filter)).toEqual([]);
   });
 });
