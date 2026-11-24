@@ -64,6 +64,7 @@ function keywordEditor(tab: 'weight' | 'meaning') {
         }
         labels={NODE_EDITOR_COPY}
         initialTab={tab}
+        description={editorNode.text}
         onChange={() => {}}
       />
     </div>

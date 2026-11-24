@@ -20,6 +20,7 @@ import {
   type GenerationView,
 } from '../model';
 import { CanvasCard } from './CanvasCard';
+import { useOpenShift } from '../hooks/useOpenShift';
 import {
   CanvasNavigation,
   type CanvasEditorConnection,
@@ -70,9 +71,6 @@ function recentView(
     y: pill * scale - (anchor.position.y + STEP_PILL_TOP) * zoom,
   };
 }
-
-/** 편집 패널을 피해 화면을 줄일 때의 가장 작은 확대 비율. 이보다 작아야 하면 줄이지 않고 답변 카드만 옮긴다. */
-const MIN_EDIT_ZOOM = 0.55;
 
 const NODE_TYPES = { card: CanvasCard };
 const EDGE_TYPES = {};
@@ -176,41 +174,42 @@ function CanvasContent({
     }
   }, [initialized, flow, store, sets, graph.nodes.length, derivedFrom]);
 
-  // 노드 편집 패널이 열리면 패널이 가리는 오른쪽 띠 밖으로 답변 카드(와 고른 노드)가 오게 화면을 옮긴다.
-  const selectedKey = editor?.selected ? `${editor.selected.setId}:${editor.selected.nodeId}` : '';
+  // 노드를 제자리에서 펼치면 아래 노드를 밀어 내리고, 다 펼친 뒤 펼친 카드와 노드 도구가 화면 안에 오게 살짝 옮긴다.
+  const openId = useOpenShift(editor?.selected);
   useEffect(() => {
-    if (!selectedKey) return;
-    const selection = editor?.selected;
-    const panel = document.querySelector('.canvas-editor-panels');
-    const { domNode, transform } = store.getState();
-    if (!selection || !panel || !domNode) return;
-    const answer = flow.getInternalNode(`${selection.setId}:answer`);
-    const node = flow.getInternalNode(`${selection.setId}:${selection.nodeId}`);
-    if (!answer || !node) return;
-    const box = domNode.getBoundingClientRect();
-    const margin = Number.parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--space-padding-8'),
-    );
-    const limit = panel.getBoundingClientRect().left - box.left - margin;
-    const [tx, ty, zoom] = transform;
-    const right =
-      answer.internals.positionAbsolute.x + (answer.measured.width ?? geometry.answerWidth);
-    const left = node.internals.positionAbsolute.x;
-    let nextZoom = zoom;
-    if ((right - left) * zoom > limit - 2 * margin) {
-      const fit = (limit - 2 * margin) / (right - left);
-      if (fit >= MIN_EDIT_ZOOM) nextZoom = fit;
-    }
-    // 답변 카드가 패널 밖에 있어야 하는 것이 먼저, 고른 노드가 화면 안에 있는 것이 그 다음이다.
-    const maxX = limit - right * nextZoom;
-    const minX = margin - left * nextZoom;
-    const nextX = minX <= maxX ? Math.min(Math.max(tx, minX), maxX) : maxX;
-    if (nextZoom === zoom && nextX === tx) return;
+    if (!openId) return;
+    const css = getComputedStyle(document.documentElement);
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    void flow.setViewport({ x: nextX, y: ty, zoom: nextZoom }, { duration: calm ? 0 : 200 });
-    // 선택 키가 바뀔 때만 한 번 맞춘다. 열려 있는 동안 사용자가 옮기는 화면은 건드리지 않는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKey]);
+    const wait = calm ? 0 : Number.parseFloat(css.getPropertyValue('--motion-expand')) || 0;
+    const timer = window.setTimeout(() => {
+      const node = flow.getInternalNode(openId);
+      if (!node) return;
+      const {
+        width,
+        height,
+        transform: [tx, ty, zoom],
+      } = store.getState();
+      const margin = Number.parseFloat(css.getPropertyValue('--space-padding-8')) || 0;
+      // 오른쪽 노드 도구(아이콘 24 + 안쪽 여백) 자리까지 화면 안에 둔다.
+      const tool =
+        Number.parseFloat(css.getPropertyValue('--canvas-node-open-gap')) +
+        Number.parseFloat(css.getPropertyValue('--size-icon-menu-button'));
+      const { x, y } = node.internals.positionAbsolute;
+      const w = (node.measured.width ?? geometry.nodeWidth) + (tool || 0);
+      const h = node.measured.height ?? geometry.nodeHeight;
+      // 아래쪽은 프롬프트 바·프리뷰가 떠 있으니 화면 높이의 1/5 을 비워 둔다.
+      const bottomSpace = height / 5;
+      let nextX = tx;
+      let nextY = ty;
+      if (x * zoom + tx < margin) nextX = margin - x * zoom;
+      else if ((x + w) * zoom + tx > width - margin) nextX = width - margin - (x + w) * zoom;
+      if ((y + h) * zoom + ty > height - bottomSpace) nextY = height - bottomSpace - (y + h) * zoom;
+      if (y * zoom + nextY < margin) nextY = margin - y * zoom;
+      if (Math.abs(nextX - tx) < 1 && Math.abs(nextY - ty) < 1) return;
+      void flow.setViewport({ x: nextX, y: nextY, zoom }, { duration: calm ? 0 : 280 });
+    }, wait);
+    return () => window.clearTimeout(timer);
+  }, [openId, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
 
   // 키보드로도 확대·축소할 수 있게 한다(화면 버튼을 없앤 대신). 입력칸 안에서는 글자 입력이 먼저다.
   const zoomByKey = useCallback(
@@ -226,12 +225,13 @@ function CanvasContent({
   );
 
   const focus = useCallback(
-    (id: string) => {
+    (id: string, reveal = true) => {
       const node = flow.getInternalNode(id);
       if (!node) return;
       setActive((previous) =>
         previous[node.data.setId] === id ? previous : { ...previous, [node.data.setId]: id },
       );
+      if (!reveal) return;
       const {
         width,
         height,
@@ -279,6 +279,7 @@ function CanvasContent({
     <CanvasNavigation.Provider value={navigation}>
       <div
         className="generation-canvas"
+        data-editing={openId ? true : undefined}
         role="region"
         aria-label={labels.title}
         onKeyDown={zoomByKey}
@@ -299,6 +300,7 @@ function CanvasContent({
           minZoom={0.2}
           maxZoom={1.5}
           panOnScroll
+          onPaneClick={editor?.close}
           proOptions={{ hideAttribution: true }}
           ariaLabelConfig={{
             'node.a11yDescription.default': labels.instructions,

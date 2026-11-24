@@ -385,6 +385,8 @@ export const NODE_EDITOR_COPY = {
   ready: COPY['NE-12'],
   weightInstructions: COPY['NE-13'],
   meaningInstructions: COPY['NE-14'],
+  delete: COPY['S-07b'],
+  comment: COPY['S-07a'],
 } as const;
 
 export const CANVAS_HISTORY_COPY = {

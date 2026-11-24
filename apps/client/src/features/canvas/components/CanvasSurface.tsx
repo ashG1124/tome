@@ -65,8 +65,17 @@ export function CanvasSurface({
   data,
   children,
   answerFooter,
+  open = false,
+  covered = false,
   ...rest
-}: { data: CardData; answerFooter?: ReactNode } & ComponentPropsWithoutRef<'article'>) {
+}: {
+  data: CardData;
+  answerFooter?: ReactNode;
+  /** 제자리에서 펼친 노드. 닫힌 글 대신 편집 화면 자리(children)만 그린다. */
+  open?: boolean;
+  /** 같은 묶음의 다른 줄이 펼쳐져 이 줄을 대신 덮는다(검색 우선순위). */
+  covered?: boolean;
+} & ComponentPropsWithoutRef<'article'>) {
   const lock = useRef(false);
   const [retrying, setRetrying] = useState(false);
   const retry = async () => {
@@ -88,6 +97,7 @@ export function CanvasSurface({
     row ? 'canvas-card--row' : '',
     row && data.groupPosition ? `canvas-card--${data.groupPosition}` : '',
     data.error ? 'canvas-card--error' : '',
+    open ? 'canvas-card--open' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -97,11 +107,12 @@ export function CanvasSurface({
       className={`canvas-card canvas-card--${data.kind} ${modifiers}`.trim()}
       data-readonly={data.kind === 'origin' || undefined}
       data-enabled={data.output ? String(data.output.enabled) : undefined}
+      data-covered={covered || undefined}
       aria-label={data.label}
       aria-busy={data.state === 'running' || undefined}
     >
       {data.kind === 'prompt' ? <p className="canvas-prompt-text">{data.text}</p> : null}
-      {data.kind === 'output' ? (
+      {data.kind === 'output' && !open ? (
         <>
           <div className="canvas-node-line">
             {outputKind === 'priority' ? <Icon name="drag-handle" size={24} /> : null}
@@ -175,7 +186,7 @@ export function CanvasSurface({
           ) : null}
         </div>
       ) : null}
-      {data.state === 'skipped' && data.kind === 'output' ? (
+      {data.state === 'skipped' && data.kind === 'output' && !open ? (
         <small>{data.labels.skipped}</small>
       ) : null}
       {children}

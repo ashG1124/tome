@@ -1,13 +1,14 @@
-import { memo, useContext } from 'react';
+import { memo, useContext, useRef } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { CanvasNode } from '../model';
-import { CanvasNavigation } from '../navigation';
+import { CanvasNavigation, openRole } from '../navigation';
 import { COPY } from '../../../shared/copy';
 import { Icon } from '../../../shared/ui';
 import { AnswerVersions } from './AnswerVersions';
 import { ConnectionPopover } from './ConnectionPopover';
 import { connectionsForNode } from '../remix-model';
 import { CanvasSurface } from './CanvasSurface';
+
 import { CommentBand } from './CommentBand';
 
 /** 단계 이름표(알약). 시안: Step 1226:69439. 번호는 열 번호, 이름은 단계 이름이다. */
@@ -40,6 +41,18 @@ function StepPill({ number, label }: { number: number; label: string }) {
 
 export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<CanvasNode>) {
   const navigation = useContext(CanvasNavigation);
+  // 마우스로 누른 포커스면 화면을 옮기지 않는다(누르는 사이 노드가 움직이면 누름이 빈 캔버스로 빗나간다).
+  const pointing = useRef(false);
+  const reveal = () => {
+    const fromPointer = pointing.current;
+    pointing.current = false;
+    navigation.focus(id, !fromPointer);
+  };
+  const markPointer = () => {
+    pointing.current = true;
+    // 포커스가 바뀌지 않은 누름이면 다음 키보드 포커스에 남지 않게 바로 지운다(포커스는 이보다 먼저 온다).
+    window.setTimeout(() => (pointing.current = false), 0);
+  };
   if (data.kind === 'heading' && data.variant === 'step')
     return <StepPill number={data.column} label={data.label} />;
   if (data.kind === 'heading')
@@ -54,10 +67,8 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     !!data.answerId &&
     !!navigation.history?.canComment(data.setId, data.answerId, data.output.id);
   const canEdit = !!data.output && !!navigation.editor?.canOpen(data.setId, data.output.id);
-  const editing =
-    !!data.output &&
-    navigation.editor?.selected?.setId === data.setId &&
-    navigation.editor.selected.nodeId === data.output.id;
+  const role = openRole(navigation.editor?.selected, data.setId, data.output, data.groupPosition);
+  const editing = role === 'open';
   const commenting =
     !!data.output &&
     navigation.history?.selectedComment?.answerId === data.answerId &&
@@ -76,6 +87,8 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
       ) : null}
       <CanvasSurface
         data={data}
+        open={editing}
+        covered={role === 'covered'}
         answerFooter={
           data.kind === 'answer' && data.answer && navigation.history ? (
             <AnswerVersions
@@ -92,13 +105,15 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         }
         data-canvas-card={id}
         tabIndex={navigation.active[data.setId] === id ? 0 : -1}
-        onFocus={() => navigation.focus(id)}
+        onPointerDownCapture={markPointer}
+        onFocus={reveal}
         onClick={(event) => {
           if (
             event.target instanceof Element &&
             event.target.closest('button, input, [role="slider"]')
           )
             return;
+          if (editing) return;
           if (data.output && navigation.editor?.canOpen(data.setId, data.output.id))
             navigation.editor.open(data.setId, data.output.id);
         }}
@@ -113,6 +128,13 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           navigation.move(id, event.key);
         }}
       >
+        {editing ? (
+          <div
+            ref={navigation.editor?.slot}
+            className="canvas-node-open-slot"
+            data-closing={navigation.editor?.closing || undefined}
+          />
+        ) : null}
         <div className="canvas-connections" data-column={data.column}>
           {connectionsForNode(navigation.remix, data.answerId, data.output?.id).map(
             (connection) => (
@@ -135,12 +157,13 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           open={commenting}
         />
       ) : null}
-      {canComment || canEdit ? (
+      {(canComment || canEdit) && !editing && role !== 'covered' ? (
         <div
           className="canvas-node-tool nodrag nopan nowheel"
-          data-open={editing || commenting || undefined}
+          data-open={commenting || undefined}
           role="group"
-          onFocus={() => navigation.focus(id)}
+          onPointerDownCapture={markPointer}
+          onFocus={reveal}
         >
           <div className="canvas-node-tool-bar">
             {canComment ? (

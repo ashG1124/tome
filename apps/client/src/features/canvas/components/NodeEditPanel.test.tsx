@@ -49,7 +49,7 @@ it('toggles evidence without exposing deletion', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
   expect(onReset).toHaveBeenCalledWith('e1');
 });
-it('allows selecting each data type and ordering priorities by keyboard buttons', () => {
+it('allows selecting each data type and ordering priorities with the handle keys', () => {
   const first = {
     ...node,
     id: 's1',
@@ -59,18 +59,21 @@ it('allows selecting each data type and ordering priorities by keyboard buttons'
     text: 'First',
   } as Node;
   const second = { ...first, id: 's2', order: 1, text: 'Second' };
-  const { onReorder } = setup(first, [first, second]);
-  fireEvent.click(screen.getByRole('button', { name: 'Move up: Second' }));
+  const { onReorder, onChange: onPriorityChange } = setup(first, [first, second]);
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Priority: Second' }), { key: 'ArrowUp' });
   expect(onReorder).toHaveBeenCalledWith('s2', 's1');
-  expect(
-    (screen.getByRole('button', { name: 'Move up: First' }) as HTMLButtonElement).disabled,
-  ).toBe(true);
+  onReorder.mockClear();
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Priority: First' }), { key: 'ArrowUp' });
+  expect(onReorder).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('switch', { name: 'Include: Second' }));
+  expect(onPriorityChange).toHaveBeenCalledWith({ ...second, enabled: false });
   cleanup();
   const type = { ...first, id: 'd1', kind: 'dataType' } as Node;
   const other = { ...type, id: 'd2', text: 'Other' };
   const { onChange } = setup(type, [type, other]);
-  fireEvent.click(screen.getByRole('switch', { name: 'Other' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Other' }));
   expect(onChange).toHaveBeenCalledWith({ ...other, enabled: false });
+  expect(screen.getByRole('checkbox', { name: 'Other' }).getAttribute('aria-checked')).toBe('true');
 });
 it('locks all editing controls while applying', () => {
   const { onChange, onReset } = setup(node, [node], true);
