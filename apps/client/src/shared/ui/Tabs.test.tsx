@@ -42,4 +42,22 @@ describe('Tabs', () => {
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Work' }));
     expect(screen.getByRole('tab', { name: 'Identity' }).tabIndex).toBe(-1);
   });
+
+  it('밑줄 모양(underline)도 같은 탭 목록·키보드 규칙을 따른다', () => {
+    function Underline() {
+      const [tab, setTab] = useState<'work' | 'identity'>('identity');
+      return (
+        <Tabs variant="underline" value={tab} onValueChange={setTab} label="Profile" items={ITEMS}>
+          <p>{`panel:${tab}`}</p>
+        </Tabs>
+      );
+    }
+    render(<Underline />);
+    const identity = screen.getByRole('tab', { name: 'Identity' });
+    expect(identity.getAttribute('aria-selected')).toBe('true');
+    expect(identity.getAttribute('data-state')).toBe('active');
+    const work = screen.getByRole('tab', { name: 'Work' });
+    fireEvent.mouseDown(work, { button: 0 });
+    expect(screen.getByRole('tabpanel').textContent).toBe('panel:work');
+  });
 });

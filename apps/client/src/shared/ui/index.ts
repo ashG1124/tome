@@ -20,6 +20,7 @@ export {
   type AgoraSearch,
   type AgoraSearchScope,
 } from './agora-search';
+export { ShelfGrid } from './ShelfGrid';
 export { StatusBanner } from './StatusBanner';
 export { Switch } from './Switch';
 export { Tabs } from './Tabs';

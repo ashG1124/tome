@@ -131,6 +131,41 @@ export const COPY = {
   'P-19c': 'Score',
   // 프로필: 남의 비공개 아이덴티티(IDENTITY_PRIVATE). 리드 확정 2026-11-18
   'P-20': 'This creator keeps their identity private.',
+  // 프로필 Proto v7(#220): 임시 ID — 문구 표에 옮길 때 확정. ⭐ 아이덴티티 (수정) 프로토타입(4181:34982) 원문.
+  // P-23b·P-27b·P-30 은 Figma에 없는 문구(남의 프로필 제목·남의 프로필 비교 기준·낭독용 버튼 이름), 이름 자리는 {name}.
+  // P-33 은 창작자 줄 설명(4181:35656)의 사분면별 조각. ai-bottom-left 는 시안에 없어 같은 꼴로 맞췄다.
+  'P-21': 'Remixed by', // 4181:35741
+  'P-22': 'Derived by', // 4181:35749
+  'P-23a': 'About your identity', // 4181:35082
+  'P-23b': "About this creator's identity",
+  'P-24': 'Identity Type', // 4181:35088
+  'P-25': 'Other Creators', // 4181:35169
+  'P-26': 'clear', // 4181:35755
+  'P-27a': 'Similarity to you', // 4181:35600
+  'P-27b': 'Similarity to {name}',
+  'P-28a': 'Creators', // 4181:35651
+  'P-28b': 'matches', // 4181:35654
+  'P-29a': 'How work with AI', // 4181:35174
+  'P-29b': 'How decide?', // 4181:35384
+  'P-30': 'Remix with {name}',
+  'P-31a': 'Light touch', // 4181:35213
+  'P-31b': 'Heavy edits', // 4181:35214
+  'P-31c': 'AI leads', // 4181:35210
+  'P-31d': 'Creator leads', // 4181:35211
+  'P-31e': 'Narrows down', // 4181:35386
+  'P-31f': 'Explores', // 4181:35386
+  'P-31g': 'Trusts data', // 4181:35386
+  'P-31h': 'Trusts gut', // 4181:35386
+  'P-32a': 'Trust data', // 4181:35774 (필터 판)
+  'P-32b': 'Trust gut', // 4181:35775 (필터 판)
+  'P-33-ai-top-left': 'Lets the AI lead and nudges gently',
+  'P-33-ai-top-right': 'Takes the lead and nudges gently',
+  'P-33-ai-bottom-left': 'Lets the AI lead and edits boldly',
+  'P-33-ai-bottom-right': 'Takes the lead and edits boldly',
+  'P-33-decision-top-left': 'trusts data, narrows down',
+  'P-33-decision-top-right': 'trusts gut, narrows down',
+  'P-33-decision-bottom-left': 'trusts data, explores far',
+  'P-33-decision-bottom-right': 'trusts gut, explores far',
   // ---- 공통 헤더(AppHeader 1226:80887): 확정 ID(#128). HD-01 은 Figma 글자 로고 원문, HD-02 는 Figma에 없는 낭독용 이름
   'HD-01': 'AGORA',
   'HD-02': 'My profile',
