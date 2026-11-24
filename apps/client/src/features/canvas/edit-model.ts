@@ -1,5 +1,8 @@
 import { DEFAULT_AXES, LIMITS, type Node, type NodeSnapshot, type Pad } from '@tome/shared';
 
+/** 펼침·접힘 높이 애니메이션 없이 바로 바뀌는 노드 종류(제목이 없어 펼쳐도 높이가 거의 같다, #204). */
+export const SNAP_KINDS: ReadonlySet<string> = new Set(['evidence', 'priority']);
+
 export function canEditNode(node: Node): boolean {
   return ['keyword', 'dataType', 'priority', 'evidence', 'attribute'].includes(node.kind);
 }

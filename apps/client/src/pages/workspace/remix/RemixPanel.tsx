@@ -216,6 +216,7 @@ const GLASS = 'box-border w-full bg-[color:var(--color-glass)] backdrop-blur-[va
 export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: RemixPanelProps) {
   const [tab, setTab] = useState<RemixTab>('rising');
   const [query, setQuery] = useState('');
+  const [spinning, setSpinning] = useState(false);
   const queryClient = useQueryClient();
   const candidates = useQuery({
     queryKey: [CANDIDATES_KEY, tab],
@@ -309,10 +310,25 @@ export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: Rem
               type="button"
               aria-label={COPY['RX-06']}
               aria-busy={candidates.isFetching || undefined}
-              onClick={() => void candidates.refetch()}
+              onClick={() => {
+                setSpinning(true);
+                void candidates.refetch();
+              }}
               className="flex cursor-pointer items-center justify-center rounded-[var(--radius-1)] border-0 bg-transparent p-0 text-[color:var(--color-fill-neutral)]"
             >
-              <Icon name="refresh" />
+              {/* 받는 동안 돈다. 다 받았으면 지금 바퀴를 마저 돌고 멈춘다(움직임 줄이기면 돌지 않음, #204) */}
+              <span
+                className={[
+                  'inline-flex',
+                  spinning || candidates.isFetching ? 'motion-safe:animate-spin' : '',
+                ].join(' ')}
+                data-spinning={spinning || candidates.isFetching || undefined}
+                onAnimationIteration={() => {
+                  if (!candidates.isFetching) setSpinning(false);
+                }}
+              >
+                <Icon name="refresh" />
+              </span>
             </button>
           </div>
           <RadixTabs.Content value={tab} className="flex flex-col gap-[var(--space-gap-4)]">
