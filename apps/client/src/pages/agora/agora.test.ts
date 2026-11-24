@@ -157,7 +157,12 @@ describe('deriveFailure', () => {
 });
 
 describe('빈 상태', () => {
-  const emptyHome: AgoraHomeResponse = { recommended: [], risingCreators: [], hotTopics: [] };
+  const emptyHome: AgoraHomeResponse = {
+    recommended: [],
+    risingCreators: [],
+    newCreators: [],
+    hotTopics: [],
+  };
 
   it('게시된 프로젝트가 하나도 없으면 아고라가 빈 것으로 본다(크리에이터만 있어도)', () => {
     expect(isAgoraEmpty(emptyHome)).toBe(true);
@@ -165,7 +170,9 @@ describe('빈 상태', () => {
     expect(
       isAgoraEmpty({
         ...emptyHome,
-        hotTopics: [{ topic: { id: card(9).id, title: 'Urban Trail' }, projects: [] }],
+        hotTopics: [
+          { topic: { id: card(9).id, title: 'Urban Trail' }, projects: [], projectCount: 0 },
+        ],
       }),
     ).toBe(true);
   });
@@ -175,7 +182,13 @@ describe('빈 상태', () => {
     expect(
       isAgoraEmpty({
         ...emptyHome,
-        hotTopics: [{ topic: { id: card(9).id, title: 'Urban Trail' }, projects: [card(1)] }],
+        hotTopics: [
+          {
+            topic: { id: card(9).id, title: 'Urban Trail' },
+            projects: [card(1)],
+            projectCount: 1,
+          },
+        ],
       }),
     ).toBe(false);
   });

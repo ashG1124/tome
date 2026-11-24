@@ -30,12 +30,14 @@ import {
   HOT_TOPIC_LIMIT,
   HOT_TOPIC_PROJECT_LIMIT,
   isPublicProject,
+  NEW_CREATOR_LIMIT,
   RECOMMENDED_LIMIT,
   RISING_LIMIT,
   TOPIC_PROJECT_LIMIT,
   type CreatorScore,
   mimeOfKey,
   rankCreators,
+  rankNewCreators,
   rankProjects,
   scoreOf,
   utcDayRange,
@@ -108,13 +110,39 @@ export class AgoraService {
       .map((entry) => ({
         topic: entry.topic,
         projects: entry.projects.slice(0, HOT_TOPIC_PROJECT_LIMIT).map(card),
+        projectCount: entry.projects.length,
       }));
 
     return {
       recommended: ranked.slice(0, RECOMMENDED_LIMIT).map(card),
       risingCreators: await this.listRisingCreators({ limit: RISING_LIMIT }),
+      newCreators: this.newCreators(rows),
       hotTopics,
     };
+  }
+
+  /** 새 창작자: 공개 프로젝트가 있는 창작자를 첫 공개 게시가 최근인 순으로(규칙은 agora.rules.ts rankNewCreators). */
+  private newCreators(rows: CardRow[]): CreatorSummary[] {
+    const byCreator = new Map<
+      string,
+      { creatorId: string; firstPostedAt: Date; creator: CreatorLike }
+    >();
+    for (const row of rows) {
+      const postedAt = row.postedAt!;
+      const entry = byCreator.get(row.owner.id);
+      if (!entry) {
+        byCreator.set(row.owner.id, {
+          creatorId: row.owner.id,
+          firstPostedAt: postedAt,
+          creator: row.owner,
+        });
+      } else if (postedAt < entry.firstPostedAt) {
+        entry.firstPostedAt = postedAt;
+      }
+    }
+    return rankNewCreators([...byCreator.values()])
+      .slice(0, NEW_CREATOR_LIMIT)
+      .map((entry) => toCreator(entry.creator));
   }
 
   async topic(id: string): Promise<TopicResponse> {

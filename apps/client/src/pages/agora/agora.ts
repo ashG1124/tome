@@ -145,6 +145,10 @@ export function filterAgoraHome(home: AgoraHomeResponse, search: AgoraSearch): A
       search.scope === 'creator'
         ? home.risingCreators.filter((creator) => matchesQuery(creator.displayName, search.q))
         : [],
+    newCreators:
+      search.scope === 'creator'
+        ? home.newCreators.filter((creator) => matchesQuery(creator.displayName, search.q))
+        : [],
     hotTopics: filterTopicEntries(home.hotTopics, search),
   };
 }

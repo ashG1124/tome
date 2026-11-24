@@ -247,8 +247,13 @@ describe('AgoraHomePage', () => {
   const HOME: AgoraHomeResponse = {
     recommended: [card(1, 'Cyber-cympathy'), card(2, 'Lifestyle furniture')],
     risingCreators: [{ ...person(40, 'Lind'), bio: 'Global Implementation Manager' }],
+    newCreators: [],
     hotTopics: [
-      { topic: TOPIC.topic, projects: Array.from({ length: 20 }, (_, k) => card(k + 10, `P${k}`)) },
+      {
+        topic: TOPIC.topic,
+        projects: Array.from({ length: 6 }, (_, k) => card(k + 10, `P${k}`)),
+        projectCount: 6,
+      },
     ],
   };
 
@@ -277,6 +282,7 @@ describe('AgoraHomePage', () => {
     vi.spyOn(api, 'getAgoraHome').mockResolvedValue({
       recommended: [],
       risingCreators: HOME.risingCreators,
+      newCreators: HOME.risingCreators,
       hotTopics: [],
     });
     renderAt('/agora');
@@ -315,11 +321,13 @@ describe('TopicListPage', () => {
   const HOME: AgoraHomeResponse = {
     recommended: [],
     risingCreators: [],
+    newCreators: [],
     hotTopics: [
-      { topic: TOPIC.topic, projects: TOPIC.projects },
+      { topic: TOPIC.topic, projects: TOPIC.projects, projectCount: 2 },
       {
         topic: { id: '1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9', title: 'Warm Task Lighting' },
         projects: [card(5, 'Lamp')],
+        projectCount: 1,
       },
     ],
   };
@@ -347,8 +355,13 @@ describe('헤더 검색(새 API 없이 이미 받은 데이터를 거른다)', (
   const HOME: AgoraHomeResponse = {
     recommended: [card(1, 'Cyber-cympathy'), card(2, 'Lifestyle furniture')],
     risingCreators: [{ ...person(40, 'Lind'), bio: 'Global Implementation Manager' }],
+    newCreators: [],
     hotTopics: [
-      { topic: TOPIC.topic, projects: [card(3, 'Urban Commuter'), card(4, 'Trail Accent')] },
+      {
+        topic: TOPIC.topic,
+        projects: [card(3, 'Urban Commuter'), card(4, 'Trail Accent')],
+        projectCount: 2,
+      },
     ],
   };
   const status = () => screen.getAllByRole('status').find((el) => el.textContent !== '');

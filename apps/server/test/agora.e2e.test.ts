@@ -277,13 +277,62 @@ describe.skipIf(!url)('agora API (real Postgres)', () => {
     );
     expect(emptyDetail.projects).toEqual([]);
 
-    const topics = (await home(who)).hotTopics.map((t) => t.topic.id);
+    const hotTopics = (await home(who)).hotTopics;
+    const topics = hotTopics.map((t) => t.topic.id);
     expect(topics).toContain(full.id);
     expect(topics).not.toContain(empty.id);
+    // projectCount 는 묶음에 실린 개수가 아니라 주제의 공개 프로젝트 전체 수다(#214).
+    expect(hotTopics.find((t) => t.topic.id === full.id)?.projectCount).toBe(2);
 
     const missing = await call('GET', `/agora/topics/${randomUUID()}`, who.token);
     expect(missing.status).toBe(404);
     expect(await errorCode(missing)).toBe('NOT_FOUND');
+  });
+
+  it('counts every public project of a hot topic even past the per-topic card limit', async () => {
+    const who = await newWho();
+    const big = await newTopic('Big topic');
+    for (let i = 0; i < 7; i += 1) await newPublic(who, { topicId: big.id });
+    const hidden = await newPublic(who, { topicId: big.id });
+    await prisma.project.update({ where: { id: hidden.id }, data: { hiddenAt: new Date() } });
+    await newPublic(who, { topicId: big.id, posted: false });
+
+    const entry = (await home(who)).hotTopics.find((t) => t.topic.id === big.id);
+    // 상한(주제당 6개)만큼만 싣고, 전체 수는 숨김·미게시를 뺀 7개
+    expect(entry?.projects).toHaveLength(6);
+    expect(entry?.projectCount).toBe(7);
+  });
+
+  it('lists new creators by their first public post, newest first, up to 8', async () => {
+    const viewer = await newWho();
+    const early = await newWho();
+    const late = await newWho();
+    const unposted = await newWho();
+    const day = 24 * 3600_000;
+    // 다른 테스트의 게시보다 늦게 보이도록 미래 시각을 쓴다. early 는 나중 게시가 있어도 첫 게시(+2일)로 센다.
+    await newPublic(early, { postedAt: new Date(Date.now() + 2 * day) });
+    await newPublic(early, { postedAt: new Date(Date.now() + 9 * day) });
+    await newPublic(late, { postedAt: new Date(Date.now() + 3 * day) });
+    await newPublic(unposted, { posted: false, postedAt: new Date(Date.now() + 4 * day) });
+
+    const first = (await home(viewer)).newCreators.map((c) => c.id);
+    expect(first.slice(0, 2)).toEqual([late.creatorId, early.creatorId]);
+    expect(first).not.toContain(unposted.creatorId);
+
+    // 상한 경계: 더 새로운 창작자 9명이 생기면 8명만, 가장 새로운 순으로
+    const newer: Who[] = [];
+    for (let i = 0; i < 9; i += 1) {
+      const who = await newWho();
+      await newPublic(who, { postedAt: new Date(Date.now() + 10 * day + i * 60_000) });
+      newer.push(who);
+    }
+    const second = (await home(viewer)).newCreators.map((c) => c.id);
+    expect(second).toEqual(
+      newer
+        .slice(1)
+        .reverse()
+        .map((w) => w.creatorId),
+    );
   });
 
   it('returns project detail with derivatives and a Deleted original marker', async () => {

@@ -41,9 +41,15 @@ describe('agora schemas', () => {
     const home = {
       recommended: [card],
       risingCreators: [creator],
-      hotTopics: [{ topic, projects: [card] }],
+      newCreators: [creator],
+      hotTopics: [{ topic, projects: [card], projectCount: 1 }],
     };
     expect(AgoraHomeResponseSchema.safeParse(home).success).toBe(true);
+    expect(AgoraHomeResponseSchema.safeParse({ ...home, newCreators: undefined }).success).toBe(
+      false,
+    );
+    const negative = { ...home, hotTopics: [{ topic, projects: [card], projectCount: -1 }] };
+    expect(AgoraHomeResponseSchema.safeParse(negative).success).toBe(false);
     expect(TopicResponseSchema.safeParse({ topic, projects: [card] }).success).toBe(true);
     expect(AgoraHomeResponseSchema.safeParse({ ...home, recommended: [{}] }).success).toBe(false);
   });

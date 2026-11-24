@@ -61,6 +61,19 @@ describe('아고라 홈·토픽', () => {
     }
   });
 
+  it('새 창작자는 첫 공개 게시가 최근인 순이고, 핫토픽은 공개작 전체 수(projectCount)를 준다', async () => {
+    const home = await api.getAgoraHome();
+    // Lind 의 첫 게시(10-22)가 Mara(10-21)보다 늦다
+    expect(home.newCreators.map((creator) => creator.displayName)).toEqual(['Lind', 'Mara']);
+    const counts = Object.fromEntries(
+      home.hotTopics.map((entry) => [entry.topic.title, entry.projectCount]),
+    );
+    expect(counts).toEqual({ 'Urban Trail': 4, 'Warm Task Lighting': 6, 'Quiet Harbor': 4 });
+    for (const entry of home.hotTopics) {
+      expect(entry.projectCount).toBeGreaterThanOrEqual(entry.projects.length);
+    }
+  });
+
   it('토픽은 그 토픽의 공개작만 주고, 없는 토픽이면 NOT_FOUND 다', async () => {
     const topic = FAKE_TOPICS[0];
     if (topic === undefined) throw new Error('토픽이 없다');

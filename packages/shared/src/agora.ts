@@ -24,10 +24,14 @@ export type Topic = z.infer<typeof TopicSchema>;
 export const AgoraHomeResponseSchema = z.object({
   recommended: z.array(AgoraProjectCardSchema),
   risingCreators: z.array(CreatorSummarySchema),
+  /** 첫 공개 게시가 최근인 창작자 순(아고라 Creator 탭의 New Creator, #214) */
+  newCreators: z.array(CreatorSummarySchema),
   hotTopics: z.array(
     z.object({
       topic: TopicSchema,
       projects: z.array(AgoraProjectCardSchema),
+      /** 이 주제의 공개 프로젝트 전체 수(projects 는 앞의 몇 개만 준다). 묶음의 "+N" 표시용(#214) */
+      projectCount: z.number().int().min(0),
     }),
   ),
 });
