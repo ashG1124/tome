@@ -4,6 +4,12 @@ import type { ProfileTarget } from './specs';
 import { NODE_IDS } from './nodes';
 import { seedUuid, seededRandom } from './seed-ids';
 
+/** prompt_submit 대신 세트를 여는 서버 이벤트(예: 파생 시작) 또는 프로젝트 앞에 붙는 서버 이벤트. */
+export interface ExtraEvent {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
 export interface EventSetRef {
   id: string;
   projectId: string;
@@ -11,12 +17,20 @@ export interface EventSetRef {
   keys: number;
   presetKey: string | null;
   acceptedAnswerIds: string[];
+  /** 있으면 prompt_submit 대신 이 이벤트로 세트를 연다(answerId = 첫 버전) */
+  opener?: ExtraEvent;
 }
 
 export interface EventProjectRef {
   key: string;
   id: string;
   sets: EventSetRef[];
+  /** 프로젝트 첫 세트 앞에 남는 서버 이벤트(예: 리믹스 상대 지정) */
+  prelude?: ExtraEvent[];
+  /** project_finish 를 남기는가(기본 true) */
+  finish?: boolean;
+  /** project_post 를 남기는가(기본 true) */
+  post?: boolean;
 }
 
 export interface EventInput {
@@ -44,10 +58,17 @@ export interface SeedEvent {
   source: 'client' | 'server';
 }
 
+export interface ProjectTimes {
+  first: Date;
+  last: Date;
+  finished: Date | null;
+  posted: Date | null;
+}
+
 export interface GeneratedEvents {
   events: SeedEvent[];
-  /** 프로젝트 id → 첫 이벤트·완료·게시 시각 */
-  projectTimes: Map<string, { first: Date; finished: Date; posted: Date }>;
+  /** 프로젝트 id → 첫·마지막 이벤트, 완료·게시 시각(그 이벤트가 없으면 null) */
+  projectTimes: Map<string, ProjectTimes>;
   /** 세트 id → 첫 이벤트 시각 */
   setTimes: Map<string, Date>;
   /** 답변 id → 그 답변이 처음 보인 시각 */
@@ -239,7 +260,11 @@ export function generateEvents(input: EventInput): GeneratedEvents {
   const structural =
     sets.length * 1 +
     sets.reduce((n, set) => n + set.acceptedAnswerIds.length * 2 - 1, 0) +
-    input.projects.length * 2;
+    input.projects.reduce(
+      (n, p) =>
+        n + (p.prelude?.length ?? 0) + (p.finish === false ? 0 : 1) + (p.post === false ? 0 : 1),
+      0,
+    );
   const noiseTotal = Math.max(0, total - manips.length - structural);
   const noisePerSet = sets.map(
     (_, i) =>
@@ -259,6 +284,17 @@ export function generateEvents(input: EventInput): GeneratedEvents {
   let setIndex = 0;
   const evidenceFirst = input.target.C >= 0;
   for (const project of input.projects) {
+    for (const extra of project.prelude ?? []) {
+      items.push({
+        projectKey: project.key,
+        projectId: project.id,
+        setId: null,
+        type: extra.type,
+        answerId: null,
+        payload: extra.payload,
+        source: 'server',
+      });
+    }
     for (const set of project.sets) {
       const pool = poolFor(set.keys, evidenceFirst);
       const poolEvidence = pool.filter((id) => domainOfId(id) === 'evidence');
@@ -267,13 +303,26 @@ export function generateEvents(input: EventInput): GeneratedEvents {
       let evidencePtr = 0;
       let intuitivePtr = 0;
       const base = { projectKey: project.key, projectId: project.id, setId: set.id };
-      items.push({
-        ...base,
-        type: 'prompt_submit',
-        answerId: null,
-        payload: { ...(set.presetKey ? { presetKey: set.presetKey } : {}), hasAttachment: false },
-        source: 'client',
-      });
+      items.push(
+        set.opener
+          ? {
+              ...base,
+              type: set.opener.type,
+              answerId: set.acceptedAnswerIds[0] ?? null,
+              payload: set.opener.payload,
+              source: 'server',
+            }
+          : {
+              ...base,
+              type: 'prompt_submit',
+              answerId: null,
+              payload: {
+                ...(set.presetKey ? { presetKey: set.presetKey } : {}),
+                hasAttachment: false,
+              },
+              source: 'client',
+            },
+      );
       const mine = manips.slice(manipCursor, manipCursor + perSet[setIndex]!);
       const myIdx = mine.map((_, i) => manipCursor + i);
       manipCursor += perSet[setIndex]!;
@@ -322,32 +371,36 @@ export function generateEvents(input: EventInput): GeneratedEvents {
       });
       setIndex += 1;
     }
-    items.push({
-      projectKey: project.key,
-      projectId: project.id,
-      setId: null,
-      type: 'project_finish',
-      answerId: null,
-      payload: {},
-      source: 'server',
-      projectEnd: 'finish',
-    });
-    items.push({
-      projectKey: project.key,
-      projectId: project.id,
-      setId: null,
-      type: 'project_post',
-      answerId: null,
-      payload: {},
-      source: 'server',
-      projectEnd: 'post',
-    });
+    if (project.finish !== false) {
+      items.push({
+        projectKey: project.key,
+        projectId: project.id,
+        setId: null,
+        type: 'project_finish',
+        answerId: null,
+        payload: {},
+        source: 'server',
+        projectEnd: 'finish',
+      });
+    }
+    if (project.post !== false) {
+      items.push({
+        projectKey: project.key,
+        projectId: project.id,
+        setId: null,
+        type: 'project_post',
+        answerId: null,
+        payload: {},
+        source: 'server',
+        projectEnd: 'post',
+      });
+    }
   }
 
   // 시각: 작업 세션 SESSIONS 개로 나누고, 세션 사이는 하루, 세션 안은 1~2분 간격.
   const perBlock = Math.ceil(items.length / SESSIONS);
   const events: SeedEvent[] = [];
-  const projectTimes = new Map<string, { first: Date; finished: Date; posted: Date }>();
+  const projectTimes = new Map<string, ProjectTimes>();
   const setTimes = new Map<string, Date>();
   const answerTimes = new Map<string, Date>();
   items.forEach((item, index) => {
@@ -369,9 +422,11 @@ export function generateEvents(input: EventInput): GeneratedEvents {
     });
     const times = projectTimes.get(item.projectId) ?? {
       first: serverTs,
-      finished: serverTs,
-      posted: serverTs,
+      last: serverTs,
+      finished: null,
+      posted: null,
     };
+    times.last = serverTs;
     if (projectEnd === 'finish') times.finished = serverTs;
     if (projectEnd === 'post') times.posted = serverTs;
     projectTimes.set(item.projectId, times);

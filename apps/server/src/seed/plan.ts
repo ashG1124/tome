@@ -9,6 +9,7 @@ import {
   initialStat,
   SEED_COMMENTS,
   TOPICS,
+  type CreatorRef,
   type CreatorSpec,
   type ProjectSpec,
 } from './specs';
@@ -18,15 +19,25 @@ export interface PlanProject {
   id: string;
   ownerId: string;
   ownerKind: 'seed' | 'persona';
+  kind: 'original' | 'derive';
+  status: 'building' | 'finished';
   title: string;
-  finishedAt: Date;
-  postedAt: Date;
+  /** 완료 시각. 작업 중(building)이면 null */
+  finishedAt: Date | null;
+  /** 게시 시각. 게시 안 했으면 null */
+  postedAt: Date | null;
+  lastEditedAt: Date;
   createdAt: Date;
   coverAnswerId: string;
-  selectionReason: string;
+  selectionReason: string | null;
+  derivedFromProjectId: string | null;
+  derivedFromAnswerId: string | null;
+  remixPartnerId: string | null;
   topicId: string | null;
   shelfPosition: number;
   pageId: string;
+  /** 노드 라이브러리 번호(파생은 원작 번호를 이어 쓴다) */
+  libraryIndex: number;
   spec: ProjectSpec;
 }
 
@@ -47,7 +58,10 @@ export interface PlanAnswer {
   status: 'accepted' | 'discarded';
   number: number | null;
   baseAnswerId: string | null;
-  origin: 'seed' | 'edited';
+  origin: 'seed' | 'edited' | 'derived_copy';
+  /** 파생 복사본이면 원작 답변 id */
+  copiedFromAnswerId: string | null;
+  pinned: boolean;
   imageMode: 'generate' | 'edit';
   editInstruction: string | null;
   imageKey: string;
@@ -68,6 +82,12 @@ export interface PlanComment {
   createdAt: Date;
 }
 
+export interface PlanFavorite {
+  creatorId: string;
+  targetCreatorId: string;
+  createdAt: Date;
+}
+
 export interface PlanCreator {
   key: string;
   id: string;
@@ -82,6 +102,7 @@ export interface SeedPlan {
   answers: PlanAnswer[];
   events: SeedEvent[];
   comments: PlanComment[];
+  favorites: PlanFavorite[];
   stats: {
     projectId: string;
     viewCount: number;
@@ -99,7 +120,7 @@ const EDIT_INSTRUCTIONS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function creatorIdOf(spec: CreatorSpec): string {
+function creatorIdOf(spec: CreatorRef): string {
   const found = SEED_CREATORS.filter((c) => c.kind === spec.kind);
   const pick =
     spec.kind === 'seed' ? found.find((c) => c.seedOrder === spec.order) : found[spec.order - 1];
@@ -131,23 +152,33 @@ export function buildSeedPlan(): SeedPlan {
     answers: [],
     events: [],
     comments: [],
+    favorites: [],
     stats: [],
   };
-  const seedIdByOrder = new Map<number, string>();
   let projectIndex = 0;
 
   for (const spec of CREATOR_SPECS) {
     const creatorId = creatorIdOf(spec);
     const creatorKey = `${spec.kind}-${spec.order}`;
-    if (spec.kind === 'seed') seedIdByOrder.set(spec.order, creatorId);
     plan.creators.push({ key: creatorKey, id: creatorId, spec });
 
-    // 1) 구조(id)부터 정한다.
+    // 1) 구조(id)부터 정한다. 파생 원작·리믹스 상대는 앞서 만든 seed 계획에서 찾는다.
     const refs = spec.projects.map((p) => {
       const projectId = seedUuid(`project:${p.key}`);
+      const source = p.derivedFrom ? plan.projects.find((x) => x.key === p.derivedFrom) : undefined;
+      if (p.derivedFrom && !source) throw new Error(`Derive source ${p.derivedFrom} not planned`);
+      const sourceCover = source
+        ? plan.answers.find((a) => a.id === source.coverAnswerId)!
+        : undefined;
       return {
         spec: p,
         id: projectId,
+        state: p.state ?? 'posted',
+        source,
+        sourceCover,
+        remixPartnerId: p.remixPartner
+          ? creatorIdOf({ kind: 'seed', order: p.remixPartner })
+          : null,
         pageId: seedUuid(`page:${p.key}`),
         sets: p.sets.map((setSpec, n) => ({
           spec: setSpec,
@@ -174,12 +205,27 @@ export function buildSeedPlan(): SeedPlan {
       projects: refs.map((r) => ({
         key: r.spec.key,
         id: r.id,
+        finish: r.state !== 'building',
+        post: r.state === 'posted',
+        ...(r.remixPartnerId
+          ? {
+              prelude: [{ type: 'remix_partner_select', payload: { partnerId: r.remixPartnerId } }],
+            }
+          : {}),
         sets: r.sets.map((set, n) => ({
           id: set.id,
           projectId: r.id,
           keys: set.spec.keys,
           presetKey: n === 0 ? (r.spec.presetKey ?? null) : null,
           acceptedAnswerIds: set.acceptedIds,
+          ...(n === 0 && r.source && r.sourceCover
+            ? {
+                opener: {
+                  type: 'derive_start',
+                  payload: { sourceProjectId: r.source.id, sourceAnswerId: r.sourceCover.id },
+                },
+              }
+            : {}),
         })),
       })),
     });
@@ -188,7 +234,9 @@ export function buildSeedPlan(): SeedPlan {
     // 3) 프로젝트·세트·답변 행.
     refs.forEach((r, shelf) => {
       const times = generated.projectTimes.get(r.id)!;
-      const libraryIndex = projectIndex;
+      const libraryIndex = r.source ? r.source.libraryIndex : projectIndex;
+      // 파생의 편집 버전은 원작 대표 답변의 다음 버전부터 이어진다.
+      const versionOffset = r.sourceCover ? r.sourceCover.number! - 1 : 0;
       const firstSet = r.sets[0]!;
       const coverAnswerId = firstSet.acceptedIds[firstSet.acceptedIds.length - 1]!;
       plan.projects.push({
@@ -196,15 +244,25 @@ export function buildSeedPlan(): SeedPlan {
         id: r.id,
         ownerId: creatorId,
         ownerKind: spec.kind,
+        kind: r.source ? 'derive' : 'original',
+        status: r.state === 'building' ? 'building' : 'finished',
         title: r.spec.title,
         finishedAt: times.finished,
         postedAt: times.posted,
+        lastEditedAt: times.finished ?? times.last,
         createdAt: times.first,
         coverAnswerId,
-        selectionReason: `Chosen for the clearest balance of ${r.spec.keywords[0]} and ${r.spec.attributes[0]}.`,
+        selectionReason:
+          r.state === 'building'
+            ? null
+            : `Chosen for the clearest balance of ${r.spec.keywords[0]} and ${r.spec.attributes[0]}.`,
+        derivedFromProjectId: r.source?.id ?? null,
+        derivedFromAnswerId: r.sourceCover?.id ?? null,
+        remixPartnerId: r.remixPartnerId,
         topicId: r.spec.topic ? (topicId.get(r.spec.topic) ?? null) : null,
         shelfPosition: shelf,
         pageId: r.pageId,
+        libraryIndex,
         spec: r.spec,
       });
       plan.stats.push({ projectId: r.id, ...initialStat(projectIndex, spec.kind) });
@@ -223,7 +281,7 @@ export function buildSeedPlan(): SeedPlan {
           createdAt: setTime,
         });
         const common = (answerId: string, version: number) => {
-          const nodes = buildNodes(r.spec, libraryIndex, version);
+          const nodes = buildNodes(r.spec, libraryIndex, version + versionOffset);
           const assembled = assembleFor(nodes);
           return {
             id: answerId,
@@ -239,13 +297,25 @@ export function buildSeedPlan(): SeedPlan {
           };
         };
         set.acceptedIds.forEach((answerId, v) => {
+          const copy = n === 0 && v === 0 ? r.sourceCover : undefined;
           plan.answers.push({
             ...common(answerId, v),
+            // 파생 복사본은 원작 대표 답변의 노드·조립 결과를 그대로 가진다.
+            ...(copy
+              ? {
+                  assembledPrompt: copy.assembledPrompt,
+                  phrases: copy.phrases,
+                  excluded: copy.excluded,
+                  nodes: copy.nodes,
+                }
+              : {}),
             status: 'accepted',
             number: v + 1,
             baseAnswerId: v === 0 ? null : set.acceptedIds[v - 1]!,
-            origin: v === 0 ? 'seed' : 'edited',
-            imageMode: v === 0 ? 'generate' : 'edit',
+            origin: copy ? 'derived_copy' : v === 0 ? 'seed' : 'edited',
+            copiedFromAnswerId: copy?.id ?? null,
+            pinned: r.spec.pinned === true && answerId === coverAnswerId,
+            imageMode: copy ? copy.imageMode : v === 0 ? 'generate' : 'edit',
             editInstruction:
               v === 0 ? null : EDIT_INSTRUCTIONS[(v - 1) % EDIT_INSTRUCTIONS.length]!,
             createdAt: generated.answerTimes.get(answerId) ?? setTime,
@@ -258,6 +328,8 @@ export function buildSeedPlan(): SeedPlan {
             number: null,
             baseAnswerId: null,
             origin: 'seed',
+            copiedFromAnswerId: null,
+            pinned: false,
             imageMode: 'generate',
             editInstruction: null,
             createdAt: new Date(setTime.getTime() + (d + 1) * 5_000),
@@ -265,14 +337,25 @@ export function buildSeedPlan(): SeedPlan {
         });
       });
     });
+
+    // 즐겨찾기 시각: 그 창작자의 마지막 이벤트 뒤 1분 간격.
+    const lastEvent = generated.events[generated.events.length - 1]!.serverTs.getTime();
+    (spec.favorites ?? []).forEach((order, i) => {
+      plan.favorites.push({
+        creatorId,
+        targetCreatorId: creatorIdOf({ kind: 'seed', order }),
+        createdAt: new Date(lastEvent + (i + 1) * 60_000),
+      });
+    });
   }
 
   SEED_COMMENTS.forEach((c, i) => {
     const project = plan.projects.find((p) => p.key === c.project)!;
+    if (!project.postedAt) throw new Error(`Comment on unposted project ${c.project}`);
     plan.comments.push({
       id: seedUuid(`comment:${i}`),
       projectId: project.id,
-      authorId: seedIdByOrder.get(c.authorOrder)!,
+      authorId: creatorIdOf(c.author),
       body: c.body,
       createdAt: new Date(project.postedAt.getTime() + DAY_MS + i * 3_600_000),
     });

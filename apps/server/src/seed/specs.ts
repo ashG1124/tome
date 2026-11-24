@@ -37,7 +37,19 @@ export interface ProjectSpec {
   sets: SetSpec[];
   /** 예전 자리표시 이미지의 색 번호(0~359). 지금은 안 쓴다(실제 이미지로 교체됨) */
   hue: number;
+  /** 상태. 기본 posted(완료·게시). finished = 완료만, building = 작업 중 */
+  state?: ProjectState;
+  /** 리믹스 상대(seed 창작자의 seedOrder) */
+  remixPartner?: number;
+  /** 파생 원작 프로젝트 키. 첫 세트의 첫 버전이 원작 대표 답변의 복사본이다 */
+  derivedFrom?: string;
+  /** 이 프로젝트 전용 이미지 파일이 없을 때 같이 쓰는 다른 프로젝트 키 */
+  imageFrom?: string;
+  /** 첫 세트의 대표 답변을 핀으로 고정 */
+  pinned?: boolean;
 }
+
+export type ProjectState = 'posted' | 'finished' | 'building';
 
 export interface CreatorSpec {
   kind: 'seed' | 'persona';
@@ -51,7 +63,12 @@ export interface CreatorSpec {
   /** 첫 이벤트 날짜(UTC, 일 단위 오프셋) */
   startDay: number;
   projects: ProjectSpec[];
+  /** 즐겨찾기한 seed 창작자(seedOrder) */
+  favorites?: number[];
 }
+
+/** 창작자를 가리키는 값(seed 는 seedOrder, persona 는 1번부터). */
+export type CreatorRef = Pick<CreatorSpec, 'kind' | 'order'>;
 
 export const TOPICS: { key: TopicKey; title: string }[] = [
   { key: 'urban-shoes', title: 'How can I make urban-style shoes' },
@@ -66,7 +83,7 @@ const s = (versions: number, discarded: number, keys: number): SetSpec => ({
   keys,
 });
 
-export const CREATOR_SPECS: CreatorSpec[] = [
+const BASE_CREATOR_SPECS: CreatorSpec[] = [
   {
     kind: 'seed',
     order: 1,
@@ -443,13 +460,175 @@ export const CREATOR_SPECS: CreatorSpec[] = [
   },
 ];
 
-/** 시드 댓글(seed 작성자끼리). 프로젝트 키·작성자 seedOrder. */
-export const SEED_COMMENTS: { project: string; authorOrder: number; body: string }[] = [
-  { project: 'isla-1', authorOrder: 1, body: 'The neon edges really pop on the clean background.' },
-  { project: 'dove-1', authorOrder: 3, body: 'Love the warm tones here, very inviting.' },
-  { project: 'rhys-1', authorOrder: 5, body: 'The timber and greenery balance is lovely.' },
-  { project: 'mara-1', authorOrder: 2, body: 'That rainy glow is striking.' },
-  { project: 'teo-1', authorOrder: 4, body: 'Simple and calm, great product feel.' },
+/** 쇼케이스 계정(전시 코드 하나가 들어가는 persona). 서가·리믹스·파생·아이덴티티가 미리 차 있다. */
+export const SHOWCASE_PERSONA_ORDER = 4;
+
+const baseProject = (key: string): ProjectSpec => {
+  const found = BASE_CREATOR_SPECS.flatMap((c) => c.projects).find((p) => p.key === key);
+  if (!found) throw new Error(`Unknown seed project ${key}`);
+  return found;
+};
+
+/** 원작(seed 프로젝트)의 대표 답변을 복사해 시작한 파생 프로젝트. 제목·프롬프트·노드는 원작을 따른다. */
+const deriveOf = (
+  sourceKey: string,
+  own: Pick<ProjectSpec, 'key' | 'sets'> & Partial<Pick<ProjectSpec, 'state' | 'topic' | 'pinned'>>,
+): ProjectSpec => {
+  const source = baseProject(sourceKey);
+  return {
+    title: source.title,
+    prompt: source.prompt,
+    ...(source.presetKey ? { presetKey: source.presetKey } : {}),
+    subject: source.subject,
+    keywords: source.keywords,
+    attributes: source.attributes,
+    hue: source.hue,
+    ...own,
+    derivedFrom: sourceKey,
+  };
+};
+
+// 이미지: 쇼케이스 전용 생성 이미지가 아직 없어 imageFrom 으로 기존 시드 이미지를 같이 쓴다.
+// 파생 프로젝트는 원작 이미지를 그대로 쓴다(실제 파생과 같다).
+const SHOWCASE_SPEC: CreatorSpec = {
+  kind: 'persona',
+  order: SHOWCASE_PERSONA_ORDER,
+  target: { A: -50, B: 40, C: 45, D: -45 },
+  eventTotal: 150,
+  reasonedRatio: 0.55,
+  startDay: 8,
+  favorites: [3, 4, 5],
+  projects: [
+    {
+      key: 'julian-1',
+      title: 'Task lamp study',
+      prompt: 'A sculptural task lamp with a warm glow on an oak desk, soft product photo',
+      topic: 'calm-workspace',
+      subject: 'A {k1} with a {k2} on an {k3}, {k4}',
+      keywords: ['sculptural task lamp', 'warm glow', 'oak desk', 'soft product photo'],
+      attributes: ['warm bulb glow', 'brushed metal', 'slight top angle', 'calm mood'],
+      sets: [s(2, 0, 2), s(1, 0, 2)],
+      hue: 40,
+      imageFrom: 'teo-1',
+      pinned: true,
+    },
+    {
+      key: 'julian-2',
+      title: 'Modular shelf remix',
+      prompt: 'A modular oak shelf with sliding panels in a bright studio, clean product photo',
+      topic: 'eco-library',
+      subject: 'A {k1} with {k2} in a {k3}, {k4}',
+      keywords: ['modular oak shelf', 'sliding panels', 'bright studio', 'clean product photo'],
+      attributes: ['even daylight', 'oak veneer', 'orthogonal framing', 'orderly mood'],
+      sets: [s(2, 0, 2)],
+      hue: 90,
+      imageFrom: 'rhys-2',
+      remixPartner: 3,
+    },
+    deriveOf('dove-1', {
+      key: 'julian-3',
+      sets: [s(3, 0, 2)],
+      topic: 'reading-space',
+      pinned: true,
+    }),
+    {
+      key: 'julian-4',
+      title: 'Quiet wall clock',
+      prompt: 'A quiet wall clock with slim hands on a pale plaster wall, soft product photo',
+      subject: 'A {k1} with {k2} on a {k3}, {k4}',
+      keywords: ['quiet wall clock', 'slim hands', 'pale plaster wall', 'soft product photo'],
+      attributes: ['soft shadow', 'matte finish', 'straight-on view', 'quiet mood'],
+      sets: [s(2, 0, 2)],
+      hue: 220,
+      imageFrom: 'teo-2',
+      state: 'finished',
+    },
+    {
+      key: 'julian-5',
+      title: 'Trail sneaker concept',
+      prompt:
+        'A lightweight trail sneaker with a bright neon sole, side view on a clean background',
+      subject: 'A {k1} with a {k2}, {k3} on a {k4}',
+      keywords: ['lightweight trail sneaker', 'bright neon sole', 'side view', 'clean background'],
+      attributes: ['neon edge glow', 'glossy mesh', 'three-quarter tilt', 'futuristic mood'],
+      sets: [s(1, 0, 2)],
+      hue: 270,
+      imageFrom: 'isla-1',
+      remixPartner: 4,
+      state: 'building',
+    },
+    deriveOf('rhys-3', { key: 'julian-6', sets: [s(2, 0, 2)], state: 'building' }),
+    {
+      key: 'julian-7',
+      title: 'Chrome ribbon object',
+      prompt: 'A polished chrome ribbon object on a dark plinth, dramatic rim light, studio photo',
+      subject: 'A {k1} on a {k2}, {k3}, {k4}',
+      keywords: [
+        'polished chrome ribbon object',
+        'dark plinth',
+        'dramatic rim light',
+        'studio photo',
+      ],
+      attributes: ['mirror reflections', 'polished metal', 'low camera angle', 'monumental calm'],
+      sets: [s(1, 0, 2), s(2, 0, 2)],
+      hue: 210,
+      imageFrom: 'mara-3',
+    },
+    {
+      key: 'julian-8',
+      title: 'Linen table lamp',
+      prompt:
+        'A linen-shaded table lamp beside a soft armchair, warm evening tones, interior photo',
+      topic: 'reading-space',
+      subject: 'A {k1} beside a {k2}, {k3}, {k4}',
+      keywords: [
+        'linen-shaded table lamp',
+        'soft armchair',
+        'warm evening tones',
+        'interior photo',
+      ],
+      attributes: ['amber glow', 'textured linen', 'close side view', 'quiet mood'],
+      sets: [s(1, 0, 2)],
+      hue: 35,
+      imageFrom: 'dove-2',
+      remixPartner: 5,
+    },
+  ],
+};
+
+export const CREATOR_SPECS: CreatorSpec[] = [...BASE_CREATOR_SPECS, SHOWCASE_SPEC];
+
+/** 이 프로젝트 이미지로 쓰는 파일 키(project-images/<키>.jpg). 파생은 원작 이미지를 따른다. */
+export function imageFileKeyOf(spec: ProjectSpec): string {
+  if (spec.imageFrom) return spec.imageFrom;
+  if (spec.derivedFrom) return imageFileKeyOf(baseProject(spec.derivedFrom));
+  return spec.key;
+}
+
+/** 전용 이미지를 생성해야 하는 프로젝트인가(다른 이미지를 같이 쓰지 않는 것). */
+export const needsOwnImage = (spec: ProjectSpec): boolean => imageFileKeyOf(spec) === spec.key;
+
+const seed = (order: number): CreatorRef => ({ kind: 'seed', order });
+const showcase: CreatorRef = { kind: 'persona', order: SHOWCASE_PERSONA_ORDER };
+
+/** 시드 댓글. 앞 5개는 seed 작성자끼리, 뒤는 쇼케이스 계정이 주고받은 것. 순서가 id 이므로 뒤에만 더한다. */
+export const SEED_COMMENTS: { project: string; author: CreatorRef; body: string }[] = [
+  {
+    project: 'isla-1',
+    author: seed(1),
+    body: 'The neon edges really pop on the clean background.',
+  },
+  { project: 'dove-1', author: seed(3), body: 'Love the warm tones here, very inviting.' },
+  { project: 'rhys-1', author: seed(5), body: 'The timber and greenery balance is lovely.' },
+  { project: 'mara-1', author: seed(2), body: 'That rainy glow is striking.' },
+  { project: 'teo-1', author: seed(4), body: 'Simple and calm, great product feel.' },
+  {
+    project: 'rhys-2',
+    author: showcase,
+    body: 'The sliding panels gave me the idea for my shelf.',
+  },
+  { project: 'julian-1', author: seed(5), body: 'Lovely warm glow, very calm.' },
+  { project: 'julian-3', author: seed(2), body: 'Nice take on my sofa, the light feels softer.' },
 ];
 
 /** 프로젝트마다 다른 집계 초기값(결정적). index 는 CREATOR_SPECS 순서의 프로젝트 번호. */

@@ -24,6 +24,8 @@ const PERSONA_NAMES = [
   ['Priya Vance', 'Demo driver — balanced, mid-everything'],
   ['Owen Brandt', 'Demo driver — bold + divergent'],
   ['Lena Fox', 'Demo driver — evidence + convergent'],
+  // 4번 = 쇼케이스 계정(전시 코드 하나가 연결된다). 프로젝트·리믹스·파생·아이덴티티가 미리 차 있다.
+  ['Julian', 'Future Functionality Developer'],
 ] as const;
 
 export const SEED_CREATORS: SeedCreator[] = [
@@ -49,6 +51,9 @@ export const SEED_CREATORS: SeedCreator[] = [
     seedOrder: null,
   })),
 ];
+
+/** 쇼케이스 계정 id(persona 4번). 전시 코드를 이 계정에 연결한다. */
+export const SHOWCASE_CREATOR_ID = idFor(3, 4);
 
 export const seedCreatorIds = (kind: CreatorKind): string[] =>
   SEED_CREATORS.filter((c) => c.kind === kind).map((c) => c.id);

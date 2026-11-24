@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ObjectStorage } from '../storage/object-storage';
 import { answerKeysOf, buildSeedPlan } from './plan';
+import { imageFileKeyOf } from './specs';
 
 /** 실제 생성 이미지 폴더(#112, `db:seed:generate`로 한 번 만들어 커밋)(서버를 켠 위치 apps/server 기준). 프로젝트 키별 한 장을 그 버전들이 같이 쓴다. */
 export const PROJECT_IMAGES_DIR = join('prisma', 'seed', 'project-images');
@@ -16,12 +17,20 @@ export async function uploadSeedImages(
   concurrency = 8,
 ): Promise<number> {
   const plan = buildSeedPlan();
+  // 프로젝트 키 → 이미지 바이트. 전용 이미지가 없는 프로젝트(쇼케이스·파생)는 다른 프로젝트 파일을 같이 쓴다.
   const files = new Map<string, { full: Uint8Array; thumb: Uint8Array }>();
+  const byFile = new Map<string, { full: Uint8Array; thumb: Uint8Array }>();
   for (const project of plan.projects) {
-    files.set(project.key, {
-      full: new Uint8Array(await readFile(join(dir, `${project.key}.jpg`))),
-      thumb: new Uint8Array(await readFile(join(dir, `${project.key}.thumb.jpg`))),
-    });
+    const fileKey = imageFileKeyOf(project.spec);
+    let bytes = byFile.get(fileKey);
+    if (!bytes) {
+      bytes = {
+        full: new Uint8Array(await readFile(join(dir, `${fileKey}.jpg`))),
+        thumb: new Uint8Array(await readFile(join(dir, `${fileKey}.thumb.jpg`))),
+      };
+      byFile.set(fileKey, bytes);
+    }
+    files.set(project.key, bytes);
   }
   const jobs = plan.answers.map((answer) => async () => {
     const file = files.get(answer.projectKey)!;

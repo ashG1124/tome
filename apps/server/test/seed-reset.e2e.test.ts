@@ -14,13 +14,14 @@ import {
   CreateProjectResponseSchema,
   CreateSessionResponseSchema,
   IdentityResponseSchema,
+  ProjectListResponseSchema,
   RemixCandidatesResponseSchema,
   type JobStage,
 } from '@tome/shared';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { LoginRateLimiter } from '../src/modules/session/login-rate-limiter';
-import { seedCreatorIds } from '../src/seed/creators';
+import { SHOWCASE_CREATOR_ID, seedCreatorIds } from '../src/seed/creators';
 import { uploadSeedImages } from '../src/seed/images';
 import { loadSeedContent, upsertSeedCreators, upsertSeedTopics } from '../src/seed/load';
 import { buildSeedPlan } from '../src/seed/plan';
@@ -159,6 +160,14 @@ describe.skipIf(!url)('seed content and POST /admin/reset (real Postgres)', () =
       plan.projects.some((p) => p.id === s.projectId && p.ownerKind === 'seed'),
     ).length,
   };
+  const seedProjectIds = new Set(
+    plan.projects.filter((p) => p.ownerKind === 'seed').map((p) => p.id),
+  );
+  /** 계획상 seed 프로젝트에 달린 시드 댓글 수(쇼케이스 계정이 남긴 것 포함). */
+  const commentsOnSeed = plan.comments.filter((c) => seedProjectIds.has(c.projectId)).length;
+  const personaProjectCount = plan.projects.filter((p) => p.ownerKind === 'persona').length;
+  const showcaseProjects = plan.projects.filter((p) => p.ownerId === SHOWCASE_CREATOR_ID);
+  const showcaseFavorites = plan.favorites.filter((f) => f.creatorId === SHOWCASE_CREATOR_ID);
 
   beforeAll(async () => {
     storageDir = await mkdtemp(join(tmpdir(), 'tome-e2e-seed-'));
@@ -233,7 +242,7 @@ describe.skipIf(!url)('seed content and POST /admin/reset (real Postgres)', () =
     );
     expect(
       await prisma.agoraComment.count({ where: { project: { ownerId: { in: seedIds } } } }),
-    ).toBe(5);
+    ).toBe(commentsOnSeed);
     const viewer = await newFreshCreator();
     for (const c of plan.creators) {
       const res = await call('GET', `/creators/${c.id}/identity`, viewer.token);
@@ -306,7 +315,7 @@ describe.skipIf(!url)('seed content and POST /admin/reset (real Postgres)', () =
     await load(owners);
     expect(await counts(owners)).toEqual(before.counts);
     expect(await contentHash(owners)).toBe(before.hash);
-    expect(before.counts.projects).toBe(20);
+    expect(before.counts.projects).toBe(15 + personaProjectCount);
     expect(before.counts.answers).toBe(plan.answers.length);
     expect(before.counts.events).toBe(plan.events.length);
     // 시드 accepted 답변은 확정 시각(acceptedAt)이 createdAt 으로 채워진다.
@@ -350,7 +359,7 @@ describe.skipIf(!url)('seed content and POST /admin/reset (real Postgres)', () =
     const seedBefore = await counts(seedIds);
 
     const result = await runReset('persona');
-    expect(result.deleted).toBe(6); // 시드 5 + 방금 만든 1
+    expect(result.deleted).toBe(personaProjectCount + 1); // persona 시드 프로젝트 + 방금 만든 1
     expect(result.ms).toBeGreaterThanOrEqual(0);
 
     expect(await counts(personaIds)).toEqual(baseline);
@@ -462,19 +471,96 @@ describe.skipIf(!url)('seed content and POST /admin/reset (real Postgres)', () =
     expect(stat.viewCount).toBe(plan.stats.find((s) => s.projectId === seedProject.id)!.viewCount);
     expect(
       await prisma.agoraComment.count({ where: { project: { ownerId: { in: seedIds } } } }),
-    ).toBe(5);
+    ).toBe(commentsOnSeed);
     expect(await prisma.nodeComment.count({ where: { answerId: seedAnswer.id } })).toBe(0);
     expect(await prisma.project.count({ where: { ownerId: { in: visitorIds } } })).toBe(0);
     expect(await prisma.demoSession.count({ where: { creatorId: { in: visitorIds } } })).toBe(0);
-    expect((await counts(personaIds)).projects).toBe(5);
+    expect((await counts(personaIds)).projects).toBe(personaProjectCount);
+    // 남는 즐겨찾기는 쇼케이스 계정의 시드 즐겨찾기뿐이다.
     expect(
       await prisma.favorite.count({ where: { creatorId: { in: [...personaIds, ...visitorIds] } } }),
-    ).toBe(0);
+    ).toBe(showcaseFavorites.length);
     // 공통 데이터는 남는다.
     expect(await prisma.topic.count({ where: { id: { in: plan.topics.map((t) => t.id) } } })).toBe(
       4,
     );
     expect(await prisma.sampleResult.count()).toBeGreaterThanOrEqual(0);
+  });
+
+  it('showcase account: shelf, remix/derive links, favorites and identity are seeded', async () => {
+    const token = await loginAs(SHOWCASE_CREATOR_ID);
+    const shelf = ProjectListResponseSchema.parse(
+      await (await call('GET', '/projects', token)).json(),
+    );
+    expect(shelf.projects).toHaveLength(showcaseProjects.length);
+    expect(shelf.projects.filter((p) => p.kind === 'derive').length).toBe(
+      showcaseProjects.filter((p) => p.kind === 'derive').length,
+    );
+    expect(shelf.projects.filter((p) => p.remixPartner !== undefined).length).toBe(
+      showcaseProjects.filter((p) => p.remixPartnerId !== null).length,
+    );
+    expect(shelf.projects.filter((p) => p.posted).length).toBe(
+      showcaseProjects.filter((p) => p.postedAt !== null).length,
+    );
+    expect(shelf.projects.some((p) => p.status === 'building')).toBe(true);
+    expect(shelf.projects.every((p) => p.coverThumbUrl !== null)).toBe(true);
+
+    const rows = await prisma.project.findMany({ where: { ownerId: SHOWCASE_CREATOR_ID } });
+    for (const p of showcaseProjects.filter((x) => x.kind === 'derive')) {
+      const row = rows.find((r) => r.id === p.id)!;
+      expect(row.derivedFromProjectId).toBe(p.derivedFromProjectId);
+      expect(row.derivedFromAnswerId).toBe(p.derivedFromAnswerId);
+    }
+    expect(
+      (await prisma.favorite.findMany({ where: { creatorId: SHOWCASE_CREATOR_ID } }))
+        .map((f) => f.targetCreatorId)
+        .sort(),
+    ).toEqual(showcaseFavorites.map((f) => f.targetCreatorId).sort());
+    const pinned = await prisma.answer.count({
+      where: { pinned: true, set: { project: { ownerId: SHOWCASE_CREATOR_ID } } },
+    });
+    expect(pinned).toBe(plan.answers.filter((a) => a.pinned).length);
+
+    const me = IdentityResponseSchema.parse(
+      await (await call('GET', `/creators/${SHOWCASE_CREATOR_ID}/identity`, token)).json(),
+    );
+    expect(me.snapshot.provisional).toBe(false);
+    expect(me.snapshot.metrics.originBreakdown.remix).toBeGreaterThan(0);
+    expect(me.snapshot.metrics.originBreakdown.derived).toBeGreaterThan(0);
+    const compare = CompareResponseSchema.parse(
+      await (await call('GET', '/identity/compare', token)).json(),
+    );
+    expect(Object.values(compare.me.axes).every((v) => v !== null)).toBe(true);
+    expect(compare.others).toHaveLength(5);
+
+    // 리믹스 프로젝트 답변에서 Connection 을 열면 상대 스냅샷이 고정되고 근거가 나온다.
+    const remix = showcaseProjects.find((p) => p.key === 'julian-2')!;
+    const res = await call('GET', `/answers/${remix.coverAnswerId}/connections`, token);
+    expect(res.status).toBe(200);
+    expect(
+      (await prisma.project.findUniqueOrThrow({ where: { id: remix.id } })).remixPartnerSnapshotId,
+    ).not.toBeNull();
+
+    // 쇼케이스 계정이 바뀌어도 persona 리셋이 시드 상태로 되돌린다.
+    await prisma.favorite.deleteMany({ where: { creatorId: SHOWCASE_CREATOR_ID } });
+    await prisma.agoraComment.deleteMany({ where: { authorId: SHOWCASE_CREATOR_ID } });
+    await prisma.project.update({
+      where: { id: showcaseProjects[0]!.id },
+      data: { title: 'Changed', deletedAt: new Date() },
+    });
+    await runReset('persona');
+    expect(await prisma.favorite.count({ where: { creatorId: SHOWCASE_CREATOR_ID } })).toBe(
+      showcaseFavorites.length,
+    );
+    expect(await prisma.agoraComment.count({ where: { authorId: SHOWCASE_CREATOR_ID } })).toBe(
+      plan.comments.filter((c) => c.authorId === SHOWCASE_CREATOR_ID).length,
+    );
+    const restored = await prisma.project.findUniqueOrThrow({
+      where: { id: showcaseProjects[0]!.id },
+    });
+    expect(restored.title).toBe(showcaseProjects[0]!.title);
+    expect(restored.deletedAt).toBeNull();
+    expect((await call('GET', '/me', token)).status).toBe(200);
   });
 
   it('two simultaneous resets queue up and both finish with a consistent result', async () => {
