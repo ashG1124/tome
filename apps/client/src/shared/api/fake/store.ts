@@ -94,7 +94,7 @@ interface JobRecord {
   steps: JobStep[];
   /** 대체 결과로 채우는 job(상한·AI 실패 + 프리셋 그대로). 이후 단계도 AI 를 부르지 않는다 */
   sample?: boolean;
-  revision?: { baseAnswerId: string; nodes: NodeSnapshot };
+  revision?: { baseAnswerId: string; nodes: NodeSnapshot; appliedConnectionIds?: string[] };
 }
 
 /** 주소 옵션으로 고르는 생성 조건(?fakeLimit= · ?fakeSample=). 가짜 라우트가 넘긴다. */
@@ -625,6 +625,27 @@ export function createRevision(
   if (!base) throw new FakeFailure('NOT_FOUND');
   if (base.status !== 'accepted') throw new FakeFailure('VALIDATION_FAILED');
   const plan = fakeRevisionPlan(base.nodes, body.nodes);
+  // 서버 RemixApplyService.assertApplicable: 실은 Connection 은 모두 이 답변·지금 상대의 것이어야 한다(#151)
+  const applied = [...new Set(body.appliedConnectionIds ?? [])];
+  const partnerId = project.summary.remixPartner?.id;
+  if (
+    applied.length > 0 &&
+    (partnerId === undefined ||
+      !applied.every((id) =>
+        (s.connections ?? []).some(
+          (c) => c.id === id && c.answerId === base.id && c.partnerId === partnerId,
+        ),
+      ))
+  ) {
+    throw new FakeFailure('VALIDATION_FAILED', {
+      fields: [
+        {
+          path: 'appliedConnectionIds',
+          message: 'Use connections shown for this answer and the current partner.',
+        },
+      ],
+    });
+  }
   const limit = limitCode(options);
   if (limit) throw new FakeFailure(limit);
   const active = s.jobs.filter(
@@ -642,7 +663,11 @@ export function createRevision(
     startStage: plan.startStage,
     nextStage: plan.startStage,
     steps: [],
-    revision: { baseAnswerId: base.id, nodes: structuredClone(body.nodes) },
+    revision: {
+      baseAnswerId: base.id,
+      nodes: structuredClone(body.nodes),
+      ...(applied.length > 0 ? { appliedConnectionIds: applied } : {}),
+    },
   };
   s.jobs.push(job);
   return { job: toJob(job), ...plan };
@@ -662,6 +687,12 @@ export function acceptAnswer(s: FakeStore, answerId: string): AcceptAnswerRespon
             .map((candidate) => candidate.number ?? 0),
         ) + 1;
       setAnswerState(s, answer, 'accepted', number);
+      // 서버 RemixApplyService.applyOnAccept: 이 초안을 만든 revise 가 실은 Connection 을 applied 로 바꾼다(#151)
+      const job = s.jobs.find((entry) => entry.steps.some((step) => step.answer?.id === answer.id));
+      for (const id of job?.revision?.appliedConnectionIds ?? []) {
+        const record = (s.connections ?? []).find((c) => c.id === id);
+        if (record !== undefined && record.status !== 'applied') record.status = 'applied';
+      }
       project.summary.lastEditedAt = now();
       return { answer: { id: answer.id, number, status: 'accepted' } };
     }

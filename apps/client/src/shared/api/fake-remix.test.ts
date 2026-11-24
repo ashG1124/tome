@@ -193,6 +193,49 @@ describe('Connection', () => {
     expect(old.connections.map((c) => c.id)).toEqual(lind.connections.map((c) => c.id));
   });
 
+  /** 첫 노드의 가중치를 바꾼 revise 를 끝까지 돌려 초안 id 를 받는다(서버 edit.service 와 같은 흐름). */
+  async function reviseWith(answerId: string, ids: string[]): Promise<string> {
+    const workspace = await api.getWorkspace((await api.listProjects()).projects[0]?.id ?? '');
+    const set = workspace.sets[0];
+    const base = set?.latestAnswer;
+    if (!set || !base || base.id !== answerId) throw new Error('답변이 없다');
+    const nodes = structuredClone(base.nodes);
+    const keyword = nodes.nodes.find((node) => node.kind === 'keyword');
+    if (!keyword) throw new Error('keyword 노드가 없다');
+    keyword.weight = (keyword.weight ?? 5) === 9 ? 7 : 9;
+    const { job } = await api.createRevision(
+      set.id,
+      { baseAnswerId: base.id, nodes, appliedConnectionIds: ids },
+      crypto.randomUUID(),
+    );
+    let current = job;
+    while (current.nextStage) current = (await api.advanceJob(current.id, current.nextStage)).job;
+    const draft = (await api.getJob(job.id)).steps.find((step) => step.answer)?.answer;
+    if (!draft) throw new Error('초안이 없다');
+    return draft.id;
+  }
+
+  it('Apply(#151): revise 에 실은 Connection 은 확정하면 applied 가 된다', async () => {
+    const answerId = await answerWithPartner(LIND.id);
+    const [target] = (await api.listConnections(answerId)).connections;
+    if (target === undefined) throw new Error('Connection 이 없다');
+    const draftId = await reviseWith(answerId, [target.id]);
+    expect((await api.listConnections(answerId)).connections[0]?.status).toBe('shown');
+    await api.acceptAnswer(draftId, crypto.randomUUID());
+    const after = await api.listConnections(answerId, LIND.id);
+    expect(after.connections.find((c) => c.id === target.id)?.status).toBe('applied');
+  });
+
+  it('Apply(#151): 예전 상대의 Connection 을 실으면 VALIDATION_FAILED 다', async () => {
+    const answerId = await answerWithPartner(LIND.id);
+    const [old] = (await api.listConnections(answerId)).connections;
+    if (old === undefined) throw new Error('Connection 이 없다');
+    const projectId = (await api.listProjects()).projects[0]?.id ?? '';
+    await api.setRemixPartner(projectId, MARA.id);
+    const failure = await rejection(reviseWith(answerId, [old.id]));
+    expect(failure.code).toBe('VALIDATION_FAILED');
+  });
+
   it('상대가 없으면 NO_PARTNER(409), 모르는 답변·Connection 은 NOT_FOUND', async () => {
     const answerId = await answerWithPartner(undefined);
     const none = await rejection(api.listConnections(answerId));
