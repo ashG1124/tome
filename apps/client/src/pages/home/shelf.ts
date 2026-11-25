@@ -63,6 +63,40 @@ export function applyOrder(
   return [...added, ...ordered];
 }
 
+/**
+ * 서가에 카드로 놓을 프로젝트인지. 확정한 답변이 하나도 없는(아무 작업도 하지 않은) 프로젝트는
+ * 썸네일을 만들지 않고 서가에서 뺀다(#227). 서버·가짜 응답 모두 확정 답변이 없으면 coverThumbUrl 이 null 이다.
+ */
+export function hasWork(project: ProjectSummary): boolean {
+  return project.coverThumbUrl !== null;
+}
+
+/**
+ * 보이는 카드 순서(visibleIds)에서 movedId 가 놓인 자리를, 서가 전체(fullIds, 숨긴 빈 프로젝트 포함) 순번으로 바꾼다.
+ * 서버의 shelfPosition 은 전체 순번이라서, 바로 뒤 카드 앞(없으면 바로 앞 카드 뒤)에 끼우는 자리를 돌려준다.
+ */
+export function fullShelfPosition(
+  fullIds: readonly string[],
+  visibleIds: readonly string[],
+  movedId: string,
+): number {
+  const rest = fullIds.filter((id) => id !== movedId);
+  const at = visibleIds.indexOf(movedId);
+  const next = visibleIds[at + 1];
+  const nextAt = next === undefined ? -1 : rest.indexOf(next);
+  if (nextAt >= 0) return nextAt;
+  const prev = at > 0 ? visibleIds[at - 1] : undefined;
+  const prevAt = prev === undefined ? -1 : rest.indexOf(prev);
+  return prevAt >= 0 ? prevAt + 1 : 0;
+}
+
+/** movedId 를 target 순번(범위를 넘으면 맨 끝)에 넣은 새 id 순서. 서버 planShelfOrder 와 같다. */
+export function placeAt(ids: readonly string[], movedId: string, target: number): string[] {
+  const rest = ids.filter((id) => id !== movedId);
+  const index = Math.min(Math.max(target, 0), rest.length);
+  return [...rest.slice(0, index), movedId, ...rest.slice(index)];
+}
+
 /** from 칸의 카드를 to 칸으로 옮긴 새 순서. 칸 번호가 범위를 벗어나면 순서를 그대로 둔다. */
 export function moveCard<T>(list: readonly T[], from: number, to: number): T[] {
   const next = [...list];

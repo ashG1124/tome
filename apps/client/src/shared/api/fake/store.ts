@@ -205,7 +205,8 @@ function seed(emptyProjects: boolean): FakeStore {
   if (emptyProjects) return { projects: [], jobs: [], idempotency: {} };
   return {
     projects: FAKE_PROJECTS.map((summary) => ({
-      summary: { ...summary },
+      // 처음 서가의 두 프로젝트는 이미 작업한(썸네일이 있는) 프로젝트로 둔다. 서가는 작업 전 프로젝트를 빼고 보여 준다(#227).
+      summary: { ...summary, coverThumbUrl: summary.coverThumbUrl ?? FAKE_IMAGE_URL },
       postedAt: summary.posted ? summary.lastEditedAt : null,
       pages: (FAKE_PAGE_IDS[summary.id] ?? []).map((id, index) => ({ id, index })),
       sets: [],
