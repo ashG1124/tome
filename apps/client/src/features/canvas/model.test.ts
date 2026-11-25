@@ -4,6 +4,7 @@ import { fakeDeletedOriginDerivedFrom } from '../../shared/api/fake/agora';
 import {
   stackColumn,
   buildCanvas,
+  shownNumber,
   keyboardTarget,
   promptHeight,
   visibleStage,
@@ -354,6 +355,15 @@ it('draws step pills, group labels and joins priority rows into one card', () =>
   expect(edges.some((e) => e.id === 'set-a:analyze-heading->research-heading')).toBe(true);
 });
 
+describe('shownNumber (#235)', () => {
+  it('subtracts the derive copy and never goes below 1', () => {
+    expect(shownNumber(2, 1)).toBe(1);
+    expect(shownNumber(5, 1)).toBe(4);
+    expect(shownNumber(3)).toBe(3);
+    expect(shownNumber(1, 1)).toBe(1);
+  });
+});
+
 describe('derive columns', () => {
   const answer = (id: string) =>
     ({
@@ -526,6 +536,9 @@ describe('derive columns', () => {
       expect(nodeOf(nodes, 'answer')!.data).toMatchObject({
         kind: 'answer',
         hiddenVersionIds: ['copy'],
+        // 원작 복사본(1번)을 빼고 내 첫 버전은 Answer 01 이다(#235)
+        numberOffset: 1,
+        label: labels.answer(1),
       });
       expect(nodeOf(nodes, 'answer')!.data.inactive).toBeUndefined();
       expect(nodeOf(nodes, 'origin-heading')!.data.inactive).toBe(true);
@@ -552,7 +565,8 @@ describe('derive columns', () => {
       expect(nodeOf(nodes, 'answer')!.data).toMatchObject({
         inactive: true,
         activateAnswerId: 'm3',
-        label: 'Answer 3',
+        // 3번 버전은 원작 복사본을 빼고 2번으로 보인다(#235)
+        label: 'Answer 2',
         summary: expect.objectContaining({ id: 'm3', thumbUrl: '/m3-thumb' }),
       });
       expect(nodeOf(nodes, 'answer')!.data.answer).toBeUndefined();

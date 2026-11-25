@@ -164,6 +164,8 @@ export type CardData = {
   previewing?: boolean;
   /** 버전 넘기기에서 뺄 답변(파생 복사본은 원작 답변 카드가 대신한다) */
   hiddenVersionIds?: string[];
+  /** 화면 번호에서 뺄 수(파생: 원작 복사본이 1번이라 내 버전은 1을 빼 Answer 01 부터 보인다, #235) */
+  numberOffset?: number;
   state?: 'pending' | 'running' | 'done' | 'skipped' | 'failed';
   error?: GenerationView['error'];
   onRetry?: () => Promise<void>;
@@ -290,6 +292,11 @@ export interface DeriveAnswerState {
  * 파생 세트의 답변 상태. 서버는 파생할 때 원작 대표 답변을 번호 1 로 복사해 둔다(origin derived_copy).
  * 그 복사본은 원작 답변 카드가 대신 보여 주고, 사용자가 고쳐 만든 버전(번호 2~)만 "My answer" 로 본다.
  */
+/** 화면에 보일 답변 번호. 1보다 작아지지 않는다. */
+export function shownNumber(number: number, offset = 0): number {
+  return Math.max(1, number - offset);
+}
+
 export function deriveState(
   set: Pick<PromptSet, 'id' | 'answers'>,
   displayed: Pick<Answer, 'id'> | undefined,
@@ -565,6 +572,8 @@ export function buildCanvas(
       selectable: false,
       deletable: false,
     });
+    // 파생이면 원작 복사본(1번)을 빼고 내 버전을 1번부터 센다(#235).
+    const mineOffset = mine?.copyId ? 1 : 0;
     const answerHeading = derive ? derive.mine : labels.answer(answer?.number ?? 1);
     // 파생 2열: 위는 원작 답변(읽기 전용), 아래는 내 답변. 위치는 시안 Derive 1679:17831·1720:100994 그대로다.
     const originCardY = top + LAYOUT.originTop;
@@ -643,7 +652,7 @@ export function buildCanvas(
         1,
         {
           kind: 'answer',
-          label: labels.answer(mine.standby.number ?? 1),
+          label: labels.answer(shownNumber(mine.standby.number ?? 1, mineOffset)),
           summary: mine.standby,
           state: 'done',
           inactive: true,
@@ -672,12 +681,12 @@ export function buildCanvas(
         derive ? 1 : 0,
         {
           kind: 'answer',
-          label: labels.answer(answer?.number ?? 1),
+          label: labels.answer(shownNumber(answer?.number ?? 1, mineOffset)),
           answer,
           state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
           error: imageError,
           onRetry: current?.onRetry,
-          ...(mine?.copyId ? { hiddenVersionIds: [mine.copyId] } : {}),
+          ...(mine?.copyId ? { hiddenVersionIds: [mine.copyId], numberOffset: mineOffset } : {}),
         },
         derive
           ? { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true }

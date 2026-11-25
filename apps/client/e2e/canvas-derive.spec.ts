@@ -74,6 +74,8 @@ test('an edit makes My answer active, clicking either answer switches which one 
   await expect(originCard(page).locator('.canvas-origin-veil')).toHaveCount(1);
   // 내 답변의 버전 넘기기에는 원작 복사본이 들어 있지 않다(첫 내 버전이라 앞으로 갈 수 없다)
   await expect(page.getByRole('button', { name: 'Previous version' })).toBeDisabled();
+  // 내 첫 버전은 원작 복사본을 빼고 Answer 01 부터 센다(#235)
+  await expect(mineCard(page).locator('.canvas-answer-chip')).toHaveText('Answer 01');
   await page.screenshot({ path: info.outputPath('02-derive-mine-active.png') });
 
   // 원작 답변을 누르면 원작이 다시 활성, 내 답변은 비활성(편집 뒤 화면이 1단계 쪽에 있어 카드로 먼저 옮긴다)
