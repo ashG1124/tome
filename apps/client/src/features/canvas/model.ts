@@ -137,6 +137,26 @@ export interface GenerationView {
   onRetry?: () => Promise<void>;
 }
 
+/** 카드에 그리는 오류(문구·다시 시도 가능 여부). 생성 단계 오류와 파생 미리보기 오류가 같은 모양이다. */
+export interface CardError {
+  message: string;
+  retryable: boolean;
+}
+
+/** 크게 보기(Download)로 여는 답변 그림. title 이 있으면 그림 설명·파일 이름에 프로젝트 제목 대신 쓴다(원작 답변). */
+export type ViewableAnswer = Pick<Answer, 'id' | 'imageUrl'> & { title?: string };
+
+/**
+ * 원작 답변 카드에서 크게 볼 그림(#237). 카드에 보이는 원작 그림(derivedFrom.answer, 원작의 공개 답변)과 원작 제목이다.
+ * 원작이 지워졌거나 비공개라 그림이 없으면 undefined(크게 보기를 열지 않는다).
+ */
+export function viewableOrigin(
+  origin: WorkspaceDerivedFrom | undefined,
+): ViewableAnswer | undefined {
+  if (!origin?.answer || origin.title === null || origin.creator === null) return undefined;
+  return { id: origin.answer.id, imageUrl: origin.answer.imageUrl, title: origin.title };
+}
+
 export type CardData = {
   kind: 'heading' | 'prompt' | 'output' | 'placeholder' | 'answer' | 'origin';
   variant?: HeadingVariant;
@@ -167,7 +187,7 @@ export type CardData = {
   /** 화면 번호에서 뺄 수(파생: 원작 복사본이 1번이라 내 버전은 1을 빼 Answer 01 부터 보인다, #235) */
   numberOffset?: number;
   state?: 'pending' | 'running' | 'done' | 'skipped' | 'failed';
-  error?: GenerationView['error'];
+  error?: CardError;
   onRetry?: () => Promise<void>;
   labels: CanvasLabels;
 };
@@ -267,10 +287,15 @@ function titleCase(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : text;
 }
 
-/** 파생 세트에서 지금 만드는 미리보기(노드를 고친 뒤). answer 가 없으면 만드는 중이다. */
+/**
+ * 파생 세트에서 지금 만드는 미리보기(노드를 고친 뒤). answer 가 없으면 만드는 중이다.
+ * error 가 있으면 미리보기 생성이 실패한 것이다. My answer 카드는 그 자리에 남아 오류와 Retry 를 보인다(#237).
+ */
 export interface DerivePreview {
   setId: string;
   answer?: Answer;
+  error?: CardError;
+  onRetry?: () => Promise<void>;
 }
 
 /** 파생 첫 세트의 원작 답변 · My answer 상태(#229). */
@@ -547,7 +572,7 @@ export function buildCanvas(
     const lastHeading = id(`${VISIBLE_STAGES[VISIBLE_STAGES.length - 1]}-heading`);
     // 파생: 원작 답변과 "My answer" 중 하나만 활성이다(#229).
     // - 파생 직후(복사본만 있고 고친 것이 없음): 원작 답변만 활성, My answer 는 아직 없다.
-    // - 노드를 고쳐 미리보기가 만들어지거나 내 버전이 확정되면 My answer 가 생기고 활성, 원작 답변은 비활성.
+    // - 노드를 고쳐 미리보기가 만들어지거나(만드는 중·실패 포함, #237) 내 버전이 확정되면 My answer 가 생기고 활성, 원작 답변은 비활성.
     // - 원작 답변을 누르면 복사본(원작 노드)으로 돌아가 원작이 활성, My answer 는 비활성. My answer 를 누르면 그 반대.
     const mine = derive ? deriveState(set, answer, derivePreview) : undefined;
     const mineShown = !mine || mine.shown;
@@ -669,7 +694,14 @@ export function buildCanvas(
           kind: 'answer',
           label: answerHeading,
           ...(mine.preview.answer ? { answer: mine.preview.answer } : {}),
-          state: mine.preview.answer ? 'done' : 'running',
+          // 미리보기 생성이 실패하면 카드를 그대로 두고 오류·Retry 를 보인다(#237).
+          ...(mine.preview.error
+            ? {
+                state: 'failed' as const,
+                error: mine.preview.error,
+                ...(mine.preview.onRetry ? { onRetry: mine.preview.onRetry } : {}),
+              }
+            : { state: mine.preview.answer ? ('done' as const) : ('running' as const) }),
           previewing: true,
         },
         { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },

@@ -1,6 +1,6 @@
 import { memo, useContext, useRef, type CSSProperties, type ReactNode } from 'react';
 import { Handle, Position, useStore, type NodeProps } from '@xyflow/react';
-import type { CanvasNode } from '../model';
+import { viewableOrigin, type CanvasNode } from '../model';
 import { CanvasNavigation, openRole } from '../navigation';
 import { COPY } from '../../../shared/copy';
 import { Icon } from '../../../shared/ui';
@@ -127,14 +127,14 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
   // 답변(그림) 카드는 눌러서(또는 Enter) 크게 보기 모달을 연다(#230).
   // 파생의 흐린(비활성) 카드는 먼저 활성으로 돌아가고(덮개 버튼), 활성인 카드를 누르면 모달이 열린다.
   // 미리보기(아직 확정 전)·만드는 중인 카드는 열지 않는다.
+  // 파생의 원작 답변 카드도 같은 규칙이다(#237): 활성일 때 원작 그림(카드에 보이는 그림)을 원작 제목으로 연다. 원작이 지워졌으면 열지 않는다.
   const answerToOpen =
-    data.kind === 'answer' &&
-    data.answer &&
-    data.state === 'done' &&
-    !data.inactive &&
-    !data.previewing &&
-    navigation.openAnswer
-      ? data.answer
+    data.state === 'done' && !data.inactive && !data.previewing && navigation.openAnswer
+      ? data.kind === 'answer'
+        ? data.answer
+        : data.kind === 'origin'
+          ? viewableOrigin(data.origin)
+          : undefined
       : undefined;
   return (
     <>

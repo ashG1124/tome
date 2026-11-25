@@ -22,7 +22,13 @@ import { CANVAS_GEOMETRY_TOKENS } from '../../shared/tokens';
 import { api, ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { ErrorNotice, Flash, FLASH_MS } from '../../shared/ui';
 import { useGeneration } from './hooks/useGeneration';
-import { VISIBLE_STAGES, visibleStage, type CanvasGeometry, type DerivePreview } from './model';
+import {
+  VISIBLE_STAGES,
+  visibleStage,
+  type CanvasGeometry,
+  type DerivePreview,
+  type ViewableAnswer,
+} from './model';
 import { GenerationCanvas } from './components/GenerationCanvas';
 import { NodeEditPanel, type NodeEditorLabels } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
@@ -42,6 +48,7 @@ import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistor
 import type { NodeCommentsApi } from './hooks/useNodeComments';
 import type { CanvasRemixOptions } from './remix-model';
 import { applyConnection } from './connection-apply';
+import { dragStorageKey } from './drag-storage';
 import { useConnectionApply, type PendingConnectionApply } from './hooks/useConnectionApply';
 import './history.css';
 
@@ -90,8 +97,11 @@ export interface WorkspaceCanvasProps {
   projectId: string;
   pageId: string;
   workspace: WorkspaceResponse;
-  /** 답변(그림) 카드를 누르면 크게 보기(Download) 모달을 연다(#230). 없으면 답변 카드는 눌러도 아무 일이 없다. */
-  onOpenResult?: (answer: Answer) => void;
+  /**
+   * 답변(그림) 카드를 누르면 크게 보기(Download) 모달을 연다(#230). 없으면 답변 카드는 눌러도 아무 일이 없다.
+   * 파생의 원작 답변 카드도 같은 규칙으로 연다(#237). 그때 title 은 원작 제목이다.
+   */
+  onOpenResult?: (answer: ViewableAnswer) => void;
   editor?: CanvasEditorOptions | false;
   history?: CanvasHistoryOptions | false;
   remix?: CanvasRemixOptions;
@@ -199,16 +209,39 @@ function EditorSession({
     onDraft({ setId: base.setId, nodes: snapshotNodes });
   }, [base.setId, snapshotNodes, onDraft]);
   useEffect(() => () => onDraft(undefined), [onDraft]);
-  // 미리보기를 만드는 중·다 만든 것을 캔버스에 알린다(파생의 My answer 자리, #229).
+  // 미리보기를 만드는 중·다 만든 것·실패한 것을 캔버스에 알린다(파생의 My answer 자리, #229·#237).
+  // 실패해도 My answer 카드는 남아 그 자리에서 오류와 Retry 를 보인다. 아무것도 만들지 않았으면(고치기 전·되돌림) 알리지 않는다.
   const previewAnswer = editor.preview.status === 'ready' ? editor.preview.answer : undefined;
-  const previewLive = previewStatus === 'generating' || previewStatus === 'ready';
+  const previewFailure = editor.preview.status === 'error' ? editor.preview.error : undefined;
+  const previewLive =
+    previewStatus === 'generating' || previewStatus === 'ready' || previewStatus === 'error';
+  const { retryPreview } = editor;
   useEffect(() => {
-    onPreview(
-      previewLive
-        ? { setId: base.setId, ...(previewAnswer ? { answer: previewAnswer } : {}) }
-        : undefined,
-    );
-  }, [base.setId, previewLive, previewAnswer, onPreview]);
+    if (!previewLive) {
+      onPreview(undefined);
+      return;
+    }
+    const failure =
+      previewStatus === 'error'
+        ? {
+            message: COPY[errorCopyKey(previewFailure)],
+            retryable: !(previewFailure instanceof ApiRequestError && !previewFailure.retryable),
+          }
+        : undefined;
+    onPreview({
+      setId: base.setId,
+      ...(previewAnswer ? { answer: previewAnswer } : {}),
+      ...(failure ? { error: failure, onRetry: async () => retryPreview() } : {}),
+    });
+  }, [
+    base.setId,
+    previewLive,
+    previewStatus,
+    previewAnswer,
+    previewFailure,
+    retryPreview,
+    onPreview,
+  ]);
   useEffect(() => () => onPreview(undefined), [onPreview]);
   const progress = useQuery<GetJobResponse | null>({
     queryKey: ['revision-preview', base.id],
@@ -473,6 +506,7 @@ function PageCanvas({
           derivePreview={workspace.project.kind === 'derive' ? preview : undefined}
           announcement={announcement}
           onOpenAnswer={onOpenResult}
+          dragStorageKey={dragStorageKey(projectId, pageId)}
           history={
             history
               ? {
