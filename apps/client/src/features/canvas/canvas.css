@@ -67,12 +67,6 @@
   overflow: hidden;
   padding-inline-end: var(--space-padding-8);
 }
-.canvas-card small {
-  display: block;
-  color: var(--color-font-helper-text);
-  font: var(--text-body-b2-r);
-  margin-top: var(--space-padding-3);
-}
 .canvas-weight {
   position: absolute;
   right: var(--space-padding-6);
@@ -330,10 +324,6 @@
   padding-inline: 0;
   overflow-wrap: anywhere;
 }
-.canvas-card--output small {
-  margin-top: 0;
-  text-align: center;
-}
 /* 근거 문장: 왼쪽 정렬 + 켜짐 스위치 */
 .canvas-card--evidence {
   text-align: left;
@@ -558,7 +548,25 @@
   font: var(--text-subtitle-st2-m);
   letter-spacing: var(--letter-spacing-default);
 }
-/* 원작으로 가는 연결선은 회색, 내 답변으로 가는 선은 기본(주황) */
+/* 파생: 비활성 답변 카드 전체를 덮는 누름 자리(#229). 누르면 그 답변이 다시 활성이 된다 */
+.canvas-answer-activate {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-node);
+  background: transparent;
+  cursor: pointer;
+}
+.canvas-answer-activate:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.canvas-answer-activate:disabled {
+  cursor: not-allowed;
+}
+/* 비활성 답변으로 가는 연결선은 회색, 활성 답변으로 가는 선은 기본(주황) */
 .generation-canvas .react-flow__edge.canvas-edge--origin .react-flow__edge-path {
   stroke: var(--color-border-input);
 }
@@ -672,6 +680,13 @@
 .canvas-heading[data-variant='answer'] {
   color: var(--color-font-sub-text);
 }
+/* 파생(#229): 머리글 색은 활성 여부를 따른다. 시안의 연한 원작자 머리글은 원작이 비활성일 때다 */
+.canvas-heading[data-variant='origin']:not([data-inactive]) {
+  color: var(--color-font-sub-text);
+}
+.canvas-heading[data-variant='answer'][data-inactive] {
+  color: var(--color-font-disable);
+}
 /* 답변 카드 1226:70281: 520×340, 모서리 20, 테두리 1(그림 위), 그림은 꽉 채움 */
 .canvas-card--answer,
 .canvas-card--origin {
@@ -768,4 +783,44 @@
 }
 .canvas-card--output[data-enabled='false'] .canvas-node-line [data-icon] {
   color: var(--color-font-disable);
+}
+
+/* ---- #228: 프롬프트 노드 시안 Node/Prompt 1192:65515 — 폭 400, 모서리 20, 안쪽 24, 줄 사이 24,
+   크림 바탕 + 연보라 광(단계 알약과 같은 그라데이션), 연살구 테두리, 그림자 없음.
+   이름표 Prompt(14px, B2 R) · 오른쪽 위 반짝임(연주황), 글은 18px ST2. */
+.canvas-card--prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-padding-8);
+  padding: var(--space-padding-8);
+  border-color: var(--color-step-pill-border);
+  background-color: var(--color-prompt);
+  background-image: radial-gradient(
+    67.9% 67.9% at 50% 50%,
+    color-mix(in srgb, var(--color-background-default) 20%, transparent) 48%,
+    color-mix(in srgb, var(--color-step-pill-glow) 20%, transparent)
+  );
+  box-shadow: none;
+}
+.canvas-prompt-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  height: var(--space-padding-8);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b2-r);
+  letter-spacing: var(--letter-spacing-body-b2);
+}
+.canvas-prompt-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-padding-8);
+  height: var(--space-padding-8);
+  color: var(--color-node-line);
+}
+.canvas-card--prompt .canvas-prompt-text {
+  color: var(--color-font-main-text);
+  font: var(--text-subtitle-st2-m);
+  letter-spacing: var(--letter-spacing-subtitle-st2);
 }

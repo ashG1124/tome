@@ -4,9 +4,12 @@ import { fakeDeletedOriginDerivedFrom } from '../../shared/api/fake/agora';
 import {
   stackColumn,
   buildCanvas,
+  shownNumber,
   keyboardTarget,
+  promptHeight,
   visibleStage,
   sameCardData,
+  viewableOrigin,
   type CanvasGeometry,
   type CanvasLabels,
   type GenerationView,
@@ -98,7 +101,35 @@ describe('generation canvas', () => {
     expect(nodes.find((node) => node.id === 'set-a:evidence-placeholder')?.data.state).toBe(
       'pending',
     );
-    expect(nodes.filter((node) => node.data.kind === 'heading')).toHaveLength(6);
+    // 단계 알약 5개. 프롬프트 노드는 이름표를 카드 안에 두어 소제목이 없다(#228, 시안 1192:65515).
+    expect(nodes.filter((node) => node.data.kind === 'heading')).toHaveLength(5);
+  });
+  it('places the 400px prompt node 171 left of step 1 and below the pill (#228)', () => {
+    const promptGeometry = { ...geometry, promptWidth: 400 };
+    const { nodes } = buildCanvas([set], generation, labels, promptGeometry);
+    const prompt = nodes.find((node) => node.id === 'set-a:prompt')!;
+    const step1 = nodes.find((node) => node.id === 'set-a:analyze-heading')!;
+    expect(prompt.style?.width).toBe(400);
+    expect(prompt.style?.minHeight).toBeUndefined();
+    expect(prompt.position.x + 400 + promptGeometry.promptGap).toBe(step1.position.x);
+    // 시안 1679:11666: 프롬프트 노드 위쪽은 열 맨 위에서 166
+    expect(prompt.position.y - step1.position.y).toBe(166);
+    expect(nodes.some((node) => node.id === 'set-a:prompt-heading')).toBe(false);
+  });
+  it('falls back to the node width when the prompt width token is missing', () => {
+    const { nodes } = buildCanvas([set], generation, labels, { ...geometry, promptWidth: NaN });
+    expect(nodes.find((node) => node.id === 'set-a:prompt')?.style?.width).toBe(300);
+  });
+  it('keeps the next set below a long prompt node', () => {
+    const long = { ...set, prompt: 'word '.repeat(90).trim() };
+    const second = { ...set, id: 'set-b', position: 2 };
+    const promptGeometry = { ...geometry, promptWidth: 400 };
+    const { nodes } = buildCanvas([long, second], undefined, labels, promptGeometry);
+    const prompt = nodes.find((node) => node.id === 'set-a:prompt')!;
+    const nextTop = Math.min(
+      ...nodes.filter((node) => node.data.setId === 'set-b').map((node) => node.position.y),
+    );
+    expect(nextTop).toBeGreaterThan(prompt.position.y + promptHeight(long.prompt, 400));
   });
   it('preserves previous output when the next stage fails', () => {
     const { nodes } = buildCanvas(
@@ -202,7 +233,7 @@ it('binds output nodes and read-only verification lists to the displayed answer 
   expect(outputs.every((node) => node.data.onRetry === undefined)).toBe(true);
 });
 
-it('leaves room for the not-measured note so skipped criteria rows do not overlap', () => {
+it('does not reserve a not-measured line for skipped criteria rows (#230)', () => {
   const criteria: Node[] = [1, 2].map((n) => ({
     id: `v${n}`,
     kind: 'criterion',
@@ -230,7 +261,54 @@ it('leaves room for the not-measured note so skipped criteria rows do not overla
     const at = (id: string) => graph.nodes.find((node) => node.data.output?.id === id)!.position.y;
     return at('v2') - at('v1');
   };
-  expect(y('skipped') - y('done')).toBe(21);
+  expect(y('skipped') - y('done')).toBe(0);
+});
+
+it('marks only the prompt, step pills, group labels and answers as draggable (#230)', () => {
+  const evidence: Node = {
+    id: 'e1',
+    stage: 'evidence',
+    kind: 'evidence',
+    text: 'Brass',
+    enabled: true,
+    parentIds: [],
+  };
+  const answer = {
+    id: 'answer',
+    setId: set.id,
+    number: 1,
+    status: 'accepted',
+    imageUrl: '/a',
+    nodes: { schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [keyword, evidence] },
+  } as unknown as NonNullable<PromptSet['latestAnswer']>;
+  const { nodes } = buildCanvas(
+    [{ ...set, latestAnswer: answer }],
+    undefined,
+    { ...labels, groups: { keywords: 'Keywords', evidence: 'Evidence' } },
+    geometry,
+  );
+  const draggable = nodes
+    .filter((node) => node.draggable !== false)
+    .map((node) => node.id.replace('set-a:', ''))
+    .sort();
+  expect(draggable).toEqual(
+    [
+      'prompt',
+      'answer',
+      'analyze-heading',
+      'research-heading',
+      'evidence-heading',
+      'draft-heading',
+      'verify-heading',
+      'analyze-group-0',
+      'evidence-group-0',
+    ].sort(),
+  );
+  // 카드와 그 위 소제목은 같은 묶음을 가진다
+  const group = (id: string) => nodes.find((node) => node.id === `set-a:${id}`)!.data.group;
+  expect(group('k1')).toBe('analyze-0');
+  expect(group('analyze-group-0')).toBe('analyze-0');
+  expect(group('e1')).toBe('evidence-0');
 });
 
 it('draws step pills, group labels and joins priority rows into one card', () => {
@@ -268,7 +346,23 @@ it('draws step pills, group labels and joins priority rows into one card', () =>
     (r) => nodes.find((n) => n.id === `set-a:${r.id}`)!.data.groupPosition,
   );
   expect(positions).toEqual(['first', 'middle', 'last']);
+  // 묶음 첫 줄만 묶음 전체 id 를 갖는다(리믹스 표시는 묶음당 1개, #229)
+  expect(rows.map((r) => nodes.find((n) => n.id === `set-a:${r.id}`)!.data.groupIds)).toEqual([
+    ['s1', 's2', 's3'],
+    undefined,
+    undefined,
+  ]);
+  expect(nodes.find((n) => n.id === 'set-a:k1')!.data.groupIds).toBeUndefined();
   expect(edges.some((e) => e.id === 'set-a:analyze-heading->research-heading')).toBe(true);
+});
+
+describe('shownNumber (#235)', () => {
+  it('subtracts the derive copy and never goes below 1', () => {
+    expect(shownNumber(2, 1)).toBe(1);
+    expect(shownNumber(5, 1)).toBe(4);
+    expect(shownNumber(3)).toBe(3);
+    expect(shownNumber(1, 1)).toBe(1);
+  });
 });
 
 describe('derive columns', () => {
@@ -307,7 +401,9 @@ describe('derive columns', () => {
     const origin = nodes.find((n) => n.id === 'set-a:origin-answer')!;
     const mine = nodes.find((n) => n.id === 'set-a:answer')!;
     expect(origin.data).toMatchObject({ kind: 'origin', label: 'Answer 6', origin: open });
-    expect(origin.draggable).toBe(false);
+    // 원작 답변 카드도 혼자 끌어 옮길 수 있다(#230). 머리글은 혼자 끌리지 않고 카드를 따라간다.
+    expect(origin.draggable).toBeUndefined();
+    expect(nodes.find((n) => n.id === 'set-a:origin-heading')!.draggable).toBe(false);
     expect(mine.position.y).toBeGreaterThan(origin.position.y + 1);
     // 시안 Derive: 내 답변은 원작 답변보다 179 오른쪽에 놓인다(1002 − 823)
     expect(mine.position.x).toBe(origin.position.x + 179);
@@ -353,6 +449,185 @@ describe('derive columns', () => {
     expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
     expect(nodes.find((n) => n.id === 'set-a:origin-answer')?.data.origin?.answer).toBeNull();
   });
+  it('opens the original picture with the original title, never a gone original (#237)', () => {
+    expect(viewableOrigin(open)).toEqual({ id: 'o1', imageUrl: '/origin', title: 'City sneakers' });
+    expect(viewableOrigin({ ...open, answer: null })).toBeUndefined();
+    expect(viewableOrigin(fakeDeletedOriginDerivedFrom())).toBeUndefined();
+    expect(viewableOrigin({ ...open, creator: null })).toBeUndefined();
+    expect(viewableOrigin(undefined)).toBeUndefined();
+  });
+  describe('active answer (#229)', () => {
+    const summary = (id: string, number: number) => ({
+      id,
+      number,
+      pinned: false,
+      isSample: false,
+      thumbUrl: `/${id}-thumb`,
+      createdAt: `2026-11-25T00:00:0${number}.000Z`,
+    });
+    const copy = { ...answer('copy'), origin: 'derived_copy' } as NonNullable<
+      PromptSet['latestAnswer']
+    >;
+    const derivedSet = (displayed: string, versions: number) => ({
+      ...set,
+      latestAnswer: displayed === 'copy' ? copy : { ...answer(displayed), number: 2 },
+      answers: [
+        summary('copy', 1),
+        ...[2, 3, 4].slice(0, versions).map((n) => summary(`m${n}`, n)),
+      ],
+    });
+    const nodeOf = (nodes: ReturnType<typeof build>['nodes'], suffix: string) =>
+      nodes.find((n) => n.id === `set-a:${suffix}`);
+
+    it('right after deriving: the original is active and there is no My answer yet', () => {
+      const { nodes, edges } = buildCanvas(
+        [derivedSet('copy', 0)],
+        undefined,
+        labels,
+        geometry,
+        open,
+      );
+      expect(headings(nodes)).toEqual(['shina’s answer']);
+      expect(nodeOf(nodes, 'answer')).toBeUndefined();
+      expect(nodeOf(nodes, 'origin-answer')!.data.inactive).toBeUndefined();
+      expect(nodeOf(nodes, 'origin-heading')!.data.inactive).toBeUndefined();
+      expect(edges.some((e) => e.target === 'set-a:answer')).toBe(false);
+      // 원작으로 가는 선은 활성(주황, 기본 선)
+      expect(edges.find((e) => e.target === 'set-a:origin-answer')?.className).toBeUndefined();
+      // 노드는 원작 복사본(원작자의 노드)을 그대로 보이고 고칠 수 있다
+      expect(nodeOf(nodes, 'k1')!.data.answerId).toBe('copy');
+    });
+
+    it('an edit that makes a preview adds an active My answer and dims the original', () => {
+      const generating = buildCanvas([derivedSet('copy', 0)], undefined, labels, geometry, open, {
+        setId: 'set-a',
+      });
+      expect(headings(generating.nodes)).toEqual(['shina’s answer', 'My answer']);
+      expect(nodeOf(generating.nodes, 'answer')!.data).toMatchObject({
+        previewing: true,
+        state: 'running',
+      });
+      expect(nodeOf(generating.nodes, 'origin-answer')!.data).toMatchObject({
+        inactive: true,
+        activateAnswerId: 'copy',
+      });
+      expect(generating.edges.find((e) => e.target === 'set-a:origin-answer')?.className).toBe(
+        'canvas-edge--origin',
+      );
+      const draft = { ...answer('draft'), status: 'draft', number: null } as NonNullable<
+        PromptSet['latestAnswer']
+      >;
+      const ready = buildCanvas([derivedSet('copy', 0)], undefined, labels, geometry, open, {
+        setId: 'set-a',
+        answer: draft,
+      });
+      expect(nodeOf(ready.nodes, 'answer')!.data).toMatchObject({
+        previewing: true,
+        state: 'done',
+        answer: draft,
+      });
+      // 다른 세트의 미리보기는 상관없다
+      const other = buildCanvas([derivedSet('copy', 0)], undefined, labels, geometry, open, {
+        setId: 'other',
+      });
+      expect(nodeOf(other.nodes, 'answer')).toBeUndefined();
+    });
+
+    it('a failed preview keeps My answer in place with the error and Retry (#237)', () => {
+      const onRetry = async () => {};
+      const error = { message: 'Could not make it', retryable: true };
+      for (const versions of [0, 1]) {
+        const { nodes, edges } = buildCanvas(
+          [derivedSet('copy', versions)],
+          undefined,
+          labels,
+          geometry,
+          open,
+          { setId: 'set-a', error, onRetry },
+        );
+        // 적용한 버전이 없어도 My answer 머리글·카드가 남고, 카드는 실패 상태로 오류·Retry 를 그린다.
+        expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
+        const mine = nodeOf(nodes, 'answer')!;
+        expect(mine.data).toMatchObject({ previewing: true, state: 'failed', error, onRetry });
+        expect(mine.data.inactive).toBeUndefined();
+        expect(mine.data.answer).toBeUndefined();
+        expect(nodeOf(nodes, 'answer-heading')!.data.inactive).toBeUndefined();
+        // 원작은 흐리고, 누르면 그대로 원작(복사본)으로 돌아간다.
+        expect(nodeOf(nodes, 'origin-answer')!.data).toMatchObject({
+          inactive: true,
+          activateAnswerId: 'copy',
+        });
+        expect(edges.find((e) => e.target === 'set-a:answer')?.className).toBeUndefined();
+      }
+    });
+
+    it('my applied version is active; the copy is left out of its versions', () => {
+      const { nodes, edges } = buildCanvas(
+        [derivedSet('m2', 1)],
+        undefined,
+        labels,
+        geometry,
+        open,
+      );
+      expect(nodeOf(nodes, 'answer')!.data).toMatchObject({
+        kind: 'answer',
+        hiddenVersionIds: ['copy'],
+        // 원작 복사본(1번)을 빼고 내 첫 버전은 Answer 01 이다(#235)
+        numberOffset: 1,
+        label: labels.answer(1),
+      });
+      expect(nodeOf(nodes, 'answer')!.data.inactive).toBeUndefined();
+      expect(nodeOf(nodes, 'origin-heading')!.data.inactive).toBe(true);
+      expect(nodeOf(nodes, 'answer-heading')!.data.inactive).toBeUndefined();
+      expect(nodeOf(nodes, 'origin-answer')!.data).toMatchObject({
+        inactive: true,
+        activateAnswerId: 'copy',
+      });
+      expect(edges.find((e) => e.target === 'set-a:answer')?.className).toBeUndefined();
+    });
+
+    it('going back to the original keeps My answer as an inactive card that switches back', () => {
+      const { nodes, edges } = buildCanvas(
+        [derivedSet('copy', 2)],
+        undefined,
+        labels,
+        geometry,
+        open,
+      );
+      expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
+      expect(nodeOf(nodes, 'origin-answer')!.data.inactive).toBeUndefined();
+      expect(nodeOf(nodes, 'origin-heading')!.data.inactive).toBeUndefined();
+      expect(nodeOf(nodes, 'answer-heading')!.data.inactive).toBe(true);
+      expect(nodeOf(nodes, 'answer')!.data).toMatchObject({
+        inactive: true,
+        activateAnswerId: 'm3',
+        // 3번 버전은 원작 복사본을 빼고 2번으로 보인다(#235)
+        label: 'Answer 2',
+        summary: expect.objectContaining({ id: 'm3', thumbUrl: '/m3-thumb' }),
+      });
+      expect(nodeOf(nodes, 'answer')!.data.answer).toBeUndefined();
+      expect(edges.find((e) => e.target === 'set-a:answer')?.className).toBe('canvas-edge--origin');
+    });
+
+    it('lifts the My answer heading above stacked versions so it stays visible', () => {
+      const heading = (displayed: string, versions: number) =>
+        nodeOf(
+          buildCanvas([derivedSet(displayed, versions)], undefined, labels, geometry, open).nodes,
+          'answer-heading',
+        )!.position.y;
+      const flat = heading('m2', 1);
+      // 뒤 장(한 장 25씩 올라옴) 위로 머리글 아래가 4 떨어지게 올린다: 1장 16, 2장 41
+      expect(heading('m3', 2)).toBe(flat - 16);
+      expect(heading('m4', 3)).toBe(flat - 41);
+      // 2장이어도 원작 카드(위 4 + 높이 340) 아래에 있다
+      const top = nodeOf(
+        buildCanvas([derivedSet('m4', 3)], undefined, labels, geometry, open).nodes,
+        'origin-answer',
+      )!.position.y;
+      expect(heading('m4', 3)).toBeGreaterThanOrEqual(top + 340);
+    });
+  });
+
   it('leaves an original project as a single answer column', () => {
     const { nodes } = build(undefined);
     // 내 작업 화면에는 답변 카드 위 머리글이 없다(시안 My work)

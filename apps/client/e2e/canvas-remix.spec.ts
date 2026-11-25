@@ -1,7 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Answer, Job } from '@tome/shared';
 
-async function prepare(page: Page, partner: boolean) {
+interface SeededConnection {
+  nodeId: string;
+  predictedAction: string;
+}
+
+async function prepare(page: Page, partner: boolean, seed: SeededConnection[] = []) {
   await page.addInitScript(() => {
     localStorage.setItem('tome.token', 'fake-token');
     localStorage.setItem('tome.fake.consented', '1');
@@ -27,6 +32,30 @@ async function prepare(page: Page, partner: boolean) {
       partners: candidates.map((candidate: { id: string }) => candidate.id),
     };
   }, partner);
+  if (seed.length > 0)
+    // 가짜 저장소에 이 답변·지금 상대의 Connection 을 미리 넣는다(가짜는 앞쪽 노드 2개에만 만들기 때문)
+    await page.evaluate(
+      ({ answerId, partnerId, seed }) => {
+        const key = 'tome.fake.store.v2';
+        const store = JSON.parse(localStorage.getItem(key) ?? '{}') as {
+          connections?: object[];
+        };
+        store.connections = [
+          ...(store.connections ?? []),
+          ...seed.map((entry, index) => ({
+            id: `00000000-0000-4000-8000-0000000002${String(index).padStart(2, '0')}`,
+            answerId,
+            partnerId,
+            nodeId: entry.nodeId,
+            predictedAction: entry.predictedAction,
+            sentence: 'Made bold changes 4 of 6 times',
+            status: 'shown',
+          })),
+        ];
+        localStorage.setItem(key, JSON.stringify(store));
+      },
+      { answerId: created.answerId, partnerId: created.partners[0], seed },
+    );
   await page.goto(`/projects/${created.projectId}`);
   await expect(page.getByRole('region', { name: 'Generation canvas' })).toBeVisible();
   return created;
@@ -36,13 +65,13 @@ for (const size of [
   { width: 1920, height: 1080 },
   { width: 1536, height: 960 },
 ]) {
-  test(`shows evidence, hides persistently and offers Apply at ${size.width}`, async ({
+  test(`shows evidence and offers Apply without a Hide button at ${size.width}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(size);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    const { answerId } = await prepare(page, true);
+    await prepare(page, true);
     const triggers = page.getByRole('button', { name: /^Connection:/ });
     await expect(triggers).toHaveCount(2);
     const trigger = triggers.first();
@@ -61,6 +90,9 @@ for (const size of [
     // 지금 상대의 것이고 바꿀 값이 있으니 Apply 를 누를 수 있다(잠긴 이유 줄이 없다)
     await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
     await expect(panel.locator('.canvas-connection-note')).toHaveCount(0);
+    // 숨기기(Hide)는 없다(#229): 말풍선 안 버튼은 글(쪽 넘기기)과 Apply 뿐이다
+    await expect(panel.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(0);
+    await expect(panel.getByRole('button')).toHaveCount(2);
     await page.screenshot({
       path: info.outputPath('02-evidence-and-apply.png'),
       fullPage: true,
@@ -74,45 +106,102 @@ for (const size of [
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
     await expect(trigger).toBeFocused();
+    // 표시를 다시 누르면 열리고 한 번 더 누르면 닫힌다. 바깥을 눌러도 닫힌다
     await page.keyboard.press('Space');
-    await panel.getByRole('button', { name: 'Hide', exact: true }).focus();
-    await page.keyboard.press('Enter');
-    await expect(triggers).toHaveCount(1);
-    await expect(page.getByRole('button', { name: label!, exact: true })).toHaveCount(0);
-    const stored = await page.evaluate(async (id) => {
-      const path = '/src/shared/api/index.ts';
-      const { api } = await import(/* @vite-ignore */ path);
-      return (await api.listConnections(id)).connections;
-    }, answerId);
-    expect(stored.some((connection: { status: string }) => connection.status === 'dismissed')).toBe(
-      true,
-    );
-    await page.reload();
-    await expect(triggers).toHaveCount(1);
-    await page.screenshot({ path: info.outputPath('03-hidden-after-reload.png'), fullPage: true });
+    await expect(panel).toBeVisible();
+    // 첫 열은 오른쪽으로 열려 말풍선이 표시의 오른쪽 절반을 덮으므로, 남아 있는 왼쪽 위 갈고리를 누른다
+    await trigger.click({ position: { x: 5, y: 5 } });
+    await expect(panel).toHaveCount(0);
+    await trigger.click();
+    await expect(panel).toBeVisible();
+    await page.mouse.click(size.width / 2, 40);
+    await expect(panel).toHaveCount(0);
+    await expect(triggers).toHaveCount(2);
     expect(errors).toEqual([]);
   });
 }
 
-test('no partner has no Connection and switching partners retains existing Connections', async ({
+test('switching partners replaces the Connections, and the chosen partner again cancels the remix (#229)', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1536, height: 960 });
   const created = await prepare(page, false);
   const triggers = page.getByRole('button', { name: /^Connection:/ });
   await expect(triggers).toHaveCount(0);
-  await page.getByRole('button', { name: 'Remix', exact: true }).click();
+  const remix = page.getByRole('button', { name: 'Remix', exact: true });
+  await remix.click();
   await page.getByRole('button', { name: /^Lind / }).click();
   await expect(triggers).toHaveCount(2);
-  const switchPartner = page.getByRole('button', { name: 'Remix', exact: true });
-  await switchPartner.click();
+  const before = await page.locator('[data-canvas-card]:has(.canvas-connection)').count();
+  await remix.click();
   await page.getByRole('button', { name: 'Mara', exact: true }).click();
-  await expect(triggers).toHaveCount(4);
-  await page.screenshot({
-    path: info.outputPath('04-retained-partner-connections.png'),
-    fullPage: true,
-  });
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Mara');
+  // 예전 상대의 표시는 사라지고 새 상대의 것으로 바뀐다(겹쳐 쌓이지 않는다)
+  await expect(triggers).toHaveCount(2);
+  expect(await page.locator('[data-canvas-card]:has(.canvas-connection)').count()).toBe(before);
+  for (const card of await page.locator('.canvas-connections').all())
+    await expect(card.locator('.canvas-connection')).toHaveCount(1);
+  // 새 상대의 것이라 Apply 를 누를 수 있다(예전 상대 안내가 없다)
+  await triggers.first().click();
+  const panel = page.getByRole('region', { name: 'Connection', exact: true });
+  await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await page.screenshot({ path: info.outputPath('04-switched-partner.png') });
+  // 고른 상대를 한 번 더 누르면 리믹스가 풀린다
+  await remix.click();
+  const mara = page.getByRole('button', { name: 'Mara', exact: true });
+  await expect(mara).toHaveAttribute('aria-current', 'true');
+  await mara.click();
+  await expect(page.getByRole('heading', { level: 1 })).not.toContainText('Mara');
+  await expect(triggers).toHaveCount(0);
+  await expect(page.locator('[data-remix-handle]')).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('04b-remix-cancelled.png') });
   expect(created.partners.length).toBeGreaterThan(1);
+});
+
+test('one icon per grouped card and none where Apply has nothing to change (#229)', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  // a1·s1 은 이미 그 값이라 바꿀 것이 없고(Apply 잠김), v1·v2 는 5단계 검증 기준 한 장 카드의 두 줄이다.
+  // 상한(답변당 5개)이 차서 가짜가 따로 만들지 않는다.
+  await prepare(page, true, [
+    { nodeId: 'k1', predictedAction: 'Lean on evidence' },
+    { nodeId: 'a1', predictedAction: 'Keep the change small' },
+    { nodeId: 's1', predictedAction: 'Lean on evidence' },
+    { nodeId: 'v1', predictedAction: 'Make a bold change' },
+    { nodeId: 'v2', predictedAction: 'Make a bold change' },
+  ]);
+  const triggers = page.getByRole('button', { name: /^Connection:/ });
+  await expect(triggers).toHaveCount(2);
+  const card = (id: string) => page.locator(`[data-id$=":${id}"]`);
+  await expect(card('k1').locator('.canvas-connection')).toHaveCount(1);
+  await expect(card('a1').locator('.canvas-connection')).toHaveCount(0);
+  await expect(card('s1').locator('.canvas-connection')).toHaveCount(0);
+  // 검증 기준 묶음은 첫 줄(카드 왼쪽 위)에만 하나
+  await expect(card('v1').locator('.canvas-connection')).toHaveCount(1);
+  await expect(card('v2').locator('.canvas-connection')).toHaveCount(0);
+  // 묶음 표시도 다른 노드처럼 카드 왼쪽 위 (-33, -33)에 놓인다
+  for (const id of ['k1', 'v1']) {
+    const trigger = card(id).getByRole('button', { name: /^Connection:/ });
+    const t = (await trigger.boundingBox())!;
+    const c = (await card(id).locator('[data-canvas-card]').boundingBox())!;
+    const scale = t.width / 60;
+    expect(Math.abs(c.x - t.x - 33 * scale)).toBeLessThan(2);
+    expect(Math.abs(c.y - t.y - 33 * scale)).toBeLessThan(2);
+  }
+  // 묶음 표시를 열면 다른 노드처럼 표시의 오른쪽 아래 갈고리에 말풍선이 붙고 화면 안에 있다
+  const groupTrigger = card('v1').getByRole('button', { name: /^Connection:/ });
+  await groupTrigger.click();
+  const bubble = page.getByRole('region', { name: 'Connection', exact: true });
+  await expect(bubble).toBeVisible();
+  const t = (await groupTrigger.boundingBox())!;
+  const b = (await bubble.boundingBox())!;
+  const scale = t.width / 60;
+  expect(Math.abs(b.x + b.width - (t.x + t.width - 30 * scale))).toBeLessThan(2);
+  expect(Math.abs(b.y + b.height - (t.y + t.height))).toBeLessThan(2);
+  expect(b.x).toBeGreaterThanOrEqual(0);
+  await page.screenshot({ path: info.outputPath('10-group-connection.png') });
 });
 
 test('closed partner shows the folded handle, which unfolds the Remix with pill (Remix 03 → 04)', async ({
@@ -211,29 +300,6 @@ test('Apply → node value → preview → Apply the fix makes a new version and
     )
     .toContain('applied');
   await page.screenshot({ path: info.outputPath('08-new-version.png') });
-});
-
-test('Connections kept from a previous partner cannot be applied (#151)', async ({ page }) => {
-  await page.setViewportSize({ width: 1536, height: 960 });
-  await prepare(page, true);
-  const triggers = page.getByRole('button', { name: /^Connection:/ });
-  await expect(triggers).toHaveCount(2);
-  await page.getByRole('button', { name: 'Remix', exact: true }).click();
-  await page.getByRole('button', { name: /^Mara/ }).click();
-  await expect(triggers).toHaveCount(4);
-  const panel = page.getByRole('region', { name: 'Connection', exact: true });
-  let stale = 0;
-  for (let index = 0; index < 4; index += 1) {
-    await triggers.nth(index).click();
-    await expect(panel).toBeVisible();
-    const reason = panel.getByText('Only connections from your current partner can be applied.');
-    if (await reason.isVisible()) {
-      stale += 1;
-      await expect(panel.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
-    }
-    await page.keyboard.press('Escape');
-  }
-  expect(stale).toBe(2);
 });
 
 test('empty page with a partner shows the partner chip and "Start a new project with" (4898:93342)', async ({

@@ -20,9 +20,15 @@ import { Navigate } from 'react-router';
 import { CANVAS_COPY, COPY, NODE_EDITOR_COPY, CANVAS_HISTORY_COPY } from '../../shared/copy';
 import { CANVAS_GEOMETRY_TOKENS } from '../../shared/tokens';
 import { api, ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
-import { ErrorNotice, Flash } from '../../shared/ui';
+import { ErrorNotice, Flash, FLASH_MS } from '../../shared/ui';
 import { useGeneration } from './hooks/useGeneration';
-import { VISIBLE_STAGES, visibleStage, type CanvasGeometry } from './model';
+import {
+  VISIBLE_STAGES,
+  visibleStage,
+  type CanvasGeometry,
+  type DerivePreview,
+  type ViewableAnswer,
+} from './model';
 import { GenerationCanvas } from './components/GenerationCanvas';
 import { NodeEditPanel, type NodeEditorLabels } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
@@ -42,6 +48,7 @@ import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistor
 import type { NodeCommentsApi } from './hooks/useNodeComments';
 import type { CanvasRemixOptions } from './remix-model';
 import { applyConnection } from './connection-apply';
+import { dragStorageKey } from './drag-storage';
 import { useConnectionApply, type PendingConnectionApply } from './hooks/useConnectionApply';
 import './history.css';
 
@@ -49,6 +56,7 @@ import './history.css';
 const FIGMA_GEOMETRY_TOKENS = {
   columnGap: '--canvas-figma-column-gap',
   promptGap: '--canvas-figma-prompt-gap',
+  promptWidth: '--canvas-prompt-width',
   answerGap: '--canvas-figma-answer-gap',
   answerWidth: '--canvas-figma-answer-width',
 } as const;
@@ -89,7 +97,11 @@ export interface WorkspaceCanvasProps {
   projectId: string;
   pageId: string;
   workspace: WorkspaceResponse;
-  onOpenResult?: (answerId: string) => void;
+  /**
+   * 답변(그림) 카드를 누르면 크게 보기(Download) 모달을 연다(#230). 없으면 답변 카드는 눌러도 아무 일이 없다.
+   * 파생의 원작 답변 카드도 같은 규칙으로 연다(#237). 그때 title 은 원작 제목이다.
+   */
+  onOpenResult?: (answer: ViewableAnswer) => void;
   editor?: CanvasEditorOptions | false;
   history?: CanvasHistoryOptions | false;
   remix?: CanvasRemixOptions;
@@ -111,6 +123,7 @@ function EditorSession({
   onClose,
   onComment,
   onDraft,
+  onPreview,
   onApplyingChange,
   previewOpen,
   onPreviewOpenChange,
@@ -130,6 +143,8 @@ function EditorSession({
   onComment?: () => void;
   /** 고친 값(아직 Apply 전)을 캔버스의 접힌 노드에도 보이게 알린다. */
   onDraft: (draft: { setId: string; nodes: NodeSnapshot['nodes'] } | undefined) => void;
+  /** 만드는 중(answer 없음)·다 만든 미리보기. 없으면 undefined */
+  onPreview: (preview: DerivePreview | undefined) => void;
   onApplyingChange: (value: boolean) => void;
   previewOpen: boolean;
   onPreviewOpenChange: (open: boolean) => void;
@@ -194,6 +209,40 @@ function EditorSession({
     onDraft({ setId: base.setId, nodes: snapshotNodes });
   }, [base.setId, snapshotNodes, onDraft]);
   useEffect(() => () => onDraft(undefined), [onDraft]);
+  // 미리보기를 만드는 중·다 만든 것·실패한 것을 캔버스에 알린다(파생의 My answer 자리, #229·#237).
+  // 실패해도 My answer 카드는 남아 그 자리에서 오류와 Retry 를 보인다. 아무것도 만들지 않았으면(고치기 전·되돌림) 알리지 않는다.
+  const previewAnswer = editor.preview.status === 'ready' ? editor.preview.answer : undefined;
+  const previewFailure = editor.preview.status === 'error' ? editor.preview.error : undefined;
+  const previewLive =
+    previewStatus === 'generating' || previewStatus === 'ready' || previewStatus === 'error';
+  const { retryPreview } = editor;
+  useEffect(() => {
+    if (!previewLive) {
+      onPreview(undefined);
+      return;
+    }
+    const failure =
+      previewStatus === 'error'
+        ? {
+            message: COPY[errorCopyKey(previewFailure)],
+            retryable: !(previewFailure instanceof ApiRequestError && !previewFailure.retryable),
+          }
+        : undefined;
+    onPreview({
+      setId: base.setId,
+      ...(previewAnswer ? { answer: previewAnswer } : {}),
+      ...(failure ? { error: failure, onRetry: async () => retryPreview() } : {}),
+    });
+  }, [
+    base.setId,
+    previewLive,
+    previewStatus,
+    previewAnswer,
+    previewFailure,
+    retryPreview,
+    onPreview,
+  ]);
+  useEffect(() => () => onPreview(undefined), [onPreview]);
   const progress = useQuery<GetJobResponse | null>({
     queryKey: ['revision-preview', base.id],
     queryFn: skipToken,
@@ -274,6 +323,7 @@ function PageCanvas({
   editor = {},
   history = {},
   remix,
+  onOpenResult,
 }: WorkspaceCanvasProps) {
   const historyApi = history ? (history.api ?? HISTORY_API) : undefined;
   const historyLabels = history ? (history.labels ?? CANVAS_HISTORY_COPY) : CANVAS_HISTORY_COPY;
@@ -304,6 +354,12 @@ function PageCanvas({
   const client = useQueryClient();
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
+  // stack 플래시는 잠깐만 보인다(#230). role=status 칸은 늘 있어서 뜨자마자 보조기기가 읽는다.
+  useEffect(() => {
+    if (!stacked) return;
+    const timer = window.setTimeout(() => setStacked(false), FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [stacked]);
   const [previewOpen, setPreviewOpen] = useState(false);
   // 사용자가 Preview 를 직접 닫았으면, 미리보기를 다시 만들어도 저절로 열지 않는다(요청·결과는 그대로 둔다).
   const previewDismissed = useRef(false);
@@ -318,6 +374,8 @@ function PageCanvas({
   // 편집 세션(고친 값·미리보기)이 붙은 세트. 노드를 접어도 남고, Apply·버전 이동 때 끝난다.
   const [sessionSet, setSessionSet] = useState<string>();
   const [draft, setDraft] = useState<{ setId: string; nodes: NodeSnapshot['nodes'] }>();
+  // 편집 세션의 미리보기. 파생 프로젝트에서 My answer 자리에 그린다(#229).
+  const [preview, setPreview] = useState<DerivePreview>();
   const endSession = useCallback(() => {
     setSessionSet(undefined);
     setDraft(undefined);
@@ -445,7 +503,10 @@ function PageCanvas({
           labels={CANVAS_COPY}
           geometry={geometry}
           derivedFrom={workspace.project.kind === 'derive' ? workspace.derivedFrom : undefined}
+          derivePreview={workspace.project.kind === 'derive' ? preview : undefined}
           announcement={announcement}
+          onOpenAnswer={onOpenResult}
+          dragStorageKey={dragStorageKey(projectId, pageId)}
           history={
             history
               ? {
@@ -608,6 +669,7 @@ function PageCanvas({
           nodeId={selected?.setId === sessionSet ? selected.nodeId : undefined}
           slot={selected?.setId === sessionSet ? slot : null}
           onDraft={setDraft}
+          onPreview={setPreview}
           appliedIds={connectionApply.appliedIds}
           pendingApply={connectionApply.pending}
           onPendingApplied={connectionApply.done}

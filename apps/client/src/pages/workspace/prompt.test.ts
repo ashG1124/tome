@@ -1,6 +1,6 @@
 import { PROMPT_PRESETS, type WorkspaceResponse } from '@tome/shared';
 import { describe, expect, it } from 'vitest';
-import { canSubmitPrompt, presetKeyFor, promptBarInfo } from './prompt';
+import { canSubmitPrompt, isMultilinePrompt, presetKeyFor, promptBarInfo } from './prompt';
 
 const PAGE_ID = 'c4a1e7d2-8b5f-4e39-a6c0-2f1d3b4a5c6e';
 
@@ -76,5 +76,21 @@ describe('presetKeyFor', () => {
 
   it('조금이라도 고치면 키 없음', () => {
     expect(presetKeyFor(`${first.prompt} at dawn`)).toBeUndefined();
+  });
+});
+
+describe('isMultilinePrompt (#228)', () => {
+  it('빈 글은 늘 한 줄 모양', () => {
+    expect(isMultilinePrompt('', 200, 27)).toBe(false);
+  });
+
+  it('한 줄 모양 폭에서 한 줄 높이면 한 줄, 두 줄 높이부터 여러 줄', () => {
+    expect(isMultilinePrompt('short', 27, 27)).toBe(false);
+    expect(isMultilinePrompt('long text', 54, 27)).toBe(true);
+  });
+
+  it('줄바꿈이 있으면 높이를 못 재도(테스트 환경) 여러 줄', () => {
+    expect(isMultilinePrompt('a\nb', 0, Number.NaN)).toBe(true);
+    expect(isMultilinePrompt('ab', 0, Number.NaN)).toBe(false);
   });
 });

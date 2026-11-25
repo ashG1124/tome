@@ -546,3 +546,9 @@
   --size-profile-creator-list: 365px; /* 디자인 변수 없음, 원값 365px — 창작자 목록 보이는 높이(줄 5개) (4181:35656) */
   --size-profile-creator-list-min: 146px; /* 디자인 변수 없음(레이아웃) — 낮은 화면에서도 창작자 줄 2개는 보이게 */
 }
+
+/* #228 프롬프트 바 여러 줄 모양 (Rn2COoR4YCsCdUuYPsi8ju) */
+:root {
+  --space-prompt-multiline-y: 18px; /* 디자인 변수 없음, 원값 18px — 여러 줄 프롬프트 바 위아래 안쪽 (3468:30233) */
+  --color-prompt-tool-icon: #a4a9b3; /* Color/Font Color/Helper Text 원값 — 여러 줄 프롬프트 바 + 아이콘(장식) (3468:30236) */
+}

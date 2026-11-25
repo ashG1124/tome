@@ -10,6 +10,9 @@ import { COPY } from '../../shared/copy';
 import { FLASH_MS } from './flash';
 import { HomePage } from './HomePage';
 
+/** 작업한 프로젝트의 썸네일(가짜 응답 모드처럼 바로 뜨는 data 주소). */
+const THUMB = 'data:image/png;base64,AAAA';
+
 function project(
   id: string,
   title: string,
@@ -21,7 +24,7 @@ function project(
     title,
     status: 'building',
     posted: false,
-    coverThumbUrl: null,
+    coverThumbUrl: THUMB,
     lastEditedAt: '2026-11-03T10:30:00.000Z',
     shelfPosition,
     kind: 'original',
@@ -32,6 +35,38 @@ function project(
 const A = project('0b8c1f5e-3c1d-4f6a-8a9b-1d2e3f4a5b6c', 'Alpha', 0);
 const B = project('7d2a9e44-6b3f-4c10-b5d8-9e0f1a2b3c4d', 'Bravo', 1);
 const C = project('c4a1e7d2-8b5f-4e39-a6c0-2f1d3b4a5c6e', 'Charlie', 2);
+/** 아무 작업도 하지 않은 프로젝트(확정 답변이 없어 썸네일 주소가 없다) */
+const EMPTY = project('e9f3b1a7-5d2c-4b86-8f0a-3c4d5e6f7a8b', 'Untitled', 1, {
+  coverThumbUrl: null,
+});
+
+/**
+ * jsdom 은 배치를 계산하지 않아서, 서가 칸 자리를 Figma 처럼 한 줄(칸 108px, 간격 20px)로 꾸며 준다.
+ * li 의 형제 순서(0 = + Project)가 칸 번호다.
+ */
+function stubShelfGeometry() {
+  const cellOf = (element: HTMLElement) =>
+    element.tagName === 'LI' && element.parentElement
+      ? Array.from(element.parentElement.children).indexOf(element)
+      : 0;
+  vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return cellOf(this) * 128;
+  });
+  vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(0);
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(108);
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(192);
+}
+
+const POINTER = { pointerId: 1, button: 0, isPrimary: true, pointerType: 'mouse' };
+
+/** 카드를 (x, 0) 에서 눌러 dx 만큼 끈다. 떼지는 않는다. */
+function pressAndMove(item: HTMLElement, dx: number) {
+  fireEvent.pointerDown(item, { ...POINTER, clientX: 200, clientY: 100 });
+  fireEvent.pointerMove(item, { ...POINTER, clientX: 200 + dx / 2, clientY: 100 });
+  fireEvent.pointerMove(item, { ...POINTER, clientX: 200 + dx, clientY: 100 });
+}
 
 function renderHome(projects: ProjectSummary[], state?: unknown) {
   vi.spyOn(api, 'listProjects').mockResolvedValue({ projects });
@@ -131,6 +166,7 @@ describe('HomePage 서가', () => {
     expect(await cardTitles()).toEqual(['Bravo', 'Alpha', 'Charlie']);
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Alpha' }));
     expect(api.updateProject).toHaveBeenCalledWith(A.id, { shelfPosition: 1 });
+    expect(screen.getByText('Moved to position 2 of 3.').getAttribute('role')).toBe('status');
   });
 
   it('Alt 없이 화살표만 누르거나 맨 앞에서 더 앞으로 가면 바꾸지 않는다', async () => {
@@ -144,16 +180,105 @@ describe('HomePage 서가', () => {
     expect(api.updateProject).not.toHaveBeenCalled();
   });
 
-  it('카드를 드래그해서 다른 칸에 놓으면 순서가 바뀐다', async () => {
+  it('카드를 마우스로 잡아 끌면 포인터를 따라가고, 다른 카드는 놓일 자리로 미리 비켜 선다', async () => {
+    stubShelfGeometry();
     renderHome([A, B, C]);
-    const items = await cardItems();
+    const [alpha, bravo, charlie] = (await cardItems()) as [HTMLElement, HTMLElement, HTMLElement];
 
-    fireEvent.dragStart(items[0] as HTMLElement);
-    fireEvent.dragOver(items[2] as HTMLElement);
-    fireEvent.drop(items[2] as HTMLElement);
+    pressAndMove(alpha, 256);
+
+    expect(alpha.style.transform).toBe('translate(256px, 0px)');
+    expect(alpha.querySelector('[data-lifted]')).not.toBeNull();
+    // Alpha 를 Charlie 자리에 놓을 참이라 Bravo·Charlie 가 한 칸씩 앞으로 비켜 선다
+    expect(bravo.style.transform).toBe('translate(-128px, 0px)');
+    expect(charlie.style.transform).toBe('translate(-128px, 0px)');
+    expect(api.updateProject).not.toHaveBeenCalled();
+  });
+
+  it('끌어서 다른 칸에 놓으면 순서가 바뀌고 저장하며, 옮긴 자리를 낭독한다', async () => {
+    stubShelfGeometry();
+    const router = renderHome([A, B, C]);
+    const [alpha] = (await cardItems()) as [HTMLElement];
+
+    pressAndMove(alpha, 256);
+    fireEvent.pointerUp(alpha, { ...POINTER, clientX: 456, clientY: 100 });
+    // 끌기 뒤 따라오는 click 은 프로젝트를 열지 않는다
+    fireEvent.click(within(alpha).getByRole('link'));
 
     expect(await cardTitles()).toEqual(['Bravo', 'Charlie', 'Alpha']);
     expect(api.updateProject).toHaveBeenCalledWith(A.id, { shelfPosition: 2 });
+    expect(screen.getByText('Moved to position 3 of 3.').getAttribute('role')).toBe('status');
+    expect(router.state.location.pathname).toBe('/');
+  });
+
+  it('기준 거리(6px)보다 적게 움직이고 떼면 끌기가 아니라 클릭이라 프로젝트로 들어간다', async () => {
+    stubShelfGeometry();
+    const router = renderHome([A, B, C]);
+    const [alpha] = (await cardItems()) as [HTMLElement];
+
+    pressAndMove(alpha, 4);
+    expect(alpha.style.transform).toBe('');
+    fireEvent.pointerUp(alpha, { ...POINTER, clientX: 204, clientY: 100 });
+    fireEvent.click(within(alpha).getByRole('link'));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/projects/${A.id}`));
+    expect(api.updateProject).not.toHaveBeenCalled();
+  });
+
+  it('끄는 중 Escape 를 누르면 취소하고 순서를 그대로 둔다', async () => {
+    stubShelfGeometry();
+    renderHome([A, B, C]);
+    const [alpha, bravo] = (await cardItems()) as [HTMLElement, HTMLElement];
+
+    pressAndMove(alpha, 256);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.pointerUp(alpha, { ...POINTER, clientX: 456, clientY: 100 });
+
+    expect(await cardTitles()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+    expect(bravo.style.transform).toBe('');
+    expect(api.updateProject).not.toHaveBeenCalled();
+  });
+
+  it('아무 작업도 하지 않은(썸네일 주소가 없는) 프로젝트는 서가에 카드를 만들지 않는다', async () => {
+    renderHome([A, EMPTY, B]);
+
+    expect(await cardTitles()).toEqual(['Alpha', 'Bravo']);
+    expect(screen.queryByRole('link', { name: 'Untitled' })).toBeNull();
+  });
+
+  it('카드가 없는 작업 전 프로젝트도 가장 최근이면 Recent Work 로 이어서 열 수 있다', async () => {
+    renderHome([A, { ...EMPTY, lastEditedAt: '2026-11-04T09:00:00.000Z' }]);
+    await screen.findByRole('link', { name: 'Alpha' });
+
+    fireEvent.click(screen.getByRole('button', { name: COPY['RW-01'] }));
+
+    expect(screen.getByRole('link', { name: `${COPY['RW-01']}: Untitled` })).toBeTruthy();
+  });
+
+  it('작업 전 프로젝트만 있으면 빈 서가 안내(S-01)를 보여 준다', async () => {
+    renderHome([EMPTY]);
+
+    expect(await screen.findByText(COPY['S-01'])).toBeTruthy();
+    expect(within(screen.getByRole('list')).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  it('숨긴 빈 프로젝트가 사이에 있어도 저장 순번은 서가 전체 기준으로 보낸다', async () => {
+    renderHome([A, EMPTY, B, C]);
+    const alpha = await screen.findByRole('link', { name: 'Alpha' });
+
+    fireEvent.keyDown(alpha, { key: 'ArrowRight', altKey: true });
+
+    expect(await cardTitles()).toEqual(['Bravo', 'Alpha', 'Charlie']);
+    // 전체 [Alpha, Untitled, Bravo, Charlie] → Charlie 바로 앞(전체 순번 2)
+    expect(api.updateProject).toHaveBeenCalledWith(A.id, { shelfPosition: 2 });
+  });
+
+  it('카드 링크는 순서 옮기기 키 안내를 설명으로 가진다', async () => {
+    renderHome([A]);
+
+    const link = await screen.findByRole('link', { name: 'Alpha' });
+    const hint = document.getElementById(link.getAttribute('aria-describedby') ?? '');
+    expect(hint?.textContent).toBe(COPY['H-05']);
   });
 
   it('순서 저장이 실패하면 원래 자리로 되돌리고 E-03 을 보여 준다', async () => {

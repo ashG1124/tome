@@ -56,6 +56,9 @@ export const COPY = {
   'H-03c': 'Derive',
   // Figma "Edited 2 hours ago" → 절대 날짜 규칙이라 "Edited {날짜}"로 붙여 쓴다
   'H-04': 'Edited',
+  // 서가 순서 옮기기(#227): 임시 ID — 문구 표에 옮길 때 확정. Figma에 없는 낭독 문구(키 안내, 옮긴 뒤 role=status). {position}·{total} 자리
+  'H-05': 'Press Alt and an arrow key to move this project on the shelf.',
+  'H-06': 'Moved to position {position} of {total}.',
   // ---- 워크스페이스 틀(#25): 확정 ID(#128). W-05 는 Figma 원문(1187:62709), 나머지는 버튼 이름.
   'W-01': 'Page',
   'W-02': 'Pages',
@@ -361,6 +364,7 @@ export const COPY = {
   'FG-02': 'Find a creator', // 리믹스 검색칸 자리 문구 1720:80397
   'FG-03': 'Voice input', // 마이크 낭독 이름(시안에는 글자 없음)
   'FG-04': 'Start a new project with {name}', // 리믹스 상대가 있는 빈 페이지의 프롬프트 바 자리 문구 4898:93350 (#198)
+  'FG-05': 'Send prompt', // 임시 ID(#228) — 여러 줄 프롬프트 바 보내기 버튼 낭독 이름(시안 3468:30243 에는 글자 없음)
 } as const;
 
 export type CopyKey = keyof typeof COPY;

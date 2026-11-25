@@ -4,6 +4,9 @@ import { CANVAS_COPY, COPY } from '../../../shared/copy';
 import { useApiImage } from '../../../shared/api';
 import { Icon } from '../../../shared/ui';
 
+/** 프롬프트 노드 반짝임 글리프 한 변(px). 24 칸 안 inset 8.33% (시안 3053:68396 > 1182:52458) */
+const PROMPT_MARK_GLYPH = 20;
+
 function AnswerImage({ url, label }: { url: string; label: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const { directSrc, failed } = useApiImage(url, imageRef);
@@ -28,7 +31,7 @@ function AnswerImage({ url, label }: { url: string; label: string }) {
   );
 }
 
-/** 원작 답변 카드. 원작 그림 위에 흐림 오버레이를 덮은 읽기 전용 카드다(시안 Work Space-Derive 1679:15197). */
+/** 원작 답변 카드. 읽기 전용이고, My answer 가 활성이면 원작 그림 위에 흐림을 덮는다(시안 Work Space-Derive 1679:15197). */
 function OriginAnswer({ data }: { data: CardData }) {
   const origin = data.origin;
   const answer = origin?.answer;
@@ -46,7 +49,8 @@ function OriginAnswer({ data }: { data: CardData }) {
           {data.label}
         </p>
       ) : null}
-      <span className="canvas-origin-veil" aria-hidden="true" />
+      {/* 흐림은 원작 답변이 비활성일 때만(My answer 가 활성, #229) */}
+      {data.inactive ? <span className="canvas-origin-veil" aria-hidden="true" /> : null}
     </div>
   );
 }
@@ -110,32 +114,40 @@ export function CanvasSurface({
       {...rest}
       className={`canvas-card canvas-card--${data.kind} ${modifiers}`.trim()}
       data-readonly={data.kind === 'origin' || undefined}
+      data-inactive={data.inactive || undefined}
       data-enabled={data.output ? String(enabled) : undefined}
       data-covered={covered || undefined}
       aria-label={data.label}
       aria-busy={data.state === 'running' || undefined}
     >
-      {data.kind === 'prompt' ? <p className="canvas-prompt-text">{data.text}</p> : null}
-      {data.kind === 'output' && !open ? (
+      {data.kind === 'prompt' ? (
         <>
-          <div className="canvas-node-line">
-            {outputKind === 'priority' ? <Icon name="drag-handle" size={24} /> : null}
-            <p className="canvas-output-text" title={data.text}>
-              {data.text}
-            </p>
-            {outputKind === 'evidence' ? (
-              <span
-                className="canvas-node-switch"
-                data-on={String(enabled !== false)}
-                aria-hidden="true"
-              />
-            ) : null}
-            {row ? <Icon name="minus-circle" size={24} /> : null}
+          {/* 시안 Node/Prompt 1192:65515: 이름표 줄(Prompt · 오른쪽 위 반짝임) + 프롬프트 글 */}
+          <div className="canvas-prompt-head" aria-hidden="true">
+            <span>{data.label}</span>
+            <span className="canvas-prompt-mark">
+              <Icon name="sparkle" size={PROMPT_MARK_GLYPH} />
+            </span>
           </div>
-          {data.output?.sourceType === 'model_knowledge' ? (
-            <small>{data.labels.modelKnowledge}</small>
-          ) : null}
+          <p className="canvas-prompt-text">{data.text}</p>
         </>
+      ) : null}
+      {/* 근거의 Model knowledge·검증 전 Not measured 안내 줄은 리드 결정으로 그리지 않는다(#230). */}
+      {data.kind === 'output' && !open ? (
+        <div className="canvas-node-line">
+          {outputKind === 'priority' ? <Icon name="drag-handle" size={24} /> : null}
+          <p className="canvas-output-text" title={data.text}>
+            {data.text}
+          </p>
+          {outputKind === 'evidence' ? (
+            <span
+              className="canvas-node-switch"
+              data-on={String(enabled !== false)}
+              aria-hidden="true"
+            />
+          ) : null}
+          {row ? <Icon name="minus-circle" size={24} /> : null}
+        </div>
       ) : null}
       {data.kind === 'placeholder' && !data.error ? (
         <div
@@ -160,12 +172,27 @@ export function CanvasSurface({
                 url={data.answer.imageUrl}
                 label={data.label}
               />
+            ) : data.summary ? (
+              <AnswerImage
+                key={data.summary.thumbUrl}
+                url={data.summary.thumbUrl}
+                label={data.label}
+              />
+            ) : null}
+            {/* 파생의 비활성 My answer 는 원작 카드처럼 번호 칩 + 흐림, 미리보기는 그림만 보인다(#229) */}
+            {data.inactive ? (
+              <>
+                <span className="canvas-answer-chip">{data.label}</span>
+                <span className="canvas-origin-veil" aria-hidden="true" />
+              </>
             ) : null}
           </div>
-          <div className="canvas-answer-footer">
-            {answerFooter ?? <strong>{data.label}</strong>}
-            {data.state === 'running' ? <span>{data.labels.generating}</span> : null}
-          </div>
+          {data.inactive || data.previewing ? null : (
+            <div className="canvas-answer-footer">
+              {answerFooter ?? <strong>{data.label}</strong>}
+              {data.state === 'running' ? <span>{data.labels.generating}</span> : null}
+            </div>
+          )}
           {data.answer?.isSample ? (
             <div className="canvas-sample">
               <strong>{CANVAS_COPY.sample}</strong>
@@ -189,9 +216,6 @@ export function CanvasSurface({
             </button>
           ) : null}
         </div>
-      ) : null}
-      {data.state === 'skipped' && data.kind === 'output' && !open ? (
-        <small>{data.labels.skipped}</small>
       ) : null}
       {children}
     </article>

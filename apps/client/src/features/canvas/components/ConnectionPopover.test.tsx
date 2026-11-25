@@ -14,18 +14,18 @@ const connection: Connection = {
   sentence: 'Leaned on evidence 7 of 10 times',
   status: 'shown',
 };
-function setup(onDismiss = vi.fn().mockResolvedValue(undefined)) {
+function setup() {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <article data-canvas-card="card" tabIndex={0}>
-        <ConnectionPopover answerId="answer" connection={connection} onDismiss={onDismiss} />
+        <ConnectionPopover answerId="answer" connection={connection} />
       </article>
     </QueryClientProvider>,
   );
   const trigger = screen.getByRole('button', {
     name: `${COPY['RC-01']}: ${connection.predictedAction}`,
   });
-  return { trigger, onDismiss };
+  return { trigger };
 }
 it('opens the prediction first, pages to the actual evidence and returns focus on Escape', async () => {
   const { trigger } = setup();
@@ -65,12 +65,11 @@ it('shows the partner initial in the photo slot from the canvas context', () => 
           remix: {
             connectionsByAnswer: {},
             onApply: vi.fn(),
-            onDismiss: vi.fn(),
             partnerFor: () => ({ displayName: 'lind', avatarUrl: null }),
           },
         }}
       >
-        <ConnectionPopover answerId="answer" connection={connection} onDismiss={vi.fn()} />
+        <ConnectionPopover answerId="answer" connection={connection} />
       </CanvasNavigation.Provider>
     </QueryClientProvider>,
   );
@@ -87,25 +86,14 @@ it('leaves Apply disabled while its node-change rule is undecided', () => {
   );
   expect(screen.getByText(COPY['RC-04'])).toBeTruthy();
 });
-it('locks duplicate dismissals, keeps evidence on failure and allows retry', async () => {
-  const dismiss = vi
-    .fn()
-    .mockRejectedValueOnce(new Error('offline'))
-    .mockResolvedValueOnce(undefined);
-  const { trigger } = setup(dismiss);
+it('has no Hide button: the open bubble only offers the text pager and Apply (#229)', () => {
+  const { trigger } = setup();
   fireEvent.click(trigger);
-  fireEvent.click(screen.getByRole('button', { name: COPY['RC-03'] }));
-  fireEvent.click(screen.getByRole('button', { name: COPY['RC-03'] }));
-  await screen.findByRole('alert');
-  expect(dismiss).toHaveBeenCalledTimes(1);
-  expect(screen.getByText(connection.predictedAction)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: COPY['RC-03'] }));
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('button', { name: `${COPY['RC-01']}: ${connection.predictedAction}` }),
-    ).toBeNull(),
+  const region = screen.getByRole('region', { name: COPY['RC-01'] });
+  expect(screen.queryByRole('button', { name: COPY['RC-03'] })).toBeNull();
+  expect(Array.from(region.querySelectorAll('button')).map((button) => button.textContent)).toEqual(
+    [connection.predictedAction, COPY['RC-02']],
   );
-  expect(dismiss).toHaveBeenLastCalledWith('answer', connection);
 });
 
 function withRemix(
@@ -123,13 +111,12 @@ function withRemix(
           remix: {
             connectionsByAnswer: {},
             onApply,
-            onDismiss: vi.fn(),
             applyStateFor,
             requestApply,
           },
         }}
       >
-        <ConnectionPopover answerId="answer" connection={connection} onDismiss={vi.fn()} />
+        <ConnectionPopover answerId="answer" connection={connection} />
       </CanvasNavigation.Provider>
     </QueryClientProvider>,
   );

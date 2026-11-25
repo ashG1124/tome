@@ -19,17 +19,40 @@ vi.mock('../../features/canvas', () => ({
     projectId,
     pageId,
     remix,
+    onOpenResult,
   }: {
     projectId: string;
     pageId: string;
     remix?: CanvasRemixOptions;
+    onOpenResult?: (answer: { id: string; imageUrl: string; title?: string }) => void;
   }) => (
     <div
       data-testid="canvas"
       data-project={projectId}
       data-page={pageId}
       data-connections={Object.values(remix?.connectionsByAnswer ?? {}).flat().length}
-    />
+    >
+      {/* 답변(그림) 카드 누름 대역(#230) */}
+      <button
+        type="button"
+        onClick={() => onOpenResult?.({ id: 'answer-1', imageUrl: 'data:image/png;base64,ANSWER' })}
+      >
+        answer card
+      </button>
+      {/* 파생의 원작 답변 카드 누름 대역(#237): 원작 제목이 함께 온다 */}
+      <button
+        type="button"
+        onClick={() =>
+          onOpenResult?.({
+            id: 'origin-1',
+            imageUrl: 'data:image/png;base64,ORIGIN',
+            title: 'Original title',
+          })
+        }
+      >
+        origin card
+      </button>
+    </div>
   ),
 }));
 
@@ -226,6 +249,35 @@ describe('WorkspacePage', () => {
   });
 });
 
+describe('WorkspacePage 답변 크게 보기(#230)', () => {
+  it('캔버스의 답변 카드를 누르면 크게 보기가 열리고, Download 는 그 답변 그림을 받으며, 닫으면 캔버스에 머문다', async () => {
+    const spy = vi.spyOn(downloadModule, 'downloadImage').mockResolvedValue();
+    const router = renderWorkspace();
+    const card = await screen.findByRole('button', { name: 'answer card' });
+    card.focus();
+    fireEvent.click(card);
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy.mock.calls[0]?.[0]).toBe('data:image/png;base64,ANSWER');
+
+    fireEvent.click(screen.getByRole('button', { name: COPY['D-11'] }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: COPY['D-13'] })).toBeNull());
+    expect(router.state.location.pathname).toBe(`/projects/${PROJECT}`);
+    expect(router.state.location.state).toBeNull();
+  });
+
+  it('파생의 원작 답변 카드를 누르면 원작 그림을 원작 제목으로 크게 보고 받는다(#237)', async () => {
+    const spy = vi.spyOn(downloadModule, 'downloadImage').mockResolvedValue();
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: 'origin card' }));
+    const view = await screen.findByRole('dialog', { name: 'Original title' });
+    expect(view.querySelector('img')?.getAttribute('alt')).toBe('Original title');
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith('data:image/png;base64,ORIGIN', 'Original title');
+  });
+});
+
 describe('WorkspacePage 리믹스(#41)', () => {
   it('리믹스 버튼 → 후보 고르기 → 제목에 상대가 붙고, 패널이 닫히며 "Remix with 이름" 손잡이가 남는다', async () => {
     const spy = vi.spyOn(api, 'setRemixPartner');
@@ -246,6 +298,24 @@ describe('WorkspacePage 리믹스(#41)', () => {
       .getAllByRole('button', { name: new RegExp(`${COPY['RX-01']} Lind`) })
       .filter((button) => button.hasAttribute('data-remix-handle'));
     expect(handles).toHaveLength(1);
+  });
+
+  it('고른 상대를 한 번 더 누르면 리믹스가 풀리고 제목에서 상대가 빠진다(#229)', async () => {
+    const spy = vi.spyOn(api, 'setRemixPartner');
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Lind/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toContain(
+        `${COPY['RX-04']} Lind`,
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Lind/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(COPY['RX-04']),
+    );
+    expect(spy).toHaveBeenLastCalledWith(PROJECT, null);
   });
 
   it('후보가 0명이면(S-04) 리믹스 없이도 프롬프트로 일반 생성을 할 수 있다', async () => {

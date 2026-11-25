@@ -1,5 +1,6 @@
 import type {
   Answer,
+  AnswerSummary,
   Job,
   JobStage,
   JobStep,
@@ -70,8 +71,6 @@ const LAYOUT = {
   /** 묶음 행(우선순위·검증 기준) 사이 간격과 맨 위·맨 아래 안쪽 여백 */
   rowGap: 12,
   rowEdge: 20,
-  /** 카드 아래 작은 안내 한 줄(Not measured, 14px × 1.5). 5단계가 측정 전(skipped)이면 줄마다 붙는다. */
-  note: 21,
   /** 답변 그림 비율 11:7(canvas.css .canvas-image-slot). 파생 2열에서 위 카드 높이를 어림해 아래 카드를 놓는 데 쓴다. */
   answerAspect: 340 / 520,
   /** 열 맨 위(손잡이)에서 답변 카드 맨 앞 장 위쪽까지. 시안 1679:11606(카드 06 y369 − 열 y164) */
@@ -86,7 +85,30 @@ const LAYOUT = {
   mineShift: 179,
   /** 머리글 한 줄 높이(20px × 1.5) → 카드 위 12 */
   headingBox: 30,
+  /**
+   * 열 맨 위에서 프롬프트 노드 위쪽까지. 시안 1679:11666: 1단계 알약 점(y50.5) → 프롬프트 노드 점(y296.5),
+   * 노드 높이 260 의 가운데가 점이라 위쪽은 296.5 − 130 ≈ 166.
+   */
+  promptTop: 166,
+  /** 프롬프트 노드(시안 Node/Prompt 1192:65515): 안쪽 여백 24, 이름표 줄 24, 줄 사이 24, 테두리 1 */
+  promptPadding: 24,
+  promptLabel: 24,
+  /** 뒤에 쌓인 버전 한 장이 카드 위로 올라오는 높이(카드 340 × 7.3529%, history.css .canvas-answer-layer) */
+  stackStep: 25,
+  /** 쌓인 장 맨 위와 머리글 사이 최소 간격 */
+  stackGap: 4,
 } as const;
+
+/**
+ * 버전이 depth 장 쌓였을 때 "My answer" 머리글을 올릴 거리(#229).
+ * 머리글 아래(mineHeading + headingBox)가 맨 뒤 장 위(mineTop − depth × stackStep)보다 stackGap 위에 오게 한다.
+ * 2장이어도 원작 카드(originTop + 340) 아래에 머문다.
+ */
+function stackLift(depth: number): number {
+  if (depth <= 0) return 0;
+  const layerTop = LAYOUT.mineTop - depth * LAYOUT.stackStep;
+  return Math.max(0, LAYOUT.mineHeading + LAYOUT.headingBox + LAYOUT.stackGap - layerTop);
+}
 
 /** 열 맨 위(손잡이)에서 단계 알약 위쪽까지(손잡이 6 + 간격 12). 첫 화면 위치를 잡을 때 쓴다. */
 export const STEP_PILL_TOP = LAYOUT.pillTop;
@@ -98,6 +120,8 @@ export interface CanvasGeometry {
   columnGap: number;
   /** 질문 노드 오른쪽 끝 → 1단계 왼쪽 끝 */
   promptGap: number;
+  /** 질문(프롬프트) 노드 폭. 없으면 nodeWidth. 시안 Node/Prompt 1192:65515 는 400 */
+  promptWidth?: number;
   /** 5단계 오른쪽 끝 → 답변 카드 왼쪽 끝 */
   answerGap: number;
   rowGap: number;
@@ -113,10 +137,34 @@ export interface GenerationView {
   onRetry?: () => Promise<void>;
 }
 
+/** 카드에 그리는 오류(문구·다시 시도 가능 여부). 생성 단계 오류와 파생 미리보기 오류가 같은 모양이다. */
+export interface CardError {
+  message: string;
+  retryable: boolean;
+}
+
+/** 크게 보기(Download)로 여는 답변 그림. title 이 있으면 그림 설명·파일 이름에 프로젝트 제목 대신 쓴다(원작 답변). */
+export type ViewableAnswer = Pick<Answer, 'id' | 'imageUrl'> & { title?: string };
+
+/**
+ * 원작 답변 카드에서 크게 볼 그림(#237). 카드에 보이는 원작 그림(derivedFrom.answer, 원작의 공개 답변)과 원작 제목이다.
+ * 원작이 지워졌거나 비공개라 그림이 없으면 undefined(크게 보기를 열지 않는다).
+ */
+export function viewableOrigin(
+  origin: WorkspaceDerivedFrom | undefined,
+): ViewableAnswer | undefined {
+  if (!origin?.answer || origin.title === null || origin.creator === null) return undefined;
+  return { id: origin.answer.id, imageUrl: origin.answer.imageUrl, title: origin.title };
+}
+
 export type CardData = {
   kind: 'heading' | 'prompt' | 'output' | 'placeholder' | 'answer' | 'origin';
   variant?: HeadingVariant;
   groupPosition?: GroupPosition;
+  /** 묶음 첫 줄(우선순위·검증 기준)이면 그 묶음의 모든 줄 id(위에서부터). 리믹스 표시를 묶음당 1개만 붙이는 데 쓴다. */
+  groupIds?: string[];
+  /** 단계 열 안 묶음(소제목 + 그 아래 카드). 소제목을 끌면 같은 묶음이 함께 움직인다(#230). */
+  group?: string;
   setId: string;
   column: number;
   row: number;
@@ -127,8 +175,19 @@ export type CardData = {
   answerId?: string;
   /** 원작 답변 카드(kind 'origin')가 그릴 원작 정보. 읽기 전용이다. */
   origin?: WorkspaceDerivedFrom;
+  /** 파생: 지금 활성이 아닌 답변 카드(흐림). 누르면 activateAnswerId 버전으로 돌아가 활성이 된다(#229). */
+  inactive?: boolean;
+  activateAnswerId?: string;
+  /** 파생: 비활성 My answer 카드가 그릴 내 최신 버전(작은 그림만 있다) */
+  summary?: AnswerSummary;
+  /** 파생: 고친 값으로 만드는 미리보기를 My answer 자리에 그린다(아직 확정 전, 버전 표시 없음) */
+  previewing?: boolean;
+  /** 버전 넘기기에서 뺄 답변(파생 복사본은 원작 답변 카드가 대신한다) */
+  hiddenVersionIds?: string[];
+  /** 화면 번호에서 뺄 수(파생: 원작 복사본이 1번이라 내 버전은 1을 빼 Answer 01 부터 보인다, #235) */
+  numberOffset?: number;
   state?: 'pending' | 'running' | 'done' | 'skipped' | 'failed';
-  error?: GenerationView['error'];
+  error?: CardError;
   onRetry?: () => Promise<void>;
   labels: CanvasLabels;
 };
@@ -215,8 +274,76 @@ function estimateHeight(node: OutputNode, position: GroupPosition, nodeWidth: nu
   return LAYOUT.card + (lines - 1) * LAYOUT.line;
 }
 
+/** 프롬프트 노드 높이를 어림한다. 안쪽 여백 24×2 + 이름표 24 + 사이 24 + 글 줄 수 × 27 + 테두리 1×2. */
+export function promptHeight(text: string, promptWidth: number): number {
+  const width = promptWidth - 2 * (LAYOUT.promptPadding + 1);
+  const lines = measureLines(text, width) ?? wrapLines(text, Math.floor(width / 9));
+  return (
+    2 * (LAYOUT.promptPadding + 1) + LAYOUT.promptLabel + LAYOUT.promptPadding + lines * LAYOUT.line
+  );
+}
+
 function titleCase(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : text;
+}
+
+/**
+ * 파생 세트에서 지금 만드는 미리보기(노드를 고친 뒤). answer 가 없으면 만드는 중이다.
+ * error 가 있으면 미리보기 생성이 실패한 것이다. My answer 카드는 그 자리에 남아 오류와 Retry 를 보인다(#237).
+ */
+export interface DerivePreview {
+  setId: string;
+  answer?: Answer;
+  error?: CardError;
+  onRetry?: () => Promise<void>;
+}
+
+/** 파생 첫 세트의 원작 답변 · My answer 상태(#229). */
+export interface DeriveAnswerState {
+  /** 파생 때 원작 대표 답변을 복사한 버전(번호 1). 원작 노드 그대로다. */
+  copyId?: string;
+  /** My answer 가 활성(원작 답변은 비활성) */
+  active: boolean;
+  /** My answer 카드·머리글을 그린다 */
+  shown: boolean;
+  /** 비활성 My answer 카드에 그릴 내 최신 버전 */
+  standby?: AnswerSummary;
+  preview?: DerivePreview;
+  /** My answer 뒤에 겹쳐 그리는 이전 버전 장 수(0~2) */
+  stackDepth: number;
+}
+
+/**
+ * 파생 세트의 답변 상태. 서버는 파생할 때 원작 대표 답변을 번호 1 로 복사해 둔다(origin derived_copy).
+ * 그 복사본은 원작 답변 카드가 대신 보여 주고, 사용자가 고쳐 만든 버전(번호 2~)만 "My answer" 로 본다.
+ */
+/** 화면에 보일 답변 번호. 1보다 작아지지 않는다. */
+export function shownNumber(number: number, offset = 0): number {
+  return Math.max(1, number - offset);
+}
+
+export function deriveState(
+  set: Pick<PromptSet, 'id' | 'answers'>,
+  displayed: Pick<Answer, 'id'> | undefined,
+  preview: DerivePreview | undefined,
+): DeriveAnswerState {
+  const versions = [...set.answers].sort(
+    (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.createdAt.localeCompare(b.createdAt),
+  );
+  const copyId = versions[0]?.id;
+  const own = versions.slice(1);
+  const live = preview?.setId === set.id ? preview : undefined;
+  const showingOwn = !!displayed && displayed.id !== copyId;
+  const active = !!live || showingOwn;
+  const index = showingOwn ? own.findIndex((entry) => entry.id === displayed.id) : -1;
+  return {
+    ...(copyId ? { copyId } : {}),
+    active,
+    shown: active || own.length > 0,
+    ...(own.length > 0 ? { standby: own[own.length - 1] } : {}),
+    ...(live ? { preview: live } : {}),
+    stackDepth: !live && index > 0 ? Math.min(2, index) : 0,
+  };
 }
 
 export function buildCanvas(
@@ -225,17 +352,22 @@ export function buildCanvas(
   labels: CanvasLabels,
   geometry: CanvasGeometry,
   derivedFrom?: WorkspaceDerivedFrom,
+  derivePreview?: DerivePreview,
 ) {
   const nodes: CanvasNode[] = [];
   const edges: Edge[] = [];
   const stepEdges: Edge[] = [];
   let top = 0;
   const { nodeWidth, nodeHeight, columnGap, rowGap, setGap, headerHeight } = geometry;
+  const promptWidth =
+    geometry.promptWidth !== undefined && Number.isFinite(geometry.promptWidth)
+      ? geometry.promptWidth
+      : nodeWidth;
   const pitch = nodeWidth + columnGap;
   // 1~5단계는 한 칸(300 + 95)씩, 질문 노드는 1단계 왼쪽 171 밖, 답변 열은 5단계 오른쪽 203 밖이다.
   const columnX = (column: number) =>
     column === 0
-      ? pitch - nodeWidth - geometry.promptGap
+      ? pitch - promptWidth - geometry.promptGap
       : column <= VISIBLE_STAGES.length
         ? column * pitch
         : VISIBLE_STAGES.length * pitch + nodeWidth + geometry.answerGap;
@@ -275,7 +407,8 @@ export function buildCanvas(
         xOffset?: number;
       } = {},
     ) => {
-      // 노드는 끌어서 옮기지 않는다(리드 결정 #197). 노드 위에서 끌면 캔버스가 움직인다.
+      // 끌어 옮기는 노드(#230)는 프롬프트·단계 알약·묶음 소제목·답변 카드뿐이다. 나머지는 끌면 캔버스가 움직이고,
+      // 위 노드를 끌 때 함께 따라간다(drag-model.ts). 끌 수 있는 노드는 draggable 을 비워 캔버스 설정(펼친 동안 끔)을 따른다.
       const { heading = false, y, minHeight, draggable = false, xOffset } = opts;
       nodes.push({
         id: id(suffix),
@@ -286,30 +419,27 @@ export function buildCanvas(
         },
         data: { ...data, setId: set.id, column, row, labels },
         style: {
-          width: column === 6 ? geometry.answerWidth : nodeWidth,
+          width: column === 6 ? geometry.answerWidth : column === 0 ? promptWidth : nodeWidth,
           minHeight: minHeight === false || heading ? undefined : (minHeight ?? nodeHeight),
         },
-        draggable,
+        ...(draggable ? {} : { draggable: false }),
         selectable: false,
         focusable: false,
         deletable: false,
       });
     };
-    add(
-      'prompt-heading',
-      0,
-      -1,
-      { kind: 'heading', variant: 'group', label: labels.prompt },
-      { heading: true, y: top + LAYOUT.firstCard - LAYOUT.groupLabel },
-    );
+    // 프롬프트 노드는 이름표(Prompt)를 카드 안에 둔다(시안 Node/Prompt 1192:65515). 카드 위 소제목은 없다.
     add(
       'prompt',
       0,
       0,
       { kind: 'prompt', label: labels.prompt, text: set.prompt, state: 'done' },
-      { y: top + LAYOUT.firstCard },
+      { y: top + LAYOUT.promptTop, minHeight: false, draggable: true },
     );
-    let columnBottom = nodeHeight;
+    let columnBottom = Math.max(
+      nodeHeight,
+      LAYOUT.promptTop + promptHeight(set.prompt, promptWidth),
+    );
     VISIBLE_STAGES.forEach((stage, index) => {
       const column = index + 1;
       add(
@@ -322,7 +452,7 @@ export function buildCanvas(
           label: labels.stages[stage],
           text: labels.step(column),
         },
-        { heading: true },
+        { heading: true, draggable: true },
       );
       if (index > 0) {
         stepEdges.push({
@@ -373,6 +503,7 @@ export function buildCanvas(
       } else {
         let cursor = firstY;
         let previousKey: string | undefined;
+        let groupId = '';
         stageNodes.forEach((node, row) => {
           const group = groupOf(node);
           const next = stageNodes[row + 1];
@@ -380,6 +511,7 @@ export function buildCanvas(
           const last = !next || groupOf(next).key !== group.key;
           const groupPosition: GroupPosition =
             first && last ? 'only' : first ? 'first' : last ? 'last' : 'middle';
+          if (first) groupId = `${stage}-${row}`;
           if (first) {
             const text = labels.groups
               ? (labels.groups[group.label as GroupKey] ?? titleCase(group.label))
@@ -391,11 +523,19 @@ export function buildCanvas(
                 `${stage}-group-${row}`,
                 column,
                 row,
-                { kind: 'heading', variant: 'group', label: text },
-                { heading: true, y: cursor - LAYOUT.groupLabel },
+                { kind: 'heading', variant: 'group', label: text, group: groupId },
+                { heading: true, y: cursor - LAYOUT.groupLabel, draggable: true },
               );
             }
           }
+          // 한 장 카드로 이어 붙는 묶음은 첫 줄이 묶음 전체를 대신한다(Connection 표시는 묶음당 1개, #229).
+          let groupEnd = row;
+          while (stageNodes[groupEnd] && groupOf(stageNodes[groupEnd]!).key === group.key)
+            groupEnd += 1;
+          const rowGroup =
+            isRow(node) && first
+              ? stageNodes.slice(row, groupEnd).map((entry) => entry.id)
+              : undefined;
           add(
             node.id,
             column,
@@ -406,6 +546,8 @@ export function buildCanvas(
               text: node.text,
               output: node,
               groupPosition,
+              group: groupId,
+              ...(rowGroup ? { groupIds: rowGroup } : {}),
               answerId: answer?.status === 'accepted' ? answer.id : undefined,
               state,
               error: row === 0 ? error : undefined,
@@ -413,10 +555,8 @@ export function buildCanvas(
             },
             { y: cursor, minHeight: false },
           );
-          // 측정 전(skipped) 안내 줄만큼 높여야 검증 기준 줄끼리 겹치지 않는다(#212).
-          const height =
-            estimateHeight(node, groupPosition, nodeWidth) +
-            (state === 'skipped' ? LAYOUT.note : 0);
+          // 측정 전(skipped) 안내 줄(Not measured)은 리드 결정으로 그리지 않는다(#230). 높이는 글 줄만큼이다.
+          const height = estimateHeight(node, groupPosition, nodeWidth);
           cursor += height + (isRow(node) && !last ? 0 : LAYOUT.cardGap);
           previousKey = group.key;
         });
@@ -430,15 +570,23 @@ export function buildCanvas(
     const running = current && !['succeeded', 'failed', 'cancelled'].includes(current.job.status);
     // 시안(My work 3924:67090)은 5단계 알약 오른쪽 점에서 답변 카드 왼쪽 점으로 곡선 하나만 긋는다.
     const lastHeading = id(`${VISIBLE_STAGES[VISIBLE_STAGES.length - 1]}-heading`);
-    edges.push({
-      id: id('verify-heading->answer'),
-      source: lastHeading,
-      target: id('answer'),
-      type: 'default',
-      focusable: false,
-      selectable: false,
-      deletable: false,
-    });
+    // 파생: 원작 답변과 "My answer" 중 하나만 활성이다(#229).
+    // - 파생 직후(복사본만 있고 고친 것이 없음): 원작 답변만 활성, My answer 는 아직 없다.
+    // - 노드를 고쳐 미리보기가 만들어지거나(만드는 중·실패 포함, #237) 내 버전이 확정되면 My answer 가 생기고 활성, 원작 답변은 비활성.
+    // - 원작 답변을 누르면 복사본(원작 노드)으로 돌아가 원작이 활성, My answer 는 비활성. My answer 를 누르면 그 반대.
+    const mine = derive ? deriveState(set, answer, derivePreview) : undefined;
+    const mineShown = !mine || mine.shown;
+    if (mineShown)
+      edges.push({
+        id: id('verify-heading->answer'),
+        source: lastHeading,
+        target: id('answer'),
+        type: 'default',
+        ...(mine && !mine.active ? { className: 'canvas-edge--origin' } : {}),
+        focusable: false,
+        selectable: false,
+        deletable: false,
+      });
     // 질문 노드에서 1단계 알약 왼쪽 점으로 가는 곡선(시안 1679:11666)
     edges.push({
       id: id('prompt->analyze-heading'),
@@ -449,6 +597,8 @@ export function buildCanvas(
       selectable: false,
       deletable: false,
     });
+    // 파생이면 원작 복사본(1번)을 빼고 내 버전을 1번부터 센다(#235).
+    const mineOffset = mine?.copyId ? 1 : 0;
     const answerHeading = derive ? derive.mine : labels.answer(answer?.number ?? 1);
     // 파생 2열: 위는 원작 답변(읽기 전용), 아래는 내 답변. 위치는 시안 Derive 1679:17831·1720:100994 그대로다.
     const originCardY = top + LAYOUT.originTop;
@@ -461,7 +611,12 @@ export function buildCanvas(
           'origin-heading',
           6,
           -1,
-          { kind: 'heading', variant: 'origin', label: derive.origin(creator.displayName) },
+          {
+            kind: 'heading',
+            variant: 'origin',
+            label: derive.origin(creator.displayName),
+            ...(mine?.active ? { inactive: true } : {}),
+          },
           { heading: true, y: top + LAYOUT.originHeading },
         );
       }
@@ -478,8 +633,11 @@ export function buildCanvas(
               : derive.origin(creator.displayName),
           origin: derivedFrom,
           state: 'done',
+          ...(mine?.active
+            ? { inactive: true, ...(mine.copyId ? { activateAnswerId: mine.copyId } : {}) }
+            : {}),
         },
-        { y: originCardY, minHeight: false, draggable: false },
+        { y: originCardY, minHeight: false, draggable: true },
       );
       if (!deleted)
         edges.push({
@@ -487,35 +645,85 @@ export function buildCanvas(
           source: lastHeading,
           target: id('origin-answer'),
           type: 'default',
-          className: 'canvas-edge--origin',
+          ...(mine?.active ? { className: 'canvas-edge--origin' } : {}),
           focusable: false,
           selectable: false,
           deletable: false,
         });
     }
     // 내 작업 화면에는 답변 카드 위에 머리글이 없다(칩이 번호를 말한다). 파생에서만 "My answer"를 단다.
-    if (derive)
+    // 버전이 쌓이면 뒤 장이 위로 올라오므로 머리글도 그만큼 올려 가리지 않게 한다(#229).
+    if (derive && mine?.shown)
       add(
         'answer-heading',
         6,
         -1,
-        { kind: 'heading', variant: 'answer', label: answerHeading },
-        { heading: true, y: top + LAYOUT.mineHeading, xOffset: LAYOUT.mineShift },
+        {
+          kind: 'heading',
+          variant: 'answer',
+          label: answerHeading,
+          ...(mine.active ? {} : { inactive: true }),
+        },
+        {
+          heading: true,
+          y: top + LAYOUT.mineHeading - stackLift(mine.stackDepth),
+          xOffset: LAYOUT.mineShift,
+        },
       );
-    add(
-      'answer',
-      6,
-      derive ? 1 : 0,
-      {
-        kind: 'answer',
-        label: labels.answer(answer?.number ?? 1),
-        answer,
-        state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
-        error: imageError,
-        onRetry: current?.onRetry,
-      },
-      derive ? { y: mineCardY, xOffset: LAYOUT.mineShift } : { y: top + LAYOUT.answerTop },
-    );
+    if (mine && mine.shown && !mine.active && mine.standby)
+      add(
+        'answer',
+        6,
+        1,
+        {
+          kind: 'answer',
+          label: labels.answer(shownNumber(mine.standby.number ?? 1, mineOffset)),
+          summary: mine.standby,
+          state: 'done',
+          inactive: true,
+          activateAnswerId: mine.standby.id,
+        },
+        { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },
+      );
+    else if (mine?.preview)
+      add(
+        'answer',
+        6,
+        1,
+        {
+          kind: 'answer',
+          label: answerHeading,
+          ...(mine.preview.answer ? { answer: mine.preview.answer } : {}),
+          // 미리보기 생성이 실패하면 카드를 그대로 두고 오류·Retry 를 보인다(#237).
+          ...(mine.preview.error
+            ? {
+                state: 'failed' as const,
+                error: mine.preview.error,
+                ...(mine.preview.onRetry ? { onRetry: mine.preview.onRetry } : {}),
+              }
+            : { state: mine.preview.answer ? ('done' as const) : ('running' as const) }),
+          previewing: true,
+        },
+        { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },
+      );
+    else if (mineShown)
+      add(
+        'answer',
+        6,
+        derive ? 1 : 0,
+        {
+          kind: 'answer',
+          label: labels.answer(shownNumber(answer?.number ?? 1, mineOffset)),
+          answer,
+          state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
+          error: imageError,
+          onRetry: current?.onRetry,
+          ...(mine?.copyId ? { hiddenVersionIds: [mine.copyId], numberOffset: mineOffset } : {}),
+        },
+        derive
+          ? { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true }
+          : { y: top + LAYOUT.answerTop, draggable: true },
+      );
     for (const node of outputs.values()) {
       const parents = node.parentIds.length
         ? node.parentIds
