@@ -286,6 +286,21 @@ function PageCanvas({
   }>();
   const commentOpener = useRef<HTMLElement | null>(null);
   const displayedCommentAnswer = sets.find((set) => set.id === commentTarget?.setId)?.latestAnswer;
+  /** 코멘트 창을 닫고 연 버튼으로 포커스를 돌려준다. 펼친 노드의 도구에서 열었으면(그 버튼은 사라졌다) 노드 옆 코멘트 버튼으로 돌려준다. */
+  const closeComments = () => {
+    const target = commentTarget;
+    const opener = commentOpener.current;
+    setCommentTarget(undefined);
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      else if (target)
+        document
+          .querySelector<HTMLElement>(
+            `[data-comment-tool="${CSS.escape(`${target.answerId}:${target.nodeId}`)}"]`,
+          )
+          ?.focus({ preventScroll: true });
+    });
+  };
   const client = useQueryClient();
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
@@ -416,22 +431,6 @@ function PageCanvas({
           <ErrorNotice message={COPY[errorCopyKey(versions.error)]} />
         </div>
       ) : null}
-      {history &&
-      historyApi &&
-      commentTarget &&
-      displayedCommentAnswer?.id === commentTarget.answerId ? (
-        <NodeComments
-          key={`${commentTarget.answerId}:${commentTarget.nodeId}`}
-          answerId={commentTarget.answerId}
-          nodeId={commentTarget.nodeId}
-          api={historyApi}
-          labels={historyLabels.comments}
-          onClose={() => {
-            setCommentTarget(undefined);
-            commentOpener.current?.focus({ preventScroll: true });
-          }}
-        />
-      ) : null}
       {loadError ? (
         <div className="canvas-load-error">
           <ErrorNotice message={COPY[errorCopyKey(loadError)]} onRetry={reload} />
@@ -468,6 +467,19 @@ function PageCanvas({
                   },
                   pin: versions.togglePin,
                   listComments: historyApi?.listComments,
+                  commentPanel:
+                    historyApi &&
+                    commentTarget &&
+                    displayedCommentAnswer?.id === commentTarget.answerId ? (
+                      <NodeComments
+                        key={`${commentTarget.answerId}:${commentTarget.nodeId}`}
+                        answerId={commentTarget.answerId}
+                        nodeId={commentTarget.nodeId}
+                        api={historyApi}
+                        labels={historyLabels.comments}
+                        onClose={closeComments}
+                      />
+                    ) : undefined,
                   canComment: (setId, answerId, nodeId) => {
                     const answer = sets.find((set) => set.id === setId)?.latestAnswer;
                     return (

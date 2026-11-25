@@ -127,6 +127,49 @@ describe('generation runner', () => {
     expect(advance).toHaveBeenCalledTimes(2);
     expect(onError).not.toHaveBeenCalled();
   });
+  it('(#222) retries a stage once on AI_TIMEOUT before showing the error', async () => {
+    vi.useFakeTimers();
+    const timeout = () =>
+      new ApiRequestError(504, { code: 'AI_TIMEOUT', message: 'Slow', retryable: true });
+    const advance = vi
+      .fn()
+      .mockRejectedValueOnce(timeout())
+      .mockResolvedValueOnce(result('research', null));
+    const onError = vi.fn();
+    const pending = runGeneration({
+      job,
+      signal: new AbortController().signal,
+      advance,
+      onStep: vi.fn(),
+      onError,
+    });
+    await vi.advanceTimersByTimeAsync(500);
+    await pending;
+    expect(advance).toHaveBeenCalledTimes(2);
+    expect(advance.mock.calls.map((call) => call[1])).toEqual(['research', 'research']);
+    expect(onError).not.toHaveBeenCalled();
+  });
+  it('(#222) shows the error when the automatic retry times out again', async () => {
+    vi.useFakeTimers();
+    const error = new ApiRequestError(504, {
+      code: 'AI_TIMEOUT',
+      message: 'Slow',
+      retryable: true,
+    });
+    const advance = vi.fn().mockRejectedValue(error);
+    const onError = vi.fn();
+    const pending = runGeneration({
+      job,
+      signal: new AbortController().signal,
+      advance,
+      onStep: vi.fn(),
+      onError,
+    });
+    await vi.advanceTimersByTimeAsync(500);
+    await pending;
+    expect(advance).toHaveBeenCalledTimes(2);
+    expect(onError).toHaveBeenCalledWith('research', error);
+  });
   it('stops at the failed stage without consuming later stages', async () => {
     const error = new Error('network');
     const advance = vi

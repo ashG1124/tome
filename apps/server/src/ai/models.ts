@@ -10,6 +10,12 @@ export const MODELS = {
 /** 한 단계(재시도·폴백 포함)에 쓸 수 있는 전체 시간. */
 export const STAGE_BUDGET_MS = 25_000;
 
+/**
+ * 그림 단계(image, 재시도·폴백 포함)의 전체 시간. 그림 모델은 가끔 25초를 넘겨 AI_TIMEOUT 이 났다(#222).
+ * 단계 점유 시간(generation/stages.ts 의 LEASE_MS 60초)보다 짧아야 같은 단계를 두 번 돌리지 않는다.
+ */
+export const IMAGE_STAGE_BUDGET_MS = 50_000;
+
 /** 입력 안전 검사 1회의 시간 제한. 넘으면 검사 없이 통과시킨다. */
 export const INPUT_GUARD_BUDGET_MS = 5_000;
 

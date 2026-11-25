@@ -11,5 +11,5 @@ export {
   type StageInput,
 } from './ai-provider';
 export { MockAiProvider } from './mock-ai.provider';
-export { INPUT_GUARD_BUDGET_MS, MODELS, STAGE_BUDGET_MS } from './models';
+export { IMAGE_STAGE_BUDGET_MS, INPUT_GUARD_BUDGET_MS, MODELS, STAGE_BUDGET_MS } from './models';
 export { WorkersAiProvider, type WorkersAiOptions } from './workers-ai';

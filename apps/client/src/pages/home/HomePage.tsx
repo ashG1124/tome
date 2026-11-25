@@ -3,13 +3,12 @@ import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { COPY, SKELETON_COPY } from '../../shared/copy';
-import { AppHeader, ErrorNotice, Flash, Icon, type FlashKind } from '../../shared/ui';
+import { AppHeader, ErrorNotice, Flash, Icon, ShelfGrid, type FlashKind } from '../../shared/ui';
 import { FLASH_MS, flashFromState } from './flash';
 import { columnsFor, opensToLeft, pushStyle } from './layout';
 import { NewProjectCell } from './NewProjectCell';
 import { RecentWork } from './RecentWork';
 import { ShelfCard } from './ShelfCard';
-import { ShelfGrid } from './ShelfGrid';
 import { applyOrder, latestEdited, moveCard, sortShelf } from './shelf';
 
 /**

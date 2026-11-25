@@ -2,7 +2,8 @@ import type { Node } from '@tome/shared';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { AppError } from '../../common';
-import { MODELS } from '../models';
+import { LEASE_MS } from '../../modules/generation/stages';
+import { IMAGE_STAGE_BUDGET_MS, MODELS, STAGE_BUDGET_MS } from '../models';
 import { evaluateStage, OutputViolation } from './normalize';
 import {
   buildUserMessage,
@@ -130,7 +131,10 @@ const draftRaw = {
   ],
 };
 
-function provider(handlers: Handler[], extra: { stageBudgetMs?: number } = {}) {
+function provider(
+  handlers: Handler[],
+  extra: { stageBudgetMs?: number; imageBudgetMs?: number } = {},
+) {
   const { impl, calls } = fakeFetch(handlers);
   const logs: RunLog[] = [];
   const instance = new WorkersAiProvider({
@@ -609,6 +613,26 @@ describe('WorkersAiProvider image', () => {
     expect(form.get('prompt')).toBe('Edit image 0. Only change this: remove "mist".');
     expect(form.get('input_image_0')).toBeInstanceOf(Blob);
     expect(result.fallbackUsed).toBe(false);
+  });
+
+  it('(#222) the image stage has its own, longer budget than text stages', async () => {
+    // 텍스트 단계 예산(60ms)보다 오래 걸리는 그림도 그림 예산(2초) 안이면 성공한다.
+    const slow: Handler = (call, signal) =>
+      new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(() => resolve(imageOk(PNG)(call, signal) as Response), 150);
+        signal?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(new DOMException('aborted', 'AbortError'));
+        });
+      });
+    const { instance } = provider([slow], { stageBudgetMs: 60, imageBudgetMs: 2000 });
+    expect((await instance.image(generate)).value.mimeType).toBe('image/png');
+    expect(await errorCode(instance.analyze(input))).toBe('AI_TIMEOUT');
+  });
+
+  it('(#222) the image budget stays longer than text and shorter than the step lease', () => {
+    expect(IMAGE_STAGE_BUDGET_MS).toBeGreaterThan(STAGE_BUDGET_MS);
+    expect(IMAGE_STAGE_BUDGET_MS).toBeLessThan(LEASE_MS);
   });
 
   it('(k) edit mode retries once and never falls back', async () => {

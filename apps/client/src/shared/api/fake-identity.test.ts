@@ -47,6 +47,10 @@ describe('프로필 API 가짜 응답 — 기록 충분(기본)', () => {
     expect(profile.creator.id).toBe(ME);
     expect(profile.works.every((work) => work.posted)).toBe(true);
     expect(profile.identity?.provisional).toBe(false);
+    // 머리글 Remixed by·Derived by: 사람 수와 사진 몇 장
+    expect(profile.remixedBy.count).toBe(2);
+    expect(profile.remixedBy.creators).toHaveLength(2);
+    expect(profile.derivedBy.count).toBe(1);
   });
 
   it('getCreator: 남의 프로필도 스키마를 통과한다', async () => {
@@ -54,6 +58,7 @@ describe('프로필 API 가짜 응답 — 기록 충분(기본)', () => {
     expect(CreatorProfileResponseSchema.safeParse(profile).success).toBe(true);
     expect(profile.creator.id).toBe(OTHER);
     expect(profile.identity).not.toBeNull();
+    expect(profile.remixedBy).toEqual({ count: 0, creators: [] });
   });
 
   it('getIdentity: 스냅샷과 축 4개 점수 표가 스키마를 통과한다', async () => {

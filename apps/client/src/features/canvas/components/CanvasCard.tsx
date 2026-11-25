@@ -1,5 +1,5 @@
-import { memo, useContext, useRef } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { memo, useContext, useRef, type CSSProperties, type ReactNode } from 'react';
+import { Handle, Position, useStore, type NodeProps } from '@xyflow/react';
 import type { CanvasNode } from '../model';
 import { CanvasNavigation, openRole } from '../navigation';
 import { COPY } from '../../../shared/copy';
@@ -35,6 +35,22 @@ function StepPill({ number, label }: { number: number; label: string }) {
         isConnectable={false}
         className="canvas-step-dot"
       />
+    </div>
+  );
+}
+
+/**
+ * 코멘트 창 자리. 노드 도구 오른쪽에 붙고 노드와 함께 움직이지만, 캔버스 확대 배율만큼 되돌려
+ * 글자가 늘 같은 크기(화면 기준)로 보이게 한다.
+ */
+function CommentAnchor({ children }: { children: ReactNode }) {
+  const zoom = useStore((state) => state.transform[2]);
+  return (
+    <div
+      className="canvas-comments-anchor"
+      style={{ '--canvas-comments-scale': String(1 / (zoom || 1)) } as CSSProperties}
+    >
+      {children}
     </div>
   );
 }
@@ -173,7 +189,6 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           answerId={data.answerId!}
           nodeId={data.output!.id}
           list={navigation.history.listComments}
-          open={commenting}
         />
       ) : null}
       {(canComment || canEdit) && !editing && role !== 'covered' ? (
@@ -192,6 +207,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
                 aria-label={`${COPY['S-07a']}: ${data.label}`}
                 aria-expanded={commenting}
                 data-active={commenting || undefined}
+                data-comment-tool={`${data.answerId}:${data.output!.id}`}
                 onClick={() =>
                   navigation.history!.comment(data.setId, data.answerId!, data.output!.id)
                 }
@@ -215,6 +231,10 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
             ) : null}
           </div>
         </div>
+      ) : null}
+      {/* 코멘트 창은 노드 도구 바로 옆에 붙는다(노드와 함께 움직이고 확대된다) */}
+      {commenting && !editing && navigation.history?.commentPanel ? (
+        <CommentAnchor>{navigation.history.commentPanel}</CommentAnchor>
       ) : null}
 
       {data.kind !== 'answer' && data.kind !== 'origin' ? (

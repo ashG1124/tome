@@ -65,9 +65,20 @@ export const CompareResponseSchema = z.object({
 });
 export type CompareResponse = z.infer<typeof CompareResponseSchema>;
 
+/** 프로필 머리글 "Remixed by N"·"Derived by N" 에 쓰는 묶음. creators 는 가장 최근 순 앞 몇 명(사진 겹침용). */
+export const CreatorReachSchema = z.object({
+  count: CountSchema,
+  creators: z.array(CreatorSummarySchema).max(LIMITS.PROFILE_REACH_AVATARS),
+});
+export type CreatorReach = z.infer<typeof CreatorReachSchema>;
+
 export const CreatorProfileResponseSchema = z.object({
   creator: CreatorSummarySchema,
   works: z.array(ProjectSummarySchema),
   identity: IdentitySnapshotSchema.nullable(),
+  // 이 창작자를 리믹스 상대로 고른 다른 창작자 수(삭제·숨김 프로젝트 제외)
+  remixedBy: CreatorReachSchema,
+  // 이 창작자의 프로젝트에서 파생해 간 다른 창작자 수(삭제·숨김 프로젝트 제외)
+  derivedBy: CreatorReachSchema,
 });
 export type CreatorProfileResponse = z.infer<typeof CreatorProfileResponseSchema>;

@@ -11,6 +11,7 @@ import type {
 } from '../ai-provider';
 import {
   estimateInputGuardNeurons,
+  IMAGE_STAGE_BUDGET_MS,
   INPUT_GUARD_BUDGET_MS,
   MODELS,
   STAGE_BUDGET_MS,
@@ -32,8 +33,10 @@ export interface WorkersAiOptions {
   apiToken: string;
   /** 테스트용 가짜 fetch. 기본은 Node 내장 fetch. */
   fetch?: typeof fetch;
-  /** 한 단계의 전체 시간 예산(ms). 기본 25초. */
+  /** 한 단계의 전체 시간 예산(ms). 기본 25초. 주면 그림 단계 예산도 이 값이 된다(테스트용). */
   stageBudgetMs?: number;
+  /** 그림 단계의 전체 시간 예산(ms). 기본 50초(#222). */
+  imageBudgetMs?: number;
   /** 입력 안전 검사 1회의 시간 제한(ms). 기본 5초. */
   guardBudgetMs?: number;
   /** 호출 기록(단계·모델·상태·지연·폴백 여부만). 기본은 Nest 로거. */
@@ -105,6 +108,7 @@ export class WorkersAiProvider implements AiProvider {
   readonly name = 'workers-ai';
   private readonly fetchImpl: typeof fetch;
   private readonly budgetMs: number;
+  private readonly imageBudgetMs: number;
   private readonly guardBudgetMs: number;
   private readonly logEntry: (entry: RunLog) => void;
   private readonly accountId: string;
@@ -115,6 +119,7 @@ export class WorkersAiProvider implements AiProvider {
     this.apiToken = options.apiToken;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.budgetMs = options.stageBudgetMs ?? STAGE_BUDGET_MS;
+    this.imageBudgetMs = options.imageBudgetMs ?? options.stageBudgetMs ?? IMAGE_STAGE_BUDGET_MS;
     this.guardBudgetMs = options.guardBudgetMs ?? INPUT_GUARD_BUDGET_MS;
     const logger = new Logger('WorkersAi');
     this.logEntry =
@@ -339,7 +344,7 @@ export class WorkersAiProvider implements AiProvider {
           ];
     const run = await runPlan(plan, {
       stage: 'image',
-      budgetMs: this.budgetMs,
+      budgetMs: this.imageBudgetMs,
       log: this.logEntry,
     });
     return this.wrap(run, run.value);

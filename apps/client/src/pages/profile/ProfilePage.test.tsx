@@ -53,19 +53,24 @@ describe('프로필 화면 /creators/:id', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: FAKE_CREATOR.displayName }),
     ).toBeTruthy();
-    expect(screen.getByRole('tab', { name: COPY['P-01a'] })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: COPY['P-01c'] })).toBeTruthy();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      COPY['P-01a'],
+      COPY['P-01b'],
+    ]);
+    // 내 프로필: 머리글 Remixed by·Derived by, 오른쪽 About your identity
+    expect(screen.getByText(COPY['P-21']).parentElement?.textContent).toBe(`${COPY['P-21']} 2`);
+    expect(await screen.findByRole('complementary', { name: COPY['P-23a'] })).toBeTruthy();
   });
 
   it('기록 0건이면 Identity 탭에 기록 중(P-17)이 보인다', async () => {
     await signIn('?fakeIdentity=none');
     renderAt(`/creators/${FAKE_CREATOR.id}`);
+    // reasoned edits 는 값이 없어(reasonedRatio null) "—" 로 보인다(Work 탭 About 패널)
+    expect((await screen.findByText(COPY['P-05'])).nextElementSibling?.textContent).toBe('—');
     const tab = await screen.findByRole('tab', { name: COPY['P-01b'] });
     fireEvent.mouseDown(tab);
     fireEvent.click(tab);
     expect((await screen.findAllByText(COPY['P-17'])).length).toBeGreaterThan(0);
-    // Depth 는 값이 없어(reasonedRatio null) "—" 로 보인다
-    expect(screen.getByText(COPY['P-05']).nextElementSibling?.textContent).toBe('—');
   });
 
   it('남의 비공개 아이덴티티는 오류 없이 Identity 탭 좌표 자리에 P-20 을 보여 준다', async () => {
@@ -95,20 +100,21 @@ describe('프로필 화면 /creators/:id', () => {
   });
 });
 
-describe('Compare 탭에서 리믹스로 들어가기(#41)', () => {
+describe('Identity 탭 Other Creators 에서 리믹스로 들어가기(#41, Proto v7)', () => {
   async function openCompare() {
     await signIn();
     const router = renderAt(`/creators/${FAKE_CREATOR.id}`);
-    const tab = await screen.findByRole('tab', { name: COPY['P-01c'] });
+    const tab = await screen.findByRole('tab', { name: COPY['P-01b'] });
     fireEvent.mouseDown(tab);
     fireEvent.click(tab);
     return router;
   }
+  const remixName = COPY['P-30'].replace('{name}', OTHER?.displayName ?? '');
 
-  it('다른 창작자를 누르면 그 사람을 리믹스 상대로 새 프로젝트를 만들고 워크스페이스로 간다', async () => {
+  it('다른 창작자 줄의 화살표를 누르면 그 사람을 리믹스 상대로 새 프로젝트를 만들고 워크스페이스로 간다', async () => {
     const create = vi.spyOn(api, 'createProject');
     const router = await openCompare();
-    fireEvent.click((await screen.findAllByRole('button', { name: OTHER?.displayName }))[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: remixName }));
 
     expect(await screen.findByText('workspace')).toBeTruthy();
     expect(create).toHaveBeenCalledWith({ remixPartnerId: OTHER?.id });
@@ -118,7 +124,7 @@ describe('Compare 탭에서 리믹스로 들어가기(#41)', () => {
   it('연달아 눌러도 프로젝트는 한 번만 만든다', async () => {
     const create = vi.spyOn(api, 'createProject');
     await openCompare();
-    const partner = (await screen.findAllByRole('button', { name: OTHER?.displayName }))[0]!;
+    const partner = await screen.findByRole('button', { name: remixName });
     fireEvent.click(partner);
     fireEvent.click(partner);
     await screen.findByText('workspace');
@@ -130,7 +136,7 @@ describe('Compare 탭에서 리믹스로 들어가기(#41)', () => {
       new ApiRequestError(500, { code: 'INTERNAL', message: 'x', retryable: true }),
     );
     const router = await openCompare();
-    fireEvent.click((await screen.findAllByRole('button', { name: OTHER?.displayName }))[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: remixName }));
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(router.state.location.pathname).toBe(`/creators/${FAKE_CREATOR.id}`);
   });

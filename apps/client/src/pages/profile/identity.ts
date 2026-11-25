@@ -1,6 +1,6 @@
 import {
   LIMITS,
-  type CompareResponse,
+  type CompareEntry,
   type CreatorSummary,
   type IdentityAxes,
   type IdentityMetrics,
@@ -157,28 +157,90 @@ export function axisRows(table: readonly IdentityTableRow[]): AxisRow[] {
   });
 }
 
-export interface CompareMarker {
+/** 좌표 위 사람 한 명(다른 창작자). */
+export interface ChartPerson {
   creator: CreatorSummary;
-  /** 나(Me)면 true */
-  me: boolean;
   point: ChartPoint;
 }
 
-/** Compare 좌표에 찍을 아바타들. 점수가 없는 사람은 빼고, 나는 맨 마지막(맨 위에 그려짐)에 둔다. */
-export function compareMarkers(compare: CompareResponse, chart: ChartKey): CompareMarker[] {
-  const markers: CompareMarker[] = [];
-  for (const other of compare.others) {
-    const point = chartPoint(other.axes, chart);
-    if (point !== null) markers.push({ creator: other.creator, me: false, point });
+/** 좌표 한 장에 찍을 다른 창작자들. 점수가 없는 사람은 뺀다. */
+export function chartPeople(entries: readonly CompareEntry[], chart: ChartKey): ChartPerson[] {
+  const people: ChartPerson[] = [];
+  for (const entry of entries) {
+    const point = chartPoint(entry.axes, chart);
+    if (point !== null) people.push({ creator: entry.creator, point });
   }
-  const mine = chartPoint(compare.me.axes, chart);
-  if (mine !== null) markers.push({ creator: compare.me.creator, me: true, point: mine });
-  return markers;
+  return people;
 }
 
-export type BubbleSide = 'above' | 'below';
+/**
+ * 두 사람의 닮은 정도(0~100, 반올림). 둘 다 점수가 있는 축만 보고, 축마다 점수 차이를 전체 폭(200)으로 나눈 값의
+ * 평균을 100 에서 뺀다. 같이 가진 축이 하나도 없으면 null.
+ */
+export function similarityOf(a: IdentityAxes, b: IdentityAxes): number | null {
+  const range = LIMITS.AXIS_SCORE_MAX - LIMITS.AXIS_SCORE_MIN;
+  let total = 0;
+  let count = 0;
+  for (const axis of AXIS_ORDER) {
+    const x = a[axis];
+    const y = b[axis];
+    if (x === null || y === null) continue;
+    total += Math.abs(x - y) / range;
+    count += 1;
+  }
+  if (count === 0) return null;
+  return Math.round(100 - (total / count) * 100);
+}
 
-/** 좌표 위 말풍선을 아바타 위에 둘지 아래에 둘지. 판 위쪽 30% 안이면 아래로(판 밖으로 나가지 않게). */
-export function bubbleSide(point: ChartPoint): BubbleSide {
-  return point.top < 30 ? 'below' : 'above';
+/** Similarity 막대 한 칸(10). 막대는 0 부터 이 값의 배수까지 고른다(Figma Drag · 0~10 … 0~100). */
+export const SIMILARITY_STEP = 10;
+export const SIMILARITY_MAX = 100;
+
+export interface CreatorFilter {
+  /** 이름 검색어(앞뒤 공백 무시, 대소문자 무시) */
+  query: string;
+  /** 닮은 정도 위 끝(0~이 값). 100 이면 거르지 않는다 */
+  similarityMax: number;
+  /** 좌표별로 고른 사분면. null 이면 그 좌표로는 거르지 않는다 */
+  quadrants: Record<ChartKey, Quadrant | null>;
+}
+
+export const DEFAULT_FILTER: CreatorFilter = {
+  query: '',
+  similarityMax: SIMILARITY_MAX,
+  quadrants: { ai: null, decision: null },
+};
+
+/** 무엇이든 걸러지고 있으면 true. 이때 좌표에 걸린 사람의 사진·이름·선을 보여 준다. */
+export function isFilterActive(filter: CreatorFilter): boolean {
+  return (
+    filter.query.trim() !== '' ||
+    filter.similarityMax < SIMILARITY_MAX ||
+    filter.quadrants.ai !== null ||
+    filter.quadrants.decision !== null
+  );
+}
+
+/**
+ * 오른쪽 목록에 남길 사람. 이름 검색어·닮은 정도(기준 점수가 있을 때만)·사분면을 모두 통과해야 한다.
+ * 닮은 정도로 거를 때 기준 점수나 상대 점수가 없어 셀 수 없는 사람은 뺀다.
+ */
+export function filterCreators(
+  entries: readonly CompareEntry[],
+  focalAxes: IdentityAxes | null,
+  filter: CreatorFilter,
+): CompareEntry[] {
+  const query = filter.query.trim().toLowerCase();
+  return entries.filter((entry) => {
+    if (query !== '' && !entry.creator.displayName.toLowerCase().includes(query)) return false;
+    if (filter.similarityMax < SIMILARITY_MAX) {
+      const similarity = focalAxes === null ? null : similarityOf(focalAxes, entry.axes);
+      if (similarity === null || similarity > filter.similarityMax) return false;
+    }
+    for (const chart of ['ai', 'decision'] as const) {
+      const wanted = filter.quadrants[chart];
+      if (wanted !== null && quadrantOf(entry.axes, chart) !== wanted) return false;
+    }
+    return true;
+  });
 }

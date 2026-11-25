@@ -66,8 +66,34 @@ describe('identity schemas', () => {
     expect(IdentityResponseSchema.safeParse(row('x')).success).toBe(false);
     const entry = { creator, axes, provisional: false };
     expect(CompareResponseSchema.safeParse({ me: entry, others: [entry] }).success).toBe(true);
+    const reach = { count: 0, creators: [] };
+    const profile = {
+      creator,
+      works: [project],
+      identity: null,
+      remixedBy: reach,
+      derivedBy: reach,
+    };
+    expect(CreatorProfileResponseSchema.safeParse(profile).success).toBe(true);
+  });
+
+  it('profile reach: count is a non-negative integer, at most 3 creators', () => {
+    const profile = (remixedBy: unknown) => ({
+      creator,
+      works: [],
+      identity: null,
+      remixedBy,
+      derivedBy: { count: 0, creators: [] },
+    });
+    const ok = { count: 6, creators: [creator, creator, creator] };
+    expect(CreatorProfileResponseSchema.safeParse(profile(ok)).success).toBe(true);
+    const four = { count: 6, creators: [creator, creator, creator, creator] };
+    expect(CreatorProfileResponseSchema.safeParse(profile(four)).success).toBe(false);
     expect(
-      CreatorProfileResponseSchema.safeParse({ creator, works: [project], identity: null }).success,
-    ).toBe(true);
+      CreatorProfileResponseSchema.safeParse(profile({ count: -1, creators: [] })).success,
+    ).toBe(false);
+    expect(
+      CreatorProfileResponseSchema.safeParse({ creator, works: [], identity: null }).success,
+    ).toBe(false);
   });
 });

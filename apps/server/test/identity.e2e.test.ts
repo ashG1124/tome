@@ -322,6 +322,78 @@ describe.skipIf(!url)('identity API (real Postgres)', () => {
     }
   });
 
+  it('profile reach counts distinct other creators who remixed or derived, newest first', async () => {
+    const owner = await newOwner();
+    const [first, second, third] = [await newOwner(), await newOwner(), await newOwner()];
+    const fresh = await call('GET', `/creators/${owner.creatorId}`, owner.token);
+    const empty = CreatorProfileResponseSchema.parse(await fresh.json());
+    expect(empty.remixedBy).toEqual({ count: 0, creators: [] });
+    expect(empty.derivedBy).toEqual({ count: 0, creators: [] });
+
+    const remixWith = async (who: Owner, minutesAgo: number) => {
+      const target = await createProject(who);
+      await prisma.project.update({
+        where: { id: target.projectId },
+        data: {
+          remixPartnerId: owner.creatorId,
+          createdAt: new Date(Date.now() - minutesAgo * 60_000),
+        },
+      });
+      return target;
+    };
+    await remixWith(first, 30);
+    await remixWith(first, 5); // 같은 사람이 두 번 골라도 한 명으로 센다
+    await remixWith(second, 10);
+    const removed = await remixWith(third, 1);
+    await prisma.project.update({
+      where: { id: removed.projectId },
+      data: { deletedAt: new Date() },
+    });
+    await remixWith(owner, 0); // 자기 자신은 세지 않는다
+
+    const original = await createProject(owner);
+    const derive = async (who: Owner, hidden = false) => {
+      const target = await createProject(who);
+      await prisma.project.update({
+        where: { id: target.projectId },
+        data: {
+          kind: 'derive',
+          derivedFromProjectId: original.projectId,
+          ...(hidden ? { hiddenAt: new Date() } : {}),
+        },
+      });
+    };
+    await derive(third);
+    await derive(second, true); // 숨긴 파생작은 세지 않는다
+    await derive(owner); // 자기 작품을 파생한 것도 세지 않는다
+
+    for (const viewer of [owner, third]) {
+      const res = await call('GET', `/creators/${owner.creatorId}`, viewer.token);
+      expect(res.status).toBe(200);
+      const body = CreatorProfileResponseSchema.parse(await res.json());
+      expect(body.remixedBy.count).toBe(2);
+      expect(body.remixedBy.creators.map((c) => c.id)).toEqual([first.creatorId, second.creatorId]);
+      expect(body.derivedBy.count).toBe(1);
+      expect(body.derivedBy.creators.map((c) => c.id)).toEqual([third.creatorId]);
+    }
+  });
+
+  it('profile reach shows at most 3 creators but counts everyone', async () => {
+    const owner = await newOwner();
+    for (let i = 0; i < 4; i++) {
+      const who = await newOwner();
+      const target = await createProject(who);
+      await prisma.project.update({
+        where: { id: target.projectId },
+        data: { remixPartnerId: owner.creatorId },
+      });
+    }
+    const res = await call('GET', `/creators/${owner.creatorId}`, owner.token);
+    const body = CreatorProfileResponseSchema.parse(await res.json());
+    expect(body.remixedBy.count).toBe(4);
+    expect(body.remixedBy.creators).toHaveLength(3);
+  });
+
   it('compare returns me plus public seed creators in seedOrder, without me', async () => {
     const owner = await newOwner();
     const res = await call('GET', '/identity/compare', owner.token);

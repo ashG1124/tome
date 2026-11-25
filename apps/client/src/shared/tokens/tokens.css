@@ -211,14 +211,9 @@
   --size-result-button: 48px; /* 디자인 변수 없음, 원값 48px — 결과 크게 보기 오른쪽 위 동그라미 버튼 (3313:32167) */
 
   /* ===== 프로필(#37) — Identity 화면 3475:29083, Segment 1897:65652, Profile 3188:178007 ===== */
-  --size-profile-column: 296px; /* 디자인 변수 없음, 원값 296px — 왼쪽 프로필 카드·지표 열 폭 */
-  --size-profile-photo-height: 296px; /* 디자인 변수 없음, 원값 296px — 프로필 사진 카드 높이 */
-  --radius-profile-card: 16px; /* 디자인 변수 없음, 원값 16px — 프로필 사진·지표 카드 모서리 */
-  --size-segment-height: 46px; /* 디자인 변수 없음, 원값 46px — Work·Identity·Compare 탭 높이 (1897:65652) */
-  --radius-chart-panel: 24px; /* 디자인 변수 없음, 원값 24px — 좌표 판 모서리 */
-  --size-chart: 440px; /* 디자인 변수 없음(레이아웃) — 좌표 판 한 변 최대값 */
-  --size-avatar-me: 64px; /* 디자인 변수 없음, 원값 64px — 좌표 위 내 아바타 */
-  --size-avatar-other: 40px; /* Profile 40*40 (3188:177856) — 좌표 위 다른 창작자 아바타 */
+  --radius-profile-card: 16px; /* 디자인 변수 없음, 원값 16px — 프로필 오른쪽 패널 모서리(4181:35168, 예전 사진·지표 카드) */
+  --size-segment-height: 46px; /* 디자인 변수 없음, 원값 46px — Work·Identity 탭 높이 (1897:65652·4181:35713) */
+  --radius-chart-panel: 24px; /* 디자인 변수 없음, 원값 24px — 좌표 판(Main Content 4181:35171) 모서리 */
 
   /* ===== 플래시 메시지(공통) — flash message 1187:62709 ===== */
   --space-gap-3: 8px; /* 디자인 변수 없음, 원값 8px — 플래시 아이콘과 글자 사이 (1187:62709) */
@@ -488,4 +483,66 @@
   --letter-spacing-body-b2: -0.02em; /* Body/B2(R) 14px −0.28px = −2% (5170:135885) */
   --size-agora-topic-text-width: 418px; /* 디자인 변수 없음, 원값 418px — 핫토픽 카드 제목 칸 폭(넘치면 말줄임) (3099:130544) */
   --size-agora-creator-column: 293px; /* Figma 프레임 없음(Creator 탭) — Agora Example Creator List 칸 간격 308.75 − 간격 16 = 칸 폭(반올림) (3190:179201) */
+}
+/* ===== 노드 코멘트 창(#221) — Figma 프레임 없음. 코너·띠는 Comment corner 1185:59843·Corner 1480:135821, 창은 시스템 값으로 정함 ===== */
+:root {
+  --size-comment-panel-width: 340px; /* Figma 프레임 없음 — 노드 도구 옆 코멘트 창 폭(노드 300 기준) */
+  --size-comment-list-max-height: 312px; /* Figma 프레임 없음 — 코멘트 목록이 이보다 길면 목록 안에서 스크롤 */
+}
+/* ===== 프로필 Proto v7(#220) — ⭐ 아이덴티티 (수정) 프로토타입 4181:34982 · Proto v7 · Work 4181:34983 · Proto v7 · Identity 4181:35165 ===== */
+:root {
+  --space-profile-x: 26px; /* 디자인 변수 없음, 원값 26px — 프로필 머리글·탭·좌표 판 왼쪽 여백 (4181:35720 x 26) */
+  --size-profile-avatar: 80px; /* 디자인 변수 없음, 원값 80px — 머리글 프로필 사진 (4181:35722) */
+  --space-profile-header-right: 32px; /* 디자인 변수 없음, 원값 32px — 머리글 오른쪽 끝(1259)과 좌표 판 오른쪽 끝(1291) 사이 (4181:35720) */
+  --size-profile-reach-avatar: 28px; /* 디자인 변수 없음, 원값 28px — Remixed by·Derived by 겹친 사진 (4181:35729) */
+  --space-profile-reach-overlap: -8px; /* 디자인 변수 없음, 원값 −8px — 겹친 사진 사이 (4181:35729 mr −8) */
+  --space-profile-reach-gap: 48px; /* 디자인 변수 없음, 원값 48px — Remixed by 와 Derived by 사이 (4181:35726) */
+  --space-profile-tabs-top: 46px; /* 디자인 변수 없음, 원값 46px — 머리글 사진 아래에서 탭까지(260 − 34 − 100 − 80) (4181:35713) */
+  --space-profile-work-top: 41px; /* 디자인 변수 없음, 원값 41px — 탭 아래에서 첫 격자 마크까지(347 − 34 − 272) (4181:34987) */
+  --space-profile-identity-top: 81px; /* 디자인 변수 없음, 원값 81px — 탭 아래에서 좌표 판까지(387 − 34 − 272) (4181:35171) */
+  --color-profile-panel: #f9fafc; /* 디자인 변수 없음, 원값 #F9FAFC — 오른쪽 패널·좌표 판 바탕 (4181:35168) */
+  --size-profile-panel-width: 384px; /* 디자인 변수 없음, 원값 384px — 오른쪽 패널 폭 (4181:35168) */
+  --space-profile-panel-gap: 32px; /* 디자인 변수 없음, 원값 32px — 좌표 판 오른쪽 끝(1291)과 패널(1323) 사이 */
+  --space-profile-panel-bottom: 33px; /* 디자인 변수 없음, 원값 33px — 패널·좌표 판 아래 여백(1117 − 1084) (4181:35168) */
+  --space-profile-panel-title-x: 25px; /* 디자인 변수 없음, 원값 25px — 패널 제목 왼쪽(1348 − 1323) (4181:35169) */
+  --space-profile-panel-title-top: 29px; /* 디자인 변수 없음, 원값 29px — 패널 제목·닫기 위(163 − 134) (4181:35169) */
+  --size-profile-panel-head: 97px; /* 디자인 변수 없음, 원값 97px — 패널 위에서 첫 구역 선까지(231 − 134) (4181:35083) */
+  --space-profile-insight-x: 32px; /* 디자인 변수 없음, 원값 32px — About 구역 좌우 안쪽 (4181:35084) */
+  --space-profile-insight-y: 28px; /* 디자인 변수 없음, 원값 28px — About 구역 위아래 안쪽 (4181:35084) */
+  --size-profile-value-divider: 40px; /* 디자인 변수 없음, 원값 40px — 값 둘 사이 세로선 (4181:35096) */
+  --space-profile-chart-pad: 36px; /* 디자인 변수 없음, 원값 36.19px — 좌표 판 안쪽 여백 (4181:35172) */
+  --space-profile-chart-gap: 35px; /* 디자인 변수 없음, 원값 34.93px — 좌표 두 장 사이 (4181:35382 − 4181:35172) */
+  --size-profile-chart: 579px; /* 디자인 변수 없음, 원값 578.84px — 좌표 한 변 최대값 (4181:35176) */
+  --radius-profile-chart: 22.5px; /* 디자인 변수 없음, 원값 22.516px — 좌표 모서리 (4181:35176) */
+  --space-profile-chart-label: 21px; /* 디자인 변수 없음, 원값 약 21px — 좌표 가장자리에서 축 이름까지 (4181:35209·4181:35212) */
+  --space-profile-chart-plot: 56px; /* 디자인 변수 없음, 원값 약 56px — 좌표 가장자리에서 점을 찍는 칸까지(Profile 묶음 48.31·56.69) (4181:35215) */
+  --size-profile-chart-dot-pitch: 10px; /* 디자인 변수 없음, 실측 약 9.7px — 좌표 바탕 점 간격 (4181:35176) */
+  --size-profile-chart-dot: 1px; /* 디자인 변수 없음, 실측 지름 약 2px — 좌표 바탕 점 반지름 (4181:35176) */
+  --size-profile-other-dot: 30px; /* 디자인 변수 없음, 원값 25~33px(대표 30) — 좌표 위 다른 창작자 점 (4181:35216) */
+  --opacity-profile-other-dot: 0.7; /* 디자인 변수 없음, 실측 — 다른 창작자 점(#C5CBD7) 비침 (4181:35216) */
+  --opacity-profile-dimmed: 0.4; /* 디자인 변수 없음, 실측 — 고른 창작자 말고 나머지를 흐리게 (4159:172902) */
+  --size-profile-chart-avatar: 40px; /* 디자인 변수 없음, 원값 40px — 좌표 위 Me·고른 창작자 사진 (4181:35379·4181:35993) */
+  --space-profile-chart-chip-x: 18.76px; /* 디자인 변수 없음, 원값 18.763px — Me 이름표 좌우 안쪽 (4181:35380) */
+  --space-profile-chart-chip-y: 1.88px; /* 디자인 변수 없음, 원값 1.876px — Me 이름표 위아래 안쪽 (4181:35380) */
+  --space-profile-chart-chip-gap: 7.5px; /* 디자인 변수 없음, 원값 7.505px — 사진과 이름표 사이 (4181:35378) */
+  --font-size-profile-me: 13px; /* 디자인 변수 없음, 원값 13.134px — Me 이름표 글자 (4181:35381) */
+  --font-size-profile-small: 12px; /* 디자인 변수 없음, 원값 12px — 창작자 이름표·필터 축 이름·matches (4181:35996·4181:35759·4181:35653) */
+  --stroke-weight-profile-chip: 0.5px; /* 디자인 변수 없음, 원값 0.5px — 창작자 이름표 테두리 (4181:35995) */
+  --shadow-profile-glow: 0 0 12px 4px var(--color-tome-yellow-7); /* 디자인 변수 없음, 실측 — 고른 창작자 사진 노란 빛 (4181:35993 Avatar hi) */
+  --color-profile-line: #c5cbd7; /* Color/GrayScale/3 — Me 와 고른 창작자를 잇는 선 (5165:131402) */
+  --radius-profile-search: 12px; /* 디자인 변수 없음, 원값 12px — Find a creator 입력칸 모서리 (4181:35594) */
+  --blur-profile-search: 26px; /* 디자인 변수 없음, 원값 backdrop-blur 26px — Find a creator 입력칸 (4181:35594) */
+  --size-profile-slider-thumb: 16px; /* 디자인 변수 없음, 원값 16px — Similarity 손잡이 (4181:35606) */
+  --size-profile-slider-track: 4px; /* 디자인 변수 없음, 원값 4px — Similarity 막대 두께 (4181:35603) */
+  --size-profile-matrix: 164px; /* 디자인 변수 없음, 원값 164px — Identity 필터 사분면 한 판 (4181:35757) */
+  --size-profile-matrix-grid: 110px; /* 디자인 변수 없음, 원값 110px — 사분면 칸 묶음 (4181:35764) */
+  --radius-profile-matrix-cell: 3px; /* 디자인 변수 없음, 원값 3px — 사분면 한 칸 모서리 (4181:35765) */
+  --opacity-profile-matrix-cell: 0.7; /* 디자인 변수 없음, 원값 70% — 사분면 한 칸 (4181:35765) */
+  --color-profile-matrix-bg: rgb(
+    255 255 255 / 0.8
+  ); /* 디자인 변수 없음, 원값 rgba(255,255,255,0.8) — 사분면 판·창작자 줄 hover 바탕 (4181:35757·4181:35782) */
+  --space-profile-matrix-label: 6px; /* 디자인 변수 없음, 원값 6px — 사분면 판 가장자리에서 축 이름까지 (4181:35758) */
+  --size-profile-creator-avatar: 32px; /* 디자인 변수 없음, 원값 32px — 창작자 줄 사진 (4181:35784) */
+  --size-profile-creator-list: 365px; /* 디자인 변수 없음, 원값 365px — 창작자 목록 보이는 높이(줄 5개) (4181:35656) */
+  --size-profile-creator-list-min: 146px; /* 디자인 변수 없음(레이아웃) — 낮은 화면에서도 창작자 줄 2개는 보이게 */
 }
