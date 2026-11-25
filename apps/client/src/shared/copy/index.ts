@@ -364,6 +364,7 @@ export const COPY = {
   'FG-02': 'Find a creator', // 리믹스 검색칸 자리 문구 1720:80397
   'FG-03': 'Voice input', // 마이크 낭독 이름(시안에는 글자 없음)
   'FG-04': 'Start a new project with {name}', // 리믹스 상대가 있는 빈 페이지의 프롬프트 바 자리 문구 4898:93350 (#198)
+  'FG-05': 'Send prompt', // 임시 ID(#228) — 여러 줄 프롬프트 바 보내기 버튼 낭독 이름(시안 3468:30243 에는 글자 없음)
 } as const;
 
 export type CopyKey = keyof typeof COPY;

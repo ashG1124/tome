@@ -86,6 +86,14 @@ const LAYOUT = {
   mineShift: 179,
   /** 머리글 한 줄 높이(20px × 1.5) → 카드 위 12 */
   headingBox: 30,
+  /**
+   * 열 맨 위에서 프롬프트 노드 위쪽까지. 시안 1679:11666: 1단계 알약 점(y50.5) → 프롬프트 노드 점(y296.5),
+   * 노드 높이 260 의 가운데가 점이라 위쪽은 296.5 − 130 ≈ 166.
+   */
+  promptTop: 166,
+  /** 프롬프트 노드(시안 Node/Prompt 1192:65515): 안쪽 여백 24, 이름표 줄 24, 줄 사이 24, 테두리 1 */
+  promptPadding: 24,
+  promptLabel: 24,
 } as const;
 
 /** 열 맨 위(손잡이)에서 단계 알약 위쪽까지(손잡이 6 + 간격 12). 첫 화면 위치를 잡을 때 쓴다. */
@@ -98,6 +106,8 @@ export interface CanvasGeometry {
   columnGap: number;
   /** 질문 노드 오른쪽 끝 → 1단계 왼쪽 끝 */
   promptGap: number;
+  /** 질문(프롬프트) 노드 폭. 없으면 nodeWidth. 시안 Node/Prompt 1192:65515 는 400 */
+  promptWidth?: number;
   /** 5단계 오른쪽 끝 → 답변 카드 왼쪽 끝 */
   answerGap: number;
   rowGap: number;
@@ -215,6 +225,15 @@ function estimateHeight(node: OutputNode, position: GroupPosition, nodeWidth: nu
   return LAYOUT.card + (lines - 1) * LAYOUT.line;
 }
 
+/** 프롬프트 노드 높이를 어림한다. 안쪽 여백 24×2 + 이름표 24 + 사이 24 + 글 줄 수 × 27 + 테두리 1×2. */
+export function promptHeight(text: string, promptWidth: number): number {
+  const width = promptWidth - 2 * (LAYOUT.promptPadding + 1);
+  const lines = measureLines(text, width) ?? wrapLines(text, Math.floor(width / 9));
+  return (
+    2 * (LAYOUT.promptPadding + 1) + LAYOUT.promptLabel + LAYOUT.promptPadding + lines * LAYOUT.line
+  );
+}
+
 function titleCase(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : text;
 }
@@ -231,11 +250,15 @@ export function buildCanvas(
   const stepEdges: Edge[] = [];
   let top = 0;
   const { nodeWidth, nodeHeight, columnGap, rowGap, setGap, headerHeight } = geometry;
+  const promptWidth =
+    geometry.promptWidth !== undefined && Number.isFinite(geometry.promptWidth)
+      ? geometry.promptWidth
+      : nodeWidth;
   const pitch = nodeWidth + columnGap;
   // 1~5단계는 한 칸(300 + 95)씩, 질문 노드는 1단계 왼쪽 171 밖, 답변 열은 5단계 오른쪽 203 밖이다.
   const columnX = (column: number) =>
     column === 0
-      ? pitch - nodeWidth - geometry.promptGap
+      ? pitch - promptWidth - geometry.promptGap
       : column <= VISIBLE_STAGES.length
         ? column * pitch
         : VISIBLE_STAGES.length * pitch + nodeWidth + geometry.answerGap;
@@ -286,7 +309,7 @@ export function buildCanvas(
         },
         data: { ...data, setId: set.id, column, row, labels },
         style: {
-          width: column === 6 ? geometry.answerWidth : nodeWidth,
+          width: column === 6 ? geometry.answerWidth : column === 0 ? promptWidth : nodeWidth,
           minHeight: minHeight === false || heading ? undefined : (minHeight ?? nodeHeight),
         },
         draggable,
@@ -295,21 +318,18 @@ export function buildCanvas(
         deletable: false,
       });
     };
-    add(
-      'prompt-heading',
-      0,
-      -1,
-      { kind: 'heading', variant: 'group', label: labels.prompt },
-      { heading: true, y: top + LAYOUT.firstCard - LAYOUT.groupLabel },
-    );
+    // 프롬프트 노드는 이름표(Prompt)를 카드 안에 둔다(시안 Node/Prompt 1192:65515). 카드 위 소제목은 없다.
     add(
       'prompt',
       0,
       0,
       { kind: 'prompt', label: labels.prompt, text: set.prompt, state: 'done' },
-      { y: top + LAYOUT.firstCard },
+      { y: top + LAYOUT.promptTop, minHeight: false },
     );
-    let columnBottom = nodeHeight;
+    let columnBottom = Math.max(
+      nodeHeight,
+      LAYOUT.promptTop + promptHeight(set.prompt, promptWidth),
+    );
     VISIBLE_STAGES.forEach((stage, index) => {
       const column = index + 1;
       add(

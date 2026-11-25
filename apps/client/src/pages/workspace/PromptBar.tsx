@@ -1,9 +1,17 @@
 import { LIMITS, PROMPT_PRESETS, type PresetKey } from '@tome/shared';
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { COPY, type CopyKey } from '../../shared/copy';
 import { Icon } from '../../shared/ui';
 import { SparkleIcon } from './PromptIcons';
-import { canSubmitPrompt, presetKeyFor, type PromptBarState } from './prompt';
+import { canSubmitPrompt, isMultilinePrompt, presetKeyFor, type PromptBarState } from './prompt';
 import { PersonPhoto, type RemixPerson } from './remix/RemixPanel';
 
 /** 프리셋 탭 이름 문구. PROMPT_PRESETS 순서와 같다. */
@@ -81,6 +89,8 @@ function RemixChip({ chip, disabled }: { chip: PromptRemixChip; disabled: boolea
 
 /** 칩 안 화살표 한 변(px). 시안 4706:159231 의 20 */
 const ARROW_SIZE = 20;
+/** 여러 줄 모양 + 글리프 한 변(px). 24 칸 안 inset 8.33% (시안 3468:30236) */
+const PLUS_GLYPH = 20;
 
 /** 마지막 입력이 키보드였는지. 키보드로 들어왔을 때만 포커스 테두리를 보이려고 쓴다. */
 let lastInputWasKeyboard = false;
@@ -128,15 +138,34 @@ export function PromptBar({
       : greetingName === undefined
         ? COPY['S-08']
         : COPY['FG-01'].replace('{name}', greetingName);
+  // 두 줄 이상이면 여러 줄 모양(시안 3468:30233): 글이 위 전체 폭, 아래 줄에 왼쪽 + · 오른쪽 보내기.
+  const [multiline, setMultiline] = useState(false);
+  /** 한 줄 모양일 때 입력칸 폭(px). 여러 줄 모양에서도 이 폭으로 재서 두 모양 사이를 오가며 깜빡이지 않게 한다. */
+  const oneLineWidth = useRef(0);
   // 글이 길어지면 칸이 내용만큼 늘어난다(화면 높이의 40% 까지, 그 뒤로는 칸 안에서 스크롤).
-  // 프리셋처럼 글이 한꺼번에 바뀔 때도 맞춘다.
-  useLayoutEffect(() => {
+  // 프리셋처럼 글이 한꺼번에 바뀔 때도 맞춘다. 그리기 전에 재므로 모양이 바뀌어도 튀지 않는다.
+  const fit = useCallback(() => {
     const element = input.current;
     if (element === null) return;
     element.style.height = 'auto';
+    if (!multiline) oneLineWidth.current = element.clientWidth;
+    else if (oneLineWidth.current > 0) element.style.width = `${oneLineWidth.current}px`;
+    const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+    const next = isMultilinePrompt(element.value, element.scrollHeight, lineHeight);
+    element.style.width = '';
+    if (next !== multiline) {
+      setMultiline(next);
+      return;
+    }
     const border = element.offsetHeight - element.clientHeight;
     if (element.scrollHeight > 0) element.style.height = `${element.scrollHeight + border}px`;
-  }, [value]);
+  }, [multiline]);
+  const hasChip = chip !== undefined;
+  useLayoutEffect(() => fit(), [fit, value, hasChip]);
+  useEffect(() => {
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [fit]);
   const sending = useRef(false);
   // 보내는 동안 입력칸을 읽기 전용으로 둔다. 보내기가 성공하면 칸을 비우므로, 그사이 친 글이 사라지지 않게.
   // 서버가 먼저 입력 안전 검사를 해서 응답이 몇 초 늦을 수 있으니, 응답을 기다리지 않고 바로 "생성 중"(S-03)을 보여 준다.
@@ -193,23 +222,39 @@ export function PromptBar({
       ) : null}
       <div
         data-keyboard-focus={keyboardFocus || undefined}
+        data-prompt-multiline={multiline || undefined}
         className={[
-          'box-border flex min-h-[var(--size-prompt-pill-height)] w-full items-start gap-[var(--space-gap-4)] rounded-[var(--radius-prompt-pill)]',
-          'bg-[color:var(--color-glass)] py-[var(--space-padding-6)] pr-[var(--space-padding-7)] backdrop-blur-[var(--blur-background)]',
+          // 한 줄: [반짝임|칩] 입력칸 [마이크]. 여러 줄: 입력칸이 윗줄 전체, 아랫줄 왼쪽 + · 오른쪽 보내기(3468:30233).
+          // 입력칸은 같은 요소로 두고 칸 배치만 바꾼다(포커스·커서가 그대로 남는다).
+          'box-border grid min-h-[var(--size-prompt-pill-height)] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-[var(--space-gap-4)] rounded-[var(--radius-prompt-pill)]',
+          'bg-[color:var(--color-glass)] pr-[var(--space-padding-7)] backdrop-blur-[var(--blur-background)]',
+          multiline
+            ? "gap-y-[var(--space-gap-4)] py-[var(--space-prompt-multiline-y)] [grid-template-areas:'text_text_text'_'lead_._tool']"
+            : "py-[var(--space-padding-6)] [grid-template-areas:'lead_text_tool']",
           // 리믹스 칩이 있으면 왼쪽 여백 12(4706:159193), 없으면 20
-          chip ? 'pl-[var(--space-padding-5)]' : 'pl-[var(--space-padding-7)]',
+          chip && !multiline ? 'pl-[var(--space-padding-5)]' : 'pl-[var(--space-padding-7)]',
           'shadow-[var(--shadow-prompt)] text-[color:var(--color-font-sub-text)]',
           'data-[keyboard-focus]:outline data-[keyboard-focus]:outline-2 data-[keyboard-focus]:outline-offset-2 data-[keyboard-focus]:outline-[color:var(--color-border-input)]',
           locked ? 'bg-[color:var(--color-gray-20)] text-[color:var(--color-font-disable)]' : '',
         ].join(' ')}
       >
-        {chip ? (
-          <RemixChip chip={chip} disabled={locked} />
-        ) : (
-          <span className="mt-[calc(var(--space-gap-1)/2)] flex">
-            <SparkleIcon />
-          </span>
-        )}
+        <span className="flex [grid-area:lead]">
+          {chip ? (
+            <RemixChip chip={chip} disabled={locked} />
+          ) : multiline ? (
+            // 여러 줄 모양의 + (시안 3468:30236 connection, 24 칸 안 20 글리프, 연회색)
+            <span
+              data-prompt-plus=""
+              className="flex size-[var(--space-padding-8)] items-center justify-center text-[color:var(--color-prompt-tool-icon)]"
+            >
+              <Icon name="sparkle" size={PLUS_GLYPH} />
+            </span>
+          ) : (
+            <span className="mt-[calc(var(--space-gap-1)/2)] flex">
+              <SparkleIcon />
+            </span>
+          )}
+        </span>
         <textarea
           ref={input}
           aria-label={COPY['S-08']}
@@ -226,21 +271,39 @@ export function PromptBar({
           onFocus={() => setKeyboardFocus(lastInputWasKeyboard)}
           onBlur={() => setKeyboardFocus(false)}
           className={[
-            'm-0 box-border block max-h-[40vh] min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent p-0 outline-none focus-visible:outline-none!',
+            'm-0 box-border block max-h-[40vh] w-full min-w-0 resize-none overflow-y-auto border-0 bg-transparent p-0 outline-none focus-visible:outline-none! [grid-area:text]',
             '[font:var(--text-subtitle-st2-m)] tracking-[var(--letter-spacing-default)] text-[color:var(--color-font-main-text)]',
             'placeholder:text-[color:var(--color-font-helper-text)]',
             'disabled:cursor-not-allowed disabled:text-[color:var(--color-font-disable)]',
           ].join(' ')}
         />
-        {/* 음성 입력은 아직 기능이 없다. 시안 모양(1187:61882)만 두고 비활성으로 알린다. */}
-        <button
-          type="button"
-          aria-label={COPY['FG-03']}
-          aria-disabled="true"
-          className="mt-[calc(var(--space-gap-1)/2)] flex shrink-0 cursor-not-allowed border-0 bg-transparent p-0 text-[color:var(--color-font-sub-text)]"
-        >
-          <Icon name="mic" />
-        </button>
+        {multiline ? (
+          // 보내기(시안 3468:30243 send). Enter 와 같은 동작이다.
+          <button
+            type="button"
+            aria-label={COPY['FG-05']}
+            aria-describedby={reason ? reasonId : undefined}
+            aria-busy={busy || undefined}
+            disabled={locked || busy || !canSubmitPrompt(value)}
+            onClick={() => void submit()}
+            className={[
+              'flex shrink-0 cursor-pointer self-center rounded-[var(--radius-max)] border-0 bg-transparent p-0 text-[color:var(--color-fill-neutral)] [grid-area:tool]',
+              'disabled:cursor-not-allowed disabled:text-[color:var(--color-font-disable)]',
+            ].join(' ')}
+          >
+            <Icon name="send" />
+          </button>
+        ) : (
+          /* 음성 입력은 아직 기능이 없다. 시안 모양(1187:61882)만 두고 비활성으로 알린다. */
+          <button
+            type="button"
+            aria-label={COPY['FG-03']}
+            aria-disabled="true"
+            className="mt-[calc(var(--space-gap-1)/2)] flex shrink-0 cursor-not-allowed border-0 bg-transparent p-0 text-[color:var(--color-font-sub-text)] [grid-area:tool]"
+          >
+            <Icon name="mic" />
+          </button>
+        )}
       </div>
       {reason ? (
         <p

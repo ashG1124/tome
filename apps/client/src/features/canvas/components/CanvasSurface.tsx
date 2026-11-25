@@ -4,6 +4,9 @@ import { CANVAS_COPY, COPY } from '../../../shared/copy';
 import { useApiImage } from '../../../shared/api';
 import { Icon } from '../../../shared/ui';
 
+/** 프롬프트 노드 반짝임 글리프 한 변(px). 24 칸 안 inset 8.33% (시안 3053:68396 > 1182:52458) */
+const PROMPT_MARK_GLYPH = 20;
+
 function AnswerImage({ url, label }: { url: string; label: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const { directSrc, failed } = useApiImage(url, imageRef);
@@ -115,7 +118,18 @@ export function CanvasSurface({
       aria-label={data.label}
       aria-busy={data.state === 'running' || undefined}
     >
-      {data.kind === 'prompt' ? <p className="canvas-prompt-text">{data.text}</p> : null}
+      {data.kind === 'prompt' ? (
+        <>
+          {/* 시안 Node/Prompt 1192:65515: 이름표 줄(Prompt · 오른쪽 위 반짝임) + 프롬프트 글 */}
+          <div className="canvas-prompt-head" aria-hidden="true">
+            <span>{data.label}</span>
+            <span className="canvas-prompt-mark">
+              <Icon name="sparkle" size={PROMPT_MARK_GLYPH} />
+            </span>
+          </div>
+          <p className="canvas-prompt-text">{data.text}</p>
+        </>
+      ) : null}
       {data.kind === 'output' && !open ? (
         <>
           <div className="canvas-node-line">

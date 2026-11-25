@@ -25,6 +25,21 @@ export function canSubmitPrompt(text: string): boolean {
   return trimmed.length > 0 && trimmed.length <= LIMITS.PROMPT_MAX;
 }
 
+/**
+ * 프롬프트 바를 여러 줄 모양(글이 위, 아래 줄에 + 와 보내기)으로 바꿀지 정한다.
+ * 줄바꿈이 있거나, 한 줄 모양 폭에서 잰 글 높이가 한 줄을 넘으면 여러 줄이다.
+ * 폭이 다른 두 모양 사이를 오가며 깜빡이지 않도록 높이는 늘 한 줄 모양 폭에서 잰 값을 쓴다.
+ */
+export function isMultilinePrompt(
+  text: string,
+  oneLineScrollHeight: number,
+  lineHeight: number,
+): boolean {
+  if (text.length === 0) return false;
+  if (text.includes('\n')) return true;
+  return lineHeight > 0 && oneLineScrollHeight > lineHeight * 1.5;
+}
+
 /** 프리셋 문장을 고치지 않고 그대로 보낼 때만 그 프리셋 키를 돌려준다. */
 export function presetKeyFor(text: string): PresetKey | undefined {
   const trimmed = text.trim();

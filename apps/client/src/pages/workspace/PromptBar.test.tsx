@@ -164,6 +164,66 @@ describe('PromptBar', () => {
   });
 });
 
+describe('PromptBar 여러 줄 모양(#228, 3468:30233)', () => {
+  const pill = () => input().parentElement as HTMLElement;
+  const send = () => screen.queryByRole('button', { name: COPY['FG-05'] });
+  const mic = () => screen.queryByRole('button', { name: COPY['FG-03'] });
+
+  it('한 줄이면 지금 모양: 반짝임·입력칸·마이크, 보내기 버튼 없음', () => {
+    render(<Harness emptyPage={false} onSubmit={vi.fn()} />);
+    type('a quiet harbor');
+    expect(pill().hasAttribute('data-prompt-multiline')).toBe(false);
+    expect(mic()).not.toBeNull();
+    expect(send()).toBeNull();
+  });
+
+  it('두 줄 이상이면 글이 위, 아래 줄에 + 와 보내기. 모델 이름·마이크는 없다', () => {
+    render(<Harness emptyPage={false} onSubmit={vi.fn()} />);
+    type('first line\nsecond line');
+    expect(pill().getAttribute('data-prompt-multiline')).toBe('true');
+    expect(pill().className).toContain("[grid-template-areas:'text_text_text'_'lead_._tool']");
+    expect(pill().querySelector('[data-prompt-plus] [data-icon="sparkle"]')).not.toBeNull();
+    expect(send()?.querySelector('[data-icon="send"]')).not.toBeNull();
+    expect(mic()).toBeNull();
+    expect(pill().textContent).not.toMatch(/GPT/);
+  });
+
+  it('입력칸은 모양이 바뀌어도 같은 요소라 포커스가 남는다', () => {
+    render(<Harness emptyPage={false} onSubmit={vi.fn()} />);
+    const before = input();
+    before.focus();
+    type('first\nsecond');
+    expect(input()).toBe(before);
+    expect(document.activeElement).toBe(before);
+    type('one');
+    expect(pill().hasAttribute('data-prompt-multiline')).toBe(false);
+  });
+
+  it('보내기 버튼은 Enter 와 같이 보낸다', () => {
+    const onSubmit = vi.fn();
+    render(<Harness emptyPage={false} onSubmit={onSubmit} />);
+    type('  first line\nsecond line ');
+    fireEvent.click(send()!);
+    expect(onSubmit).toHaveBeenCalledWith({ prompt: 'first line\nsecond line' });
+  });
+
+  it('여러 줄에서도 Enter 는 보내고 Shift+Enter 는 보내지 않는다', () => {
+    const onSubmit = vi.fn();
+    render(<Harness emptyPage={false} onSubmit={onSubmit} />);
+    type('first\nsecond');
+    enter({ shiftKey: true });
+    expect(onSubmit).not.toHaveBeenCalled();
+    enter();
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('공백·줄바꿈뿐이면 보내기 버튼이 비활성이다', () => {
+    render(<Harness emptyPage={false} onSubmit={vi.fn()} />);
+    type(' \n ');
+    expect((send() as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
 describe('PromptBar 리믹스 칩(4898:93342)', () => {
   const partner = { displayName: 'Milla', avatarUrl: null };
   function render2({ emptyPage, open = false }: { emptyPage: boolean; open?: boolean }) {
