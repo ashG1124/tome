@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DRAG_THRESHOLD, nearestSlot, passedThreshold, previewIndex, slotDelta } from './drag';
+import { cellAt, cellDelta, cellOrigin, DRAG_THRESHOLD, passedThreshold } from './drag';
 
-/** 한 줄 칸 4개(칸 108, 간격 20) */
-const SLOTS = [0, 1, 2, 3].map((n) => ({ x: n * 128, y: 0, width: 108, height: 192 }));
+/** Figma 서가 격자: 여백 20, 칸 108×192, 간격 20 → 가로 128·세로 212 간격 */
+const GRID = { originX: 20, originY: 20, pitchX: 128, pitchY: 212 };
 
 describe('passedThreshold', () => {
   it('기준 거리(6px) 이하면 클릭, 넘으면 끌기', () => {
@@ -13,30 +13,29 @@ describe('passedThreshold', () => {
   });
 });
 
-describe('nearestSlot', () => {
-  it('가운데가 가장 가까운 칸을 고르고, 칸이 없으면 -1', () => {
-    expect(nearestSlot(SLOTS, 54, 96)).toBe(0);
-    expect(nearestSlot(SLOTS, 54 + 128 * 2 + 40, 96)).toBe(2);
-    expect(nearestSlot(SLOTS, 5000, 96)).toBe(3);
-    expect(nearestSlot([], 0, 0)).toBe(-1);
+describe('cellOrigin·cellDelta', () => {
+  it('칸 왼쪽 위와 두 칸 사이 거리', () => {
+    expect(cellOrigin(GRID, { col: 2, row: 1 })).toEqual({ x: 276, y: 232 });
+    expect(cellDelta(GRID, { col: 1, row: 0 }, { col: 3, row: 2 })).toEqual({ x: 256, y: 424 });
   });
 });
 
-describe('previewIndex', () => {
-  it('뒤로 끌면 사이 카드가 한 칸 앞으로, 앞으로 끌면 한 칸 뒤로 비켜 선다', () => {
-    // 0 → 2
-    expect([0, 1, 2, 3].map((i) => previewIndex(i, 0, 2))).toEqual([0, 0, 1, 3]);
-    // 3 → 1
-    expect([0, 1, 2, 3].map((i) => previewIndex(i, 3, 1))).toEqual([0, 2, 3, 3]);
-    // 제자리
-    expect([0, 1, 2, 3].map((i) => previewIndex(i, 1, 1))).toEqual([0, 1, 2, 3]);
+describe('cellAt (#240 자유 배치: 가장 가까운 칸에 붙이기)', () => {
+  it('카드 왼쪽 위에서 가장 가까운 칸을 고른다', () => {
+    expect(cellAt(GRID, 276, 232, 13, 5)).toEqual({ col: 2, row: 1 });
+    // 반 칸 못 미치면 앞 칸, 넘으면 다음 칸
+    expect(cellAt(GRID, 276 + 63, 232 + 100, 13, 5)).toEqual({ col: 2, row: 1 });
+    expect(cellAt(GRID, 276 + 65, 232 + 110, 13, 5)).toEqual({ col: 3, row: 2 });
   });
-});
 
-describe('slotDelta', () => {
-  it('두 칸 사이 거리, 없는 칸이면 0', () => {
-    expect(slotDelta(SLOTS, 0, 2)).toEqual({ x: 256, y: 0 });
-    expect(slotDelta(SLOTS, 3, 1)).toEqual({ x: -256, y: 0 });
-    expect(slotDelta(SLOTS, 0, 9)).toEqual({ x: 0, y: 0 });
+  it('서가 밖으로 끌면 가장자리 칸으로 자른다(오른쪽 끝 칸·아래 한도 줄)', () => {
+    expect(cellAt(GRID, 5000, 232, 13, 5)).toEqual({ col: 12, row: 1 });
+    expect(cellAt(GRID, -300, 5000, 13, 5)).toEqual({ col: 0, row: 5 });
+    expect(cellAt(GRID, 276, -500, 13, 5)).toEqual({ col: 2, row: 0 });
+  });
+
+  it('+ Project 칸이거나 격자를 재지 못했으면 null', () => {
+    expect(cellAt(GRID, 20, 20, 13, 5)).toBeNull();
+    expect(cellAt({ ...GRID, pitchX: 0 }, 276, 232, 13, 5)).toBeNull();
   });
 });

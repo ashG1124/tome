@@ -14,7 +14,7 @@ export function columnsFor(containerWidth: number, cellWidth: number, gap: numbe
 
 /**
  * 넓어진 카드가 오른쪽 끝을 넘으면 왼쪽으로 넓힌다.
- * cellIndex 는 서가 전체 칸 번호(0 = + Project 칸)다.
+ * cellIndex 는 줄 안의 칸 번호(col)다. 줄을 넘는 번호를 주면 칸 수로 나눈 나머지로 본다.
  */
 export function opensToLeft(cellIndex: number, columns: number, span = OPEN_CARD_SPAN): boolean {
   if (columns <= span) return false;
@@ -23,21 +23,14 @@ export function opensToLeft(cellIndex: number, columns: number, span = OPEN_CARD
 }
 
 /**
- * 카드 하나가 오른쪽으로 넓어지면(Figma Home_hover) 같은 줄에서 그 뒤 카드가 두 칸(256px) 밀린다.
- * 밀려서 줄 끝을 넘는 카드는 잠깐 숨긴다(마우스를 떼면 제자리로 돌아온다).
- * 왼쪽으로 넓어지는 카드(줄 오른쪽 끝)는 앞 칸을 덮기만 하고 아무것도 밀지 않는다.
+ * 카드 하나가 오른쪽으로 넓어지면(Figma Home_hover) 같은 줄 바로 뒤 카드가 shift 칸만큼 밀린다(freeLayout pushShifts).
+ * 밀려서 줄 끝(col + shift ≥ columns)을 넘는 카드는 잠깐 숨긴다(마우스를 떼면 제자리로 돌아온다).
  */
-export function pushStyle(
-  cell: number,
-  openCell: number | null,
-  columns: number,
-): CSSProperties | undefined {
-  if (openCell === null || cell <= openCell || opensToLeft(openCell, columns)) return undefined;
-  if (Math.floor(cell / columns) !== Math.floor(openCell / columns)) return undefined;
-  const pushed = OPEN_CARD_SPAN - 1;
+export function pushStyle(shift: number, col: number, columns: number): CSSProperties | undefined {
+  if (shift <= 0) return undefined;
   const moved: CSSProperties = {
-    transform: `translateX(calc((var(--size-shelf-card-width) + var(--grid-gutter)) * ${pushed}))`,
+    transform: `translateX(calc((var(--size-shelf-card-width) + var(--grid-gutter)) * ${shift}))`,
   };
-  if ((cell % columns) + pushed >= columns) return { ...moved, opacity: 0, pointerEvents: 'none' };
+  if (col + shift >= columns) return { ...moved, opacity: 0, pointerEvents: 'none' };
   return moved;
 }

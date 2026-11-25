@@ -32,22 +32,15 @@ describe('opensToLeft', () => {
 });
 
 describe('pushStyle (hover 때 같은 줄 뒤 카드 밀기)', () => {
-  it('같은 줄에서 뒤에 있는 카드는 2칸(256px) 밀린다', () => {
-    expect(pushStyle(3, 1, 13)?.transform).toContain('* 2');
-    expect(pushStyle(3, 1, 13)?.opacity).toBeUndefined();
-  });
-  it('앞 카드·다른 줄 카드·아무것도 안 열렸을 때는 그대로', () => {
-    expect(pushStyle(1, 1, 13)).toBeUndefined();
-    expect(pushStyle(0, 1, 13)).toBeUndefined();
-    expect(pushStyle(14, 1, 13)).toBeUndefined();
-    expect(pushStyle(3, null, 13)).toBeUndefined();
+  it('shift 칸만큼(칸 간격 단위) 밀고, 0 이면 그대로', () => {
+    expect(pushStyle(2, 3, 13)?.transform).toContain('* 2');
+    expect(pushStyle(1, 3, 13)?.transform).toContain('* 1');
+    expect(pushStyle(2, 3, 13)?.opacity).toBeUndefined();
+    expect(pushStyle(0, 3, 13)).toBeUndefined();
   });
   it('밀려서 줄 끝을 넘는 카드는 숨기고 클릭도 막는다', () => {
-    expect(pushStyle(12, 1, 13)).toMatchObject({ opacity: 0, pointerEvents: 'none' });
-    expect(pushStyle(11, 1, 13)).toMatchObject({ opacity: 0 });
-    expect(pushStyle(10, 1, 13)?.opacity).toBeUndefined();
-  });
-  it('왼쪽으로 넓어지는 카드(줄 오른쪽 끝)는 아무것도 밀지 않는다', () => {
-    expect(pushStyle(12, 11, 13)).toBeUndefined();
+    expect(pushStyle(2, 12, 13)).toMatchObject({ opacity: 0, pointerEvents: 'none' });
+    expect(pushStyle(2, 11, 13)).toMatchObject({ opacity: 0 });
+    expect(pushStyle(2, 10, 13)?.opacity).toBeUndefined();
   });
 });
