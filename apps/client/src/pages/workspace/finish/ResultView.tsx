@@ -30,6 +30,24 @@ const CLOSE_CIRCLE = [
 ].join(' ');
 
 /**
+ * 큰 그림. 창 안(Portal)에 그림 요소와 함께 처음 그려지도록 따로 둔다(#242).
+ * 창은 열린 뒤 한 박자 늦게 그림 요소를 붙이므로, 바깥에서 useApiImage 를 부르면
+ * 그림을 이미 받아 둔 경우(같은 주소를 캔버스가 먼저 받음) 그림 요소가 생기기 전에 주소를 넣으려다 놓친다.
+ */
+function ResultImage({ imagePath, alt }: { imagePath: string; alt: string }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const { directSrc } = useApiImage(imagePath, imageRef);
+  return (
+    <img
+      ref={imageRef}
+      src={directSrc}
+      alt={alt}
+      className="block h-[min(63vh,calc(100vh-var(--size-header-height)-var(--size-result-button)))] max-h-full w-[71vw] max-w-full rounded-[var(--radius-node)] bg-[color:var(--color-fill-card)] object-cover shadow-[var(--shadow-floating)]"
+    />
+  );
+}
+
+/**
  * 결과 크게 보기(라이트박스). 큰 그림 위 오른쪽 위에 닫기 동그라미, 그림 아래에 Download 가 든 알약.
  * 시안의 Share·Plugin 은 범위 밖이라 뺐다. 화면 전체를 덮는 모달이라 포커스가 안에 갇히고,
  * Esc·닫기·바깥 클릭으로 닫힌다.
@@ -44,8 +62,6 @@ export function ResultView({
   errorMessage,
   onCloseAutoFocus,
 }: ResultViewProps) {
-  const imageRef = useRef<HTMLImageElement>(null);
-  const { directSrc } = useApiImage(imagePath, imageRef);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
@@ -57,12 +73,7 @@ export function ResultView({
           >
             <RadixDialog.Title className="sr-only">{alt}</RadixDialog.Title>
             <div className="relative max-w-full">
-              <img
-                ref={imageRef}
-                src={directSrc}
-                alt={alt}
-                className="block h-[min(63vh,calc(100vh-var(--size-header-height)-var(--size-result-button)))] max-h-full w-[71vw] max-w-full rounded-[var(--radius-node)] bg-[color:var(--color-fill-card)] object-cover shadow-[var(--shadow-floating)]"
-              />
+              <ResultImage imagePath={imagePath} alt={alt} />
               <RadixDialog.Close asChild>
                 <button type="button" aria-label={COPY['D-11']} className={CLOSE_CIRCLE}>
                   <Icon name="close" />
