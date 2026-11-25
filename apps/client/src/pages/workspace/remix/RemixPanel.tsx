@@ -203,7 +203,8 @@ interface RemixPanelProps {
   choosing: boolean;
   /** 상대 저장이 실패했을 때의 오류 */
   chooseError: unknown;
-  onChoose: (creatorId: Id) => void;
+  /** 상대를 고른다. 지금 상대를 한 번 더 누르면 null(리믹스 해제)이다. */
+  onChoose: (creatorId: Id | null) => void;
 }
 
 const GLASS = 'box-border w-full bg-[color:var(--color-glass)] backdrop-blur-[var(--blur-glass)]';
@@ -211,6 +212,7 @@ const GLASS = 'box-border w-full bg-[color:var(--color-glass)] backdrop-blur-[va
 /**
  * "Remix with" 패널(Control bar 2351:170408, 312×375). 위 노란 알약 + 아래 카드(검색칸, Rising·Favorite 탭, 새로고침, 목록).
  * 검색칸은 목록의 이름·소개를 이 화면 안에서만 거른다. 목록 줄을 누르면 상대로 고르고, 하트로 즐겨찾기를 켜고 끈다.
+ * 지금 상대를 한 번 더 누르면 리믹스를 해제한다(#229).
  * 0명이거나 목록을 못 받으면 S-04 를 보여 준다. 리믹스 없이도 프롬프트로 일반 생성은 그대로 된다.
  */
 export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: RemixPanelProps) {
@@ -355,7 +357,9 @@ export function RemixPanel({ id, partner, choosing, chooseError, onChoose }: Rem
                       selected={partner?.id === creator.id}
                       choosing={choosing}
                       favoriteBusy={favorite.isPending && favorite.variables.id === creator.id}
-                      onChoose={onChoose}
+                      onChoose={(creatorId) =>
+                        onChoose(partner?.id === creatorId ? null : creatorId)
+                      }
                       onToggleFavorite={(target) => favorite.mutate(target)}
                     />
                   ))}

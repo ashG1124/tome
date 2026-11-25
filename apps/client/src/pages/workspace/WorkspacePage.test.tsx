@@ -248,6 +248,24 @@ describe('WorkspacePage 리믹스(#41)', () => {
     expect(handles).toHaveLength(1);
   });
 
+  it('고른 상대를 한 번 더 누르면 리믹스가 풀리고 제목에서 상대가 빠진다(#229)', async () => {
+    const spy = vi.spyOn(api, 'setRemixPartner');
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Lind/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toContain(
+        `${COPY['RX-04']} Lind`,
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: COPY['RX-05'] }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Lind/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(COPY['RX-04']),
+    );
+    expect(spy).toHaveBeenLastCalledWith(PROJECT, null);
+  });
+
   it('후보가 0명이면(S-04) 리믹스 없이도 프롬프트로 일반 생성을 할 수 있다', async () => {
     resetFake('?fakeIdentity=private');
     fakeState.consented = true;

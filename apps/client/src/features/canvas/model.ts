@@ -1,5 +1,6 @@
 import type {
   Answer,
+  AnswerSummary,
   Job,
   JobStage,
   JobStep,
@@ -94,7 +95,22 @@ const LAYOUT = {
   /** 프롬프트 노드(시안 Node/Prompt 1192:65515): 안쪽 여백 24, 이름표 줄 24, 줄 사이 24, 테두리 1 */
   promptPadding: 24,
   promptLabel: 24,
+  /** 뒤에 쌓인 버전 한 장이 카드 위로 올라오는 높이(카드 340 × 7.3529%, history.css .canvas-answer-layer) */
+  stackStep: 25,
+  /** 쌓인 장 맨 위와 머리글 사이 최소 간격 */
+  stackGap: 4,
 } as const;
+
+/**
+ * 버전이 depth 장 쌓였을 때 "My answer" 머리글을 올릴 거리(#229).
+ * 머리글 아래(mineHeading + headingBox)가 맨 뒤 장 위(mineTop − depth × stackStep)보다 stackGap 위에 오게 한다.
+ * 2장이어도 원작 카드(originTop + 340) 아래에 머문다.
+ */
+function stackLift(depth: number): number {
+  if (depth <= 0) return 0;
+  const layerTop = LAYOUT.mineTop - depth * LAYOUT.stackStep;
+  return Math.max(0, LAYOUT.mineHeading + LAYOUT.headingBox + LAYOUT.stackGap - layerTop);
+}
 
 /** 열 맨 위(손잡이)에서 단계 알약 위쪽까지(손잡이 6 + 간격 12). 첫 화면 위치를 잡을 때 쓴다. */
 export const STEP_PILL_TOP = LAYOUT.pillTop;
@@ -127,6 +143,8 @@ export type CardData = {
   kind: 'heading' | 'prompt' | 'output' | 'placeholder' | 'answer' | 'origin';
   variant?: HeadingVariant;
   groupPosition?: GroupPosition;
+  /** 묶음 첫 줄(우선순위·검증 기준)이면 그 묶음의 모든 줄 id(위에서부터). 리믹스 표시를 묶음당 1개만 붙이는 데 쓴다. */
+  groupIds?: string[];
   setId: string;
   column: number;
   row: number;
@@ -137,6 +155,15 @@ export type CardData = {
   answerId?: string;
   /** 원작 답변 카드(kind 'origin')가 그릴 원작 정보. 읽기 전용이다. */
   origin?: WorkspaceDerivedFrom;
+  /** 파생: 지금 활성이 아닌 답변 카드(흐림). 누르면 activateAnswerId 버전으로 돌아가 활성이 된다(#229). */
+  inactive?: boolean;
+  activateAnswerId?: string;
+  /** 파생: 비활성 My answer 카드가 그릴 내 최신 버전(작은 그림만 있다) */
+  summary?: AnswerSummary;
+  /** 파생: 고친 값으로 만드는 미리보기를 My answer 자리에 그린다(아직 확정 전, 버전 표시 없음) */
+  previewing?: boolean;
+  /** 버전 넘기기에서 뺄 답변(파생 복사본은 원작 답변 카드가 대신한다) */
+  hiddenVersionIds?: string[];
   state?: 'pending' | 'running' | 'done' | 'skipped' | 'failed';
   error?: GenerationView['error'];
   onRetry?: () => Promise<void>;
@@ -238,12 +265,62 @@ function titleCase(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : text;
 }
 
+/** 파생 세트에서 지금 만드는 미리보기(노드를 고친 뒤). answer 가 없으면 만드는 중이다. */
+export interface DerivePreview {
+  setId: string;
+  answer?: Answer;
+}
+
+/** 파생 첫 세트의 원작 답변 · My answer 상태(#229). */
+export interface DeriveAnswerState {
+  /** 파생 때 원작 대표 답변을 복사한 버전(번호 1). 원작 노드 그대로다. */
+  copyId?: string;
+  /** My answer 가 활성(원작 답변은 비활성) */
+  active: boolean;
+  /** My answer 카드·머리글을 그린다 */
+  shown: boolean;
+  /** 비활성 My answer 카드에 그릴 내 최신 버전 */
+  standby?: AnswerSummary;
+  preview?: DerivePreview;
+  /** My answer 뒤에 겹쳐 그리는 이전 버전 장 수(0~2) */
+  stackDepth: number;
+}
+
+/**
+ * 파생 세트의 답변 상태. 서버는 파생할 때 원작 대표 답변을 번호 1 로 복사해 둔다(origin derived_copy).
+ * 그 복사본은 원작 답변 카드가 대신 보여 주고, 사용자가 고쳐 만든 버전(번호 2~)만 "My answer" 로 본다.
+ */
+export function deriveState(
+  set: Pick<PromptSet, 'id' | 'answers'>,
+  displayed: Pick<Answer, 'id'> | undefined,
+  preview: DerivePreview | undefined,
+): DeriveAnswerState {
+  const versions = [...set.answers].sort(
+    (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.createdAt.localeCompare(b.createdAt),
+  );
+  const copyId = versions[0]?.id;
+  const own = versions.slice(1);
+  const live = preview?.setId === set.id ? preview : undefined;
+  const showingOwn = !!displayed && displayed.id !== copyId;
+  const active = !!live || showingOwn;
+  const index = showingOwn ? own.findIndex((entry) => entry.id === displayed.id) : -1;
+  return {
+    ...(copyId ? { copyId } : {}),
+    active,
+    shown: active || own.length > 0,
+    ...(own.length > 0 ? { standby: own[own.length - 1] } : {}),
+    ...(live ? { preview: live } : {}),
+    stackDepth: !live && index > 0 ? Math.min(2, index) : 0,
+  };
+}
+
 export function buildCanvas(
   sets: readonly PromptSet[],
   generation: GenerationView | undefined,
   labels: CanvasLabels,
   geometry: CanvasGeometry,
   derivedFrom?: WorkspaceDerivedFrom,
+  derivePreview?: DerivePreview,
 ) {
   const nodes: CanvasNode[] = [];
   const edges: Edge[] = [];
@@ -416,6 +493,14 @@ export function buildCanvas(
               );
             }
           }
+          // 한 장 카드로 이어 붙는 묶음은 첫 줄이 묶음 전체를 대신한다(Connection 표시는 묶음당 1개, #229).
+          let groupEnd = row;
+          while (stageNodes[groupEnd] && groupOf(stageNodes[groupEnd]!).key === group.key)
+            groupEnd += 1;
+          const rowGroup =
+            isRow(node) && first
+              ? stageNodes.slice(row, groupEnd).map((entry) => entry.id)
+              : undefined;
           add(
             node.id,
             column,
@@ -426,6 +511,7 @@ export function buildCanvas(
               text: node.text,
               output: node,
               groupPosition,
+              ...(rowGroup ? { groupIds: rowGroup } : {}),
               answerId: answer?.status === 'accepted' ? answer.id : undefined,
               state,
               error: row === 0 ? error : undefined,
@@ -450,15 +536,23 @@ export function buildCanvas(
     const running = current && !['succeeded', 'failed', 'cancelled'].includes(current.job.status);
     // 시안(My work 3924:67090)은 5단계 알약 오른쪽 점에서 답변 카드 왼쪽 점으로 곡선 하나만 긋는다.
     const lastHeading = id(`${VISIBLE_STAGES[VISIBLE_STAGES.length - 1]}-heading`);
-    edges.push({
-      id: id('verify-heading->answer'),
-      source: lastHeading,
-      target: id('answer'),
-      type: 'default',
-      focusable: false,
-      selectable: false,
-      deletable: false,
-    });
+    // 파생: 원작 답변과 "My answer" 중 하나만 활성이다(#229).
+    // - 파생 직후(복사본만 있고 고친 것이 없음): 원작 답변만 활성, My answer 는 아직 없다.
+    // - 노드를 고쳐 미리보기가 만들어지거나 내 버전이 확정되면 My answer 가 생기고 활성, 원작 답변은 비활성.
+    // - 원작 답변을 누르면 복사본(원작 노드)으로 돌아가 원작이 활성, My answer 는 비활성. My answer 를 누르면 그 반대.
+    const mine = derive ? deriveState(set, answer, derivePreview) : undefined;
+    const mineShown = !mine || mine.shown;
+    if (mineShown)
+      edges.push({
+        id: id('verify-heading->answer'),
+        source: lastHeading,
+        target: id('answer'),
+        type: 'default',
+        ...(mine && !mine.active ? { className: 'canvas-edge--origin' } : {}),
+        focusable: false,
+        selectable: false,
+        deletable: false,
+      });
     // 질문 노드에서 1단계 알약 왼쪽 점으로 가는 곡선(시안 1679:11666)
     edges.push({
       id: id('prompt->analyze-heading'),
@@ -481,7 +575,12 @@ export function buildCanvas(
           'origin-heading',
           6,
           -1,
-          { kind: 'heading', variant: 'origin', label: derive.origin(creator.displayName) },
+          {
+            kind: 'heading',
+            variant: 'origin',
+            label: derive.origin(creator.displayName),
+            ...(mine?.active ? { inactive: true } : {}),
+          },
           { heading: true, y: top + LAYOUT.originHeading },
         );
       }
@@ -498,6 +597,9 @@ export function buildCanvas(
               : derive.origin(creator.displayName),
           origin: derivedFrom,
           state: 'done',
+          ...(mine?.active
+            ? { inactive: true, ...(mine.copyId ? { activateAnswerId: mine.copyId } : {}) }
+            : {}),
         },
         { y: originCardY, minHeight: false, draggable: false },
       );
@@ -507,35 +609,76 @@ export function buildCanvas(
           source: lastHeading,
           target: id('origin-answer'),
           type: 'default',
-          className: 'canvas-edge--origin',
+          ...(mine?.active ? { className: 'canvas-edge--origin' } : {}),
           focusable: false,
           selectable: false,
           deletable: false,
         });
     }
     // 내 작업 화면에는 답변 카드 위에 머리글이 없다(칩이 번호를 말한다). 파생에서만 "My answer"를 단다.
-    if (derive)
+    // 버전이 쌓이면 뒤 장이 위로 올라오므로 머리글도 그만큼 올려 가리지 않게 한다(#229).
+    if (derive && mine?.shown)
       add(
         'answer-heading',
         6,
         -1,
-        { kind: 'heading', variant: 'answer', label: answerHeading },
-        { heading: true, y: top + LAYOUT.mineHeading, xOffset: LAYOUT.mineShift },
+        {
+          kind: 'heading',
+          variant: 'answer',
+          label: answerHeading,
+          ...(mine.active ? {} : { inactive: true }),
+        },
+        {
+          heading: true,
+          y: top + LAYOUT.mineHeading - stackLift(mine.stackDepth),
+          xOffset: LAYOUT.mineShift,
+        },
       );
-    add(
-      'answer',
-      6,
-      derive ? 1 : 0,
-      {
-        kind: 'answer',
-        label: labels.answer(answer?.number ?? 1),
-        answer,
-        state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
-        error: imageError,
-        onRetry: current?.onRetry,
-      },
-      derive ? { y: mineCardY, xOffset: LAYOUT.mineShift } : { y: top + LAYOUT.answerTop },
-    );
+    if (mine && mine.shown && !mine.active && mine.standby)
+      add(
+        'answer',
+        6,
+        1,
+        {
+          kind: 'answer',
+          label: labels.answer(mine.standby.number ?? 1),
+          summary: mine.standby,
+          state: 'done',
+          inactive: true,
+          activateAnswerId: mine.standby.id,
+        },
+        { y: mineCardY, xOffset: LAYOUT.mineShift },
+      );
+    else if (mine?.preview)
+      add(
+        'answer',
+        6,
+        1,
+        {
+          kind: 'answer',
+          label: answerHeading,
+          ...(mine.preview.answer ? { answer: mine.preview.answer } : {}),
+          state: mine.preview.answer ? 'done' : 'running',
+          previewing: true,
+        },
+        { y: mineCardY, xOffset: LAYOUT.mineShift },
+      );
+    else if (mineShown)
+      add(
+        'answer',
+        6,
+        derive ? 1 : 0,
+        {
+          kind: 'answer',
+          label: labels.answer(answer?.number ?? 1),
+          answer,
+          state: imageError ? 'failed' : answer ? 'done' : running ? 'running' : 'pending',
+          error: imageError,
+          onRetry: current?.onRetry,
+          ...(mine?.copyId ? { hiddenVersionIds: [mine.copyId] } : {}),
+        },
+        derive ? { y: mineCardY, xOffset: LAYOUT.mineShift } : { y: top + LAYOUT.answerTop },
+      );
     for (const node of outputs.values()) {
       const parents = node.parentIds.length
         ? node.parentIds

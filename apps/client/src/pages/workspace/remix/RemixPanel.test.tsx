@@ -74,6 +74,14 @@ describe('RemixPanel', () => {
     expect(onChoose).toHaveBeenCalledWith(MARA.id);
   });
 
+  it('지금 상대를 한 번 더 누르면 null(리믹스 해제)로 onChoose 를 부른다(#229)', async () => {
+    const { onChoose } = setup({ partner: LIND });
+    fireEvent.click(await row('Lind'));
+    expect(onChoose).toHaveBeenCalledWith(null);
+    fireEvent.click(await row('Mara'));
+    expect(onChoose).toHaveBeenLastCalledWith(MARA.id);
+  });
+
   it('지금 상대는 aria-current 와 체크 아이콘으로 표시한다', async () => {
     setup({ partner: LIND });
     const lind = await row('Lind');

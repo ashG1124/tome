@@ -31,7 +31,7 @@ function AnswerImage({ url, label }: { url: string; label: string }) {
   );
 }
 
-/** 원작 답변 카드. 원작 그림 위에 흐림 오버레이를 덮은 읽기 전용 카드다(시안 Work Space-Derive 1679:15197). */
+/** 원작 답변 카드. 읽기 전용이고, My answer 가 활성이면 원작 그림 위에 흐림을 덮는다(시안 Work Space-Derive 1679:15197). */
 function OriginAnswer({ data }: { data: CardData }) {
   const origin = data.origin;
   const answer = origin?.answer;
@@ -49,7 +49,8 @@ function OriginAnswer({ data }: { data: CardData }) {
           {data.label}
         </p>
       ) : null}
-      <span className="canvas-origin-veil" aria-hidden="true" />
+      {/* 흐림은 원작 답변이 비활성일 때만(My answer 가 활성, #229) */}
+      {data.inactive ? <span className="canvas-origin-veil" aria-hidden="true" /> : null}
     </div>
   );
 }
@@ -113,6 +114,7 @@ export function CanvasSurface({
       {...rest}
       className={`canvas-card canvas-card--${data.kind} ${modifiers}`.trim()}
       data-readonly={data.kind === 'origin' || undefined}
+      data-inactive={data.inactive || undefined}
       data-enabled={data.output ? String(enabled) : undefined}
       data-covered={covered || undefined}
       aria-label={data.label}
@@ -174,12 +176,27 @@ export function CanvasSurface({
                 url={data.answer.imageUrl}
                 label={data.label}
               />
+            ) : data.summary ? (
+              <AnswerImage
+                key={data.summary.thumbUrl}
+                url={data.summary.thumbUrl}
+                label={data.label}
+              />
+            ) : null}
+            {/* 파생의 비활성 My answer 는 원작 카드처럼 번호 칩 + 흐림, 미리보기는 그림만 보인다(#229) */}
+            {data.inactive ? (
+              <>
+                <span className="canvas-answer-chip">{data.label}</span>
+                <span className="canvas-origin-veil" aria-hidden="true" />
+              </>
             ) : null}
           </div>
-          <div className="canvas-answer-footer">
-            {answerFooter ?? <strong>{data.label}</strong>}
-            {data.state === 'running' ? <span>{data.labels.generating}</span> : null}
-          </div>
+          {data.inactive || data.previewing ? null : (
+            <div className="canvas-answer-footer">
+              {answerFooter ?? <strong>{data.label}</strong>}
+              {data.state === 'running' ? <span>{data.labels.generating}</span> : null}
+            </div>
+          )}
           {data.answer?.isSample ? (
             <div className="canvas-sample">
               <strong>{CANVAS_COPY.sample}</strong>

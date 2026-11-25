@@ -125,13 +125,53 @@ function origin(extra: Partial<WorkspaceDerivedFrom>, label = 'Answer 06') {
     } as WorkspaceDerivedFrom,
   };
 }
-it('draws the original answer read-only with its number chip and veil', () => {
-  const { container } = render(<CanvasSurface data={origin({})} />, { wrapper });
+it('draws the original answer read-only with its number chip, veiled only while inactive (#229)', () => {
+  const { container, rerender } = render(<CanvasSurface data={origin({})} />, { wrapper });
   expect(screen.getByRole('img', { name: 'Answer 06' }).getAttribute('src')).toBe('/origin.png');
   expect(container.querySelector('.canvas-answer-chip')?.textContent).toBe('Answer 06');
-  expect(container.querySelector('.canvas-origin-veil')).not.toBeNull();
+  // 파생 직후처럼 원작이 활성이면 흐림이 없다
+  expect(container.querySelector('.canvas-origin-veil')).toBeNull();
   expect(container.querySelector('article')?.getAttribute('data-readonly')).toBe('true');
+  expect(container.querySelector('article')?.hasAttribute('data-inactive')).toBe(false);
   expect(screen.queryByRole('button')).toBeNull();
+  rerender(<CanvasSurface data={{ ...origin({}), inactive: true }} />);
+  expect(container.querySelector('.canvas-origin-veil')).not.toBeNull();
+  expect(container.querySelector('article')?.getAttribute('data-inactive')).toBe('true');
+});
+it('draws an inactive My answer from its summary with a chip and veil, and a preview without versions (#229)', () => {
+  const summary = {
+    id: 'mine',
+    number: 2,
+    pinned: false,
+    isSample: false,
+    thumbUrl: '/mine-thumb.png',
+    createdAt: '2026-11-25T00:00:00.000Z',
+  };
+  const base = {
+    kind: 'answer' as const,
+    setId: 'set',
+    column: 6,
+    row: 1,
+    label: 'Answer 02',
+    labels: CANVAS_COPY,
+    state: 'done' as const,
+  };
+  const { container, rerender } = render(
+    <CanvasSurface data={{ ...base, summary, inactive: true }} />,
+    { wrapper },
+  );
+  expect(screen.getByRole('img', { name: 'Answer 02' }).getAttribute('src')).toBe(
+    '/mine-thumb.png',
+  );
+  expect(container.querySelector('.canvas-answer-chip')?.textContent).toBe('Answer 02');
+  expect(container.querySelector('.canvas-origin-veil')).not.toBeNull();
+  expect(container.querySelector('.canvas-answer-footer')).toBeNull();
+  rerender(
+    <CanvasSurface data={{ ...base, label: 'My answer', state: 'running', previewing: true }} />,
+  );
+  expect(container.querySelector('.canvas-gradient')).not.toBeNull();
+  expect(container.querySelector('.canvas-origin-veil')).toBeNull();
+  expect(container.querySelector('.canvas-answer-footer')).toBeNull();
 });
 it('shows Deleted original when the original is gone', () => {
   render(

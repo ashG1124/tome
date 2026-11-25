@@ -110,29 +110,9 @@ describe('useRemixConnections', () => {
     await act(() => result.current?.onApply(answerId, target) ?? Promise.resolve());
     expect(result.current?.appliedIdsFor(answerId)).toEqual([target.id]);
   });
-
-  it('숨기면 서버에 dismiss 하고, 다시 받은 목록에서 빠진다', async () => {
-    const dismiss = vi.spyOn(api, 'dismissConnection');
-    const workspace = await workspaceWithAnswer(LIND.id);
-    const answerId = workspace.sets[0]?.latestAnswer?.id ?? '';
-    const { result } = renderHook(() => useRemixConnections(workspace), { wrapper });
-    await waitFor(() =>
-      expect(result.current?.connectionsByAnswer[answerId]?.length).toBeGreaterThan(0),
-    );
-    const before = result.current?.connectionsByAnswer[answerId] ?? [];
-    const target = before[0];
-    if (target === undefined) throw new Error('Connection 이 없다');
-    await act(() => result.current?.onDismiss(answerId, target) ?? Promise.resolve());
-    expect(dismiss).toHaveBeenCalledWith(target.id);
-    await waitFor(() =>
-      expect(result.current?.connectionsByAnswer[answerId]?.map((c) => c.id)).not.toContain(
-        target.id,
-      ),
-    );
-  });
 });
 
-it('retains previous-partner Connections and keeps a dismissed one hidden when switching back', async () => {
+it('switching partners replaces the previous partner Connections instead of stacking them (#229)', async () => {
   const [first, second] = FAKE_OTHER_CREATORS;
   if (!first || !second) throw new Error('Missing fixtures');
   const workspace = await workspaceWithAnswer(first.id);
@@ -144,28 +124,26 @@ it('retains previous-partner Connections and keeps a dismissed one hidden when s
   await waitFor(() =>
     expect(result.current?.connectionsByAnswer[answerId]?.length).toBeGreaterThan(0),
   );
-  const original = result.current!.connectionsByAnswer[answerId]!;
-  const hidden = original[0]!;
-  await act(() => result.current!.onDismiss(answerId, hidden));
+  const original = result.current!.connectionsByAnswer[answerId]!.map((c) => c.id);
   await api.setRemixPartner(workspace.project.id, second.id);
-  const updated = await api.getWorkspace(workspace.project.id);
-  rerender({ value: updated });
-  await waitFor(() =>
-    expect(result.current?.connectionsByAnswer[answerId]?.length).toBeGreaterThan(
-      original.length - 1,
-    ),
-  );
-  expect(result.current!.connectionsByAnswer[answerId]!.map((c) => c.id)).toContain(
-    original[1]!.id,
-  );
-  expect(result.current!.connectionsByAnswer[answerId]!.map((c) => c.id)).not.toContain(hidden.id);
-  await api.setRemixPartner(workspace.project.id, first.id);
   rerender({ value: await api.getWorkspace(workspace.project.id) });
   await waitFor(() =>
-    expect(result.current?.connectionsByAnswer[answerId]?.map((c) => c.id)).not.toContain(
-      hidden.id,
-    ),
+    expect(
+      result.current?.connectionsByAnswer[answerId]?.some((c) => !original.includes(c.id)),
+    ).toBe(true),
   );
+  const next = result.current!.connectionsByAnswer[answerId]!;
+  // 새 상대의 것만 있고, 예전 상대의 것은 하나도 남지 않는다(겹쳐 쌓이지 않는다)
+  expect(next.some((c) => original.includes(c.id))).toBe(false);
+  expect(next).toHaveLength(original.length);
+  expect(next.every((c) => result.current!.isCurrent(c))).toBe(true);
+  expect(result.current!.partnerFor(next[0]!)?.displayName).toBe(second.displayName);
+});
+
+it('dropping duplicates and dismissed entries keeps one entry per Connection', () => {
+  expect(
+    groupConnections(['a1'], [[connection('c1', 'shown'), connection('c1', 'shown')]]),
+  ).toEqual({ a1: [connection('c1', 'shown')] });
 });
 
 it('keeps generation data usable when a connection query fails and exposes a retry', async () => {

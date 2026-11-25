@@ -6,7 +6,7 @@ import { COPY } from '../../../shared/copy';
 import { Icon } from '../../../shared/ui';
 import { AnswerVersions } from './AnswerVersions';
 import { ConnectionPopover } from './ConnectionPopover';
-import { connectionsForNode } from '../remix-model';
+import { connectionForCard } from '../remix-model';
 import { CanvasSurface } from './CanvasSurface';
 
 import { CommentBand } from './CommentBand';
@@ -82,7 +82,11 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     return <StepPill number={data.column} label={data.label} />;
   if (data.kind === 'heading')
     return (
-      <div className="canvas-heading" data-variant={data.variant}>
+      <div
+        className="canvas-heading"
+        data-variant={data.variant}
+        data-inactive={data.inactive || undefined}
+      >
         {data.text ? <span>{data.text}</span> : null}
         <strong>{data.label}</strong>
       </div>
@@ -103,6 +107,17 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     data.output && draft?.setId === data.setId
       ? draft.nodes.find((node) => node.id === data.output!.id)
       : undefined;
+  // 리믹스 표시는 카드당 1개. 묶음(우선순위·검증 기준)은 첫 줄에만 붙인다(#229).
+  const connection = data.output
+    ? connectionForCard(
+        navigation.remix,
+        data.answerId,
+        data.groupIds ??
+          (data.output.kind === 'priority' || data.output.kind === 'criterion'
+            ? []
+            : [data.output.id]),
+      )
+    : undefined;
   const commenting =
     !!data.output &&
     navigation.history?.selectedComment?.answerId === data.answerId &&
@@ -125,10 +140,12 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         enabled={drafted?.enabled}
         covered={role === 'covered'}
         answerFooter={
-          data.kind === 'answer' && data.answer && navigation.history ? (
+          data.kind === 'answer' && data.answer && !data.previewing && navigation.history ? (
             <AnswerVersions
               answer={data.answer}
-              answers={navigation.history.answersBySet[data.setId] ?? []}
+              answers={(navigation.history.answersBySet[data.setId] ?? []).filter(
+                (entry) => !data.hiddenVersionIds?.includes(entry.id),
+              )}
               labels={navigation.history.labels}
               loading={navigation.history.selectingSet === data.setId}
               pinning={navigation.history.pinning}
@@ -163,6 +180,17 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           navigation.move(id, event.key);
         }}
       >
+        {/* 파생: 비활성 답변 카드를 누르면 그 답변으로 돌아가 활성이 된다(#229) */}
+        {data.inactive && data.activateAnswerId && navigation.history ? (
+          <button
+            type="button"
+            className="canvas-answer-activate nodrag nopan"
+            aria-label={data.label}
+            aria-busy={navigation.history.selectingSet === data.setId || undefined}
+            disabled={navigation.history.disabled || navigation.history.selectingSet === data.setId}
+            onClick={() => navigation.history!.select(data.setId, data.activateAnswerId!)}
+          />
+        ) : null}
         {editing ? (
           <div
             ref={navigation.editor?.slot}
@@ -170,19 +198,16 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
             data-closing={navigation.editor?.closing || undefined}
           />
         ) : null}
-        <div className="canvas-connections" data-column={data.column}>
-          {connectionsForNode(navigation.remix, data.answerId, data.output?.id).map(
-            (connection) => (
-              <ConnectionPopover
-                key={`${data.answerId}:${connection.id}`}
-                answerId={data.answerId!}
-                connection={connection}
-                disabled={navigation.remixDisabled}
-                onDismiss={navigation.remix!.onDismiss}
-              />
-            ),
-          )}
-        </div>
+        {connection ? (
+          <div className="canvas-connections" data-column={data.column}>
+            <ConnectionPopover
+              key={`${data.answerId}:${connection.id}`}
+              answerId={data.answerId!}
+              connection={connection}
+              disabled={navigation.remixDisabled}
+            />
+          </div>
+        ) : null}
       </CanvasSurface>
       {canComment && navigation.history?.listComments ? (
         <CommentBand

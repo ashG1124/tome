@@ -21,7 +21,6 @@ export interface ConnectionPopoverProps {
   answerId: string;
   connection: Connection;
   disabled?: boolean;
-  onDismiss: (answerId: string, connection: Connection) => Promise<void>;
 }
 
 /** 말풍선 왼쪽 32 사진(1705:20752). 상대 사진이 없으면 이름 머리글자, 상대를 모르면 빈 동그라미. */
@@ -51,7 +50,6 @@ export const ConnectionPopover = memo(function ConnectionPopover({
   answerId,
   connection,
   disabled = false,
-  onDismiss,
 }: ConnectionPopoverProps) {
   const remix = useContext(CanvasNavigation).remix;
   const partner = remix?.partnerFor?.(connection);
@@ -61,10 +59,8 @@ export const ConnectionPopover = memo(function ConnectionPopover({
     (connection.status === 'applied' ? 'applied' : 'unavailable');
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<0 | 1>(0);
-  const [pending, setPending] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<unknown>();
-  const [dismissed, setDismissed] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
@@ -98,33 +94,13 @@ export const ConnectionPopover = memo(function ConnectionPopover({
     const closeOnOutside = (event: PointerEvent) => {
       if (root.current !== null && !root.current.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener('pointerdown', closeOnOutside);
-    return () => document.removeEventListener('pointerdown', closeOnOutside);
+    // 캡처 단계에서 듣는다: 캔버스 바탕(React Flow)이 누름 전파를 막아도 바깥 누름으로 닫힌다(#229)
+    document.addEventListener('pointerdown', closeOnOutside, true);
+    return () => document.removeEventListener('pointerdown', closeOnOutside, true);
   }, [open]);
   const close = () => {
     setOpen(false);
     trigger.current?.focus({ preventScroll: true });
-  };
-  const dismiss = async () => {
-    if (lock.current || disabled) return;
-    lock.current = true;
-    setPending(true);
-    setError(undefined);
-    const card = trigger.current?.closest<HTMLElement>('[data-canvas-card]');
-    try {
-      await onDismiss(answerId, connection);
-      if (mounted.current) setDismissed(true);
-      if (
-        card?.isConnected &&
-        (document.activeElement === document.body || card.contains(document.activeElement))
-      )
-        card.focus({ preventScroll: true });
-    } catch (failure) {
-      if (mounted.current) setError(failure);
-    } finally {
-      lock.current = false;
-      if (mounted.current) setPending(false);
-    }
   };
   // Apply: 연타해도 한 번만. 고른 Connection 을 기록하고 편집 세션에서 노드 값을 바꿔 미리보기를 만든다.
   const apply = async () => {
@@ -145,7 +121,7 @@ export const ConnectionPopover = memo(function ConnectionPopover({
     }
   };
   const reason = APPLY_REASON[applyState];
-  if (dismissed || connection.status === 'dismissed') return null;
+  if (connection.status === 'dismissed') return null;
   return (
     <div
       ref={root}
@@ -163,7 +139,7 @@ export const ConnectionPopover = memo(function ConnectionPopover({
         ref={trigger}
         type="button"
         className="canvas-connection-trigger"
-        disabled={disabled || pending}
+        disabled={disabled}
         aria-label={`${COPY['RC-01']}: ${connection.predictedAction}`}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
@@ -179,7 +155,6 @@ export const ConnectionPopover = memo(function ConnectionPopover({
           id={id}
           className="canvas-connection-popover"
           aria-label={COPY['RC-01']}
-          aria-busy={pending || undefined}
         >
           {error ? (
             <div role="alert" className="canvas-connection-note">
@@ -215,26 +190,16 @@ export const ConnectionPopover = memo(function ConnectionPopover({
               <button
                 type="button"
                 className="canvas-connection-pill"
-                disabled={applyState !== 'ready' || applying || pending || disabled}
+                disabled={applyState !== 'ready' || applying || disabled}
                 aria-busy={applying || undefined}
                 aria-describedby={reason !== null ? `${id}-apply-wait` : undefined}
                 onClick={() => void apply()}
               >
                 {applyState === 'applied' ? COPY['RC-06'] : COPY['RC-02']}
               </button>
-              <button
-                type="button"
-                className="canvas-connection-pill"
-                disabled={pending || disabled || connection.status !== 'shown'}
-                onClick={() => void dismiss()}
-              >
-                {COPY['RC-03']}
-              </button>
+              {/* 숨기기(Hide)는 두지 않는다(리드 결정 #229). 닫기는 표시 다시 누르기·Esc·바깥 누르기 */}
             </div>
             <span className="canvas-connection-hook" data-hook="end" aria-hidden="true" />
-          </div>
-          <div className="canvas-sr-only" role="status" aria-live="polite">
-            {pending ? COPY['RC-05'] : ''}
           </div>
         </section>
       ) : null}

@@ -27,9 +27,14 @@ export const canvasDesignFixtures = {
     </div>
   ),
   gradient: () => <GenerationImage />,
-  // 파생 화면 원작자 머리글(시안 Work Space-Derive 1679:15197). 그림은 머리글 둘레 160×44 를 잘라 쓴다.
+  // 파생 화면 원작자 머리글(시안 Work Space-Derive 1679:15197, My answer 가 활성이라 원작은 비활성). 그림은 머리글 둘레 160×44 를 잘라 쓴다.
   originHeading: () => (
-    <div className="canvas-heading" data-variant="origin" style={{ height: '100%' }}>
+    <div
+      className="canvas-heading"
+      data-variant="origin"
+      data-inactive="true"
+      style={{ height: '100%' }}
+    >
       <strong>{CANVAS_COPY.derive.origin('shina')}</strong>
     </div>
   ),
@@ -157,11 +162,7 @@ export const remixDesignFixtures = {
         height: 'var(--canvas-node-surface-height)',
       }}
     >
-      <ConnectionPopover
-        answerId="design-answer"
-        connection={designConnection}
-        onDismiss={async () => {}}
-      />
+      <ConnectionPopover answerId="design-answer" connection={designConnection} />
     </div>
   ),
 };
