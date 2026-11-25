@@ -24,6 +24,7 @@ import { ErrorNotice, Flash, FLASH_MS } from '../../shared/ui';
 import { useGeneration } from './hooks/useGeneration';
 import {
   VISIBLE_STAGES,
+  commentNodeId,
   visibleStage,
   type CanvasGeometry,
   type DerivePreview,
@@ -42,7 +43,7 @@ import {
 } from './edit-model';
 import { VerificationPanel } from './components/VerificationPanel';
 import { useVerificationEditor, type UpdateVerificationApi } from './hooks/useVerificationEditor';
-import { NodeComments, type NodeCommentLabels } from './components/NodeComments';
+import type { NodeCommentLabels } from './components/CommentBand';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { useAnswerHistory, type AnswerHistoryApi } from './hooks/useAnswerHistory';
 import type { NodeCommentsApi } from './hooks/useNodeComments';
@@ -329,18 +330,21 @@ function PageCanvas({
   const historyLabels = history ? (history.labels ?? CANVAS_HISTORY_COPY) : CANVAS_HISTORY_COPY;
   const versions = useAnswerHistory(projectId, workspace.sets, historyApi);
   const sets = versions.sets;
+  // 코멘트 대상 노드(#241). 묶음이면 첫 줄 id 다. open 이면 분홍 띠가 펼쳐져 입력 중이다.
   const [commentTarget, setCommentTarget] = useState<{
     setId: string;
     answerId: string;
     nodeId: string;
+    open: boolean;
   }>();
   const commentOpener = useRef<HTMLElement | null>(null);
-  const displayedCommentAnswer = sets.find((set) => set.id === commentTarget?.setId)?.latestAnswer;
-  /** 코멘트 창을 닫고 연 버튼으로 포커스를 돌려준다. 펼친 노드의 도구에서 열었으면(그 버튼은 사라졌다) 노드 옆 코멘트 버튼으로 돌려준다. */
-  const closeComments = () => {
+  /** 코멘트 대상을 풀고 연 버튼으로 포커스를 돌려준다. 그 버튼이 사라졌으면 노드 도구의 코멘트 버튼으로 돌려준다. */
+  const closeComments = (restoreFocus?: boolean) => {
     const target = commentTarget;
     const opener = commentOpener.current;
     setCommentTarget(undefined);
+    // 사용자가 다른 곳을 눌러 포커스가 이미 옮겨 갔으면 되돌리지 않는다.
+    if (restoreFocus === false) return;
     requestAnimationFrame(() => {
       if (opener?.isConnected) opener.focus({ preventScroll: true });
       else if (target)
@@ -422,6 +426,45 @@ function PageCanvas({
     verificationOpen?.node && isVerificationNode(verificationOpen.node)
       ? verificationOpen.base
       : undefined;
+  /** 세트의 보이는 답변에서 코멘트를 달 수 있는 노드(1~4단계 노드 + 5단계 검증 기준). 불일치는 보기 전용이다. */
+  const commentableNodes = useCallback(
+    (setId: string, answerId: string) => {
+      const answer = sets.find((set) => set.id === setId)?.latestAnswer;
+      if (!answer || answer.id !== answerId) return undefined;
+      return [...answer.nodes.nodes, ...(answer.verification?.criteria ?? [])];
+    },
+    [sets],
+  );
+  /**
+   * 노드를 코멘트 대상으로 한다. 묶음(우선순위·검증 기준)은 어느 줄에서 열어도 첫 줄 id 에 모은다(#241).
+   * 대상이 바뀔 때만 연 버튼(코멘트 아이콘·코너)을 기억해 둔다. 닫을 때 그리로 포커스를 돌려준다.
+   * 펼친 노드가 있으면 접는다(코멘트 코너는 닫힌 노드에 붙는다).
+   */
+  const openComment = useCallback(
+    (setId: string, answerId: string, nodeId: string, open?: boolean) => {
+      window.clearTimeout(closeTimer.current);
+      setClosing(false);
+      setSelected(undefined);
+      const nodes = commentableNodes(setId, answerId);
+      const target = nodes ? commentNodeId(nodes, nodeId) : nodeId;
+      setCommentTarget((previous) => {
+        if (previous?.answerId !== answerId || previous.nodeId !== target)
+          commentOpener.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        return { setId, answerId, nodeId: target, open: !!open };
+      });
+    },
+    [commentableNodes],
+  );
+  // 펼친 검증 기준 묶음의 코멘트 버튼: 노드를 접고 묶음 첫 줄에 코너를 만든다(#241). 불일치는 보기 전용이다.
+  const verificationTarget =
+    history &&
+    historyApi &&
+    selected &&
+    verificationBase?.status === 'accepted' &&
+    verificationOpen?.node?.kind === 'criterion'
+      ? { setId: selected.setId, answerId: verificationBase.id, nodeId: selected.nodeId }
+      : undefined;
   const [geometry, setGeometry] = useState<CanvasGeometry | null>(null);
   useLayoutEffect(() => {
     let active = true;
@@ -476,6 +519,15 @@ function PageCanvas({
       generatedAnswer.id !== latestAnswer.id)
       ? undefined
       : generation;
+  const verificationComment =
+    verificationTarget && !busy && !editingBusy
+      ? () =>
+          openComment(
+            verificationTarget.setId,
+            verificationTarget.answerId,
+            verificationTarget.nodeId,
+          )
+      : undefined;
   if (redirect) return <Navigate to={redirect} replace />;
   return (
     <div className="workspace-canvas" aria-busy={busy || undefined}>
@@ -527,38 +579,19 @@ function PageCanvas({
                     versions.select(setId, answerId);
                   },
                   pin: versions.togglePin,
-                  listComments: historyApi?.listComments,
-                  commentPanel:
-                    historyApi &&
-                    commentTarget &&
-                    displayedCommentAnswer?.id === commentTarget.answerId ? (
-                      <NodeComments
-                        key={`${commentTarget.answerId}:${commentTarget.nodeId}`}
-                        answerId={commentTarget.answerId}
-                        nodeId={commentTarget.nodeId}
-                        api={historyApi}
-                        labels={historyLabels.comments}
-                        onClose={closeComments}
-                      />
-                    ) : undefined,
+                  commentsApi: historyApi,
+                  commentLabels: historyLabels.comments,
+                  closeComment: closeComments,
                   canComment: (setId, answerId, nodeId) => {
                     const answer = sets.find((set) => set.id === setId)?.latestAnswer;
                     return (
                       !busy &&
                       !editingBusy &&
-                      answer?.id === answerId &&
-                      answer.status === 'accepted' &&
-                      answer.nodes.nodes.some((node) => node.id === nodeId)
+                      answer?.status === 'accepted' &&
+                      !!commentableNodes(setId, answerId)?.some((node) => node.id === nodeId)
                     );
                   },
-                  comment: (setId, answerId, nodeId) => {
-                    commentOpener.current =
-                      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-                    window.clearTimeout(closeTimer.current);
-                    setClosing(false);
-                    setSelected(undefined);
-                    setCommentTarget({ setId, answerId, nodeId });
-                  },
+                  comment: openComment,
                 }
               : undefined
           }
@@ -627,6 +660,7 @@ function PageCanvas({
               onToggle={(id, enabled) =>
                 void verification.change(verificationBase, [{ id, enabled }])
               }
+              onComment={verificationComment}
               onRestore={
                 restoreCriteria(verificationBase.verification?.criteria ?? []).length > 0
                   ? () =>
@@ -675,19 +709,7 @@ function PageCanvas({
           onPendingApplied={connectionApply.done}
           onComment={
             history && historyApi && selected && !busy && !editingBusy
-              ? () => {
-                  const target = selected;
-                  commentOpener.current =
-                    document.activeElement instanceof HTMLElement ? document.activeElement : null;
-                  window.clearTimeout(closeTimer.current);
-                  setClosing(false);
-                  setSelected(undefined);
-                  setCommentTarget({
-                    setId: target.setId,
-                    answerId: sessionBase.id,
-                    nodeId: target.nodeId,
-                  });
-                }
+              ? () => openComment(selected.setId, sessionBase.id, selected.nodeId)
               : undefined
           }
           options={{

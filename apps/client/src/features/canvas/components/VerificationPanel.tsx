@@ -17,14 +17,16 @@ export interface VerificationPanelProps {
   onToggle: (id: string, enabled: boolean) => void;
   /** 처음 값으로 되돌릴 기준이 있으면 다시 생성 버튼이 이 일을 한다. */
   onRestore?: () => void;
+  /** 코멘트를 남길 수 있으면(기준 묶음) 노드 도구 맨 위에 코멘트 버튼을 둔다(#241). */
+  onComment?: () => void;
   onClose: () => void;
 }
 
 /**
  * 5단계 검증 노드 제자리 펼침(시안 [Step5] verification criteria open=on 2971:69385, Discrepancies open=on 2971:70740).
  * 기준: 굵은 글 + 빼기(켜고 끄기, 바로 저장). 불일치: 가운데 굵은 글(표시만, F-003).
- * 노드 도구(1187:62182)에는 실제로 할 수 있는 일만 둔다 — 기준은 다시 생성(처음 값으로 되돌림)만 있다.
- * 코멘트는 서버가 검증 노드 id 를 받지 않고, 삭제는 줄마다 빼기가 대신한다. 불일치는 할 일이 없어 도구를 두지 않는다.
+ * 노드 도구(1187:62182)에는 실제로 할 수 있는 일만 둔다 — 기준은 코멘트(묶음 첫 줄 id 에 모인다, #241)와
+ * 다시 생성(처음 값으로 되돌림)이 있다. 삭제는 줄마다 빼기가 대신한다. 불일치는 보기 전용이라 도구를 두지 않는다.
  */
 export const VerificationPanel = memo(function VerificationPanel({
   node,
@@ -34,6 +36,7 @@ export const VerificationPanel = memo(function VerificationPanel({
   errorMessage,
   onToggle,
   onRestore,
+  onComment,
   onClose,
 }: VerificationPanelProps) {
   const root = useRef<HTMLElement>(null);
@@ -97,6 +100,17 @@ export const VerificationPanel = memo(function VerificationPanel({
       </div>
       {isCriterion ? (
         <div className="node-open-tool" role="group" aria-label={labels.title}>
+          {onComment ? (
+            <button
+              type="button"
+              className="canvas-node-tool-button"
+              aria-label={labels.comment ?? labels.title}
+              disabled={locked}
+              onClick={onComment}
+            >
+              <Icon name="comment" size={24} />
+            </button>
+          ) : null}
           <button
             type="button"
             className="canvas-node-tool-button"

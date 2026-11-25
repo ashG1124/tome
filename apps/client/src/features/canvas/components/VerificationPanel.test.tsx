@@ -48,7 +48,7 @@ it('lists the whole criteria group and toggles a criterion with its minus button
   expect(onToggle).toHaveBeenCalledWith('v1', false);
   fireEvent.click(second);
   expect(onToggle).toHaveBeenCalledWith('v2', true);
-  // 노드 도구는 실제로 되는 일만: 다시 생성(처음 값으로)만 있고 코멘트·삭제는 없다
+  // 노드 도구는 실제로 되는 일만: 코멘트(부모가 줄 때)와 다시 생성(처음 값으로). 삭제는 없다
   fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
   expect(onRestore).toHaveBeenCalled();
   expect(screen.queryByRole('button', { name: 'Add a comment' })).toBeNull();
@@ -93,4 +93,25 @@ it('shows a discrepancy as centred text only, with no actions', () => {
   expect(screen.queryByRole('button')).toBeNull();
   fireEvent.keyDown(region, { key: 'Escape' });
   expect(onClose).toHaveBeenCalled();
+});
+
+it('offers the comment button on the criteria group when the parent allows it (#241)', () => {
+  const onComment = vi.fn();
+  setup({ onComment });
+  const buttons = screen.getAllByRole('button');
+  expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
+    'Add a comment',
+    'Regenerate',
+  ]);
+  fireEvent.click(screen.getByRole('button', { name: 'Add a comment' }));
+  expect(onComment).toHaveBeenCalledOnce();
+});
+
+it('discrepancies stay view-only: no node tool even with a comment handler', () => {
+  setup({
+    node: { ...v1, id: 'm1', kind: 'mismatch', text: 'No desk.' },
+    criteria: [],
+    onComment: vi.fn(),
+  });
+  expect(screen.queryByRole('button')).toBeNull();
 });

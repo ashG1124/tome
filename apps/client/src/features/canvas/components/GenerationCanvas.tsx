@@ -242,9 +242,11 @@ function CanvasContent({
     return () => window.clearTimeout(timer);
   }, [openId, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
 
-  // 코멘트 창이 열리면 노드 · 노드 도구 · 창이 화면 안에 오게 살짝 옮긴다(#221). 좌표는 React Flow store 기준.
+  // 코멘트 코너가 생기거나 띠가 펼쳐지면 노드 · 노드 도구 · 띠가 화면 안에 오게 살짝 옮긴다(#221·#241).
+  // 좌표는 React Flow store 기준이다. 띠는 캔버스 안에 그려지므로 레이아웃 크기(offset*)가 곧 캔버스 좌표 크기다.
   const commentAnswer = history?.selectedComment?.answerId;
   const commentNode = history?.selectedComment?.nodeId;
+  const commentOpen = !!history?.selectedComment?.open;
   useEffect(() => {
     if (!commentAnswer || !commentNode) return;
     const frame = requestAnimationFrame(() => {
@@ -266,19 +268,20 @@ function CanvasContent({
       const margin = read('--space-padding-8');
       const { x, y } = node.internals.positionAbsolute;
       const w = node.measured.width ?? geometry.nodeWidth;
-      const h = node.measured.height ?? geometry.nodeHeight;
-      // 창은 캔버스 배율을 되돌려 화면 기준 크기로 그린다. 레이아웃 크기 ÷ 배율 = store 좌표 크기.
-      const panel = document.querySelector<HTMLElement>(
-        `[data-id="${CSS.escape(target.id)}"] .canvas-comments`,
+      const root = document.querySelector<HTMLElement>(
+        `.react-flow__node[data-id="${CSS.escape(target.id)}"]`,
       );
-      // 창은 노드 도구의 코멘트 아이콘 자리(노드 오른쪽, 도구 위끝)에서 펼쳐진다(#230).
-      const panelHeight = (panel?.offsetHeight ?? 0) / zoom;
-      const right =
-        x +
-        w +
-        read('--space-padding-4') +
-        (panel?.offsetWidth ?? read('--size-comment-panel-width')) / zoom;
-      const bottom = Math.max(y + h, y + h / 2 - read('--size-node-tool') / 2 + panelHeight);
+      // 묶음이면 틀이 묶음 카드 전체 높이다.
+      const nodeFrame = root?.querySelector<HTMLElement>('.canvas-node-frame');
+      const band = root?.querySelector<HTMLElement>('.canvas-comment-band');
+      const corner = band?.querySelector<HTMLElement>('.canvas-comment-corner');
+      const h = nodeFrame?.offsetHeight || (node.measured.height ?? geometry.nodeHeight);
+      // 노드 도구(노드 오른쪽, 세로 가운데)와 띠(노드 오른쪽 아래 코너에서 오른쪽으로, 아래끝 맞춤)
+      const toolRight = x + w + read('--space-padding-4') + read('--size-node-tool');
+      const bandRight = band ? x + w - (corner?.offsetWidth ?? 0) + band.offsetWidth : x + w;
+      const right = Math.max(toolRight, bandRight);
+      const top = band ? Math.min(y, y + h - band.offsetHeight) : y;
+      const bottom = y + h;
       // 아래쪽은 프롬프트 바·프리뷰가 떠 있으니 화면 높이의 1/5 을 비워 둔다.
       const bottomSpace = height / 5;
       let nextX = tx;
@@ -286,12 +289,20 @@ function CanvasContent({
       if (right * zoom + tx > width - margin) nextX = width - margin - right * zoom;
       if (x * zoom + nextX < margin) nextX = margin - x * zoom;
       if (bottom * zoom + ty > height - bottomSpace) nextY = height - bottomSpace - bottom * zoom;
-      if (y * zoom + nextY < margin) nextY = margin - y * zoom;
+      if (top * zoom + nextY < margin) nextY = margin - top * zoom;
       if (Math.abs(nextX - tx) < 1 && Math.abs(nextY - ty) < 1) return;
       void flow.setViewport({ x: nextX, y: nextY, zoom }, { duration: calm ? 0 : 280 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [commentAnswer, commentNode, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
+  }, [
+    commentAnswer,
+    commentNode,
+    commentOpen,
+    flow,
+    store,
+    geometry.nodeWidth,
+    geometry.nodeHeight,
+  ]);
 
   // 키보드로도 확대·축소할 수 있게 한다(화면 버튼을 없앤 대신). 입력칸 안에서는 글자 입력이 먼저다.
   const zoomByKey = useCallback(
