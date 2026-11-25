@@ -1,7 +1,9 @@
-import type { AnswerSummary, Node, NodeComment } from '@tome/shared';
+import type { AnswerSummary, Node } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
-import { createContext, type ContextType, type ReactNode } from 'react';
+import type { NodeCommentLabels } from './components/CommentBand';
+import type { NodeCommentsApi } from './hooks/useNodeComments';
+import { createContext, type ContextType } from 'react';
 import { GROUP_KINDS } from './edit-model';
 import type { ViewableAnswer } from './model';
 
@@ -43,17 +45,20 @@ export const CanvasNavigation = createContext<{
   history?: {
     answersBySet: Record<string, readonly AnswerSummary[]>;
     labels: AnswerVersionLabels;
-    selectedComment?: { answerId: string; nodeId: string };
+    /** 코멘트 대상 노드(묶음이면 첫 줄 id). open 이면 분홍 띠가 펼쳐져 입력 중이다(#241). */
+    selectedComment?: { answerId: string; nodeId: string; open: boolean };
     selectingSet?: string;
     pinning: boolean;
     disabled: boolean;
     select: (setId: string, answerId: string) => void;
     pin: (answerId: string, pinned: boolean) => Promise<void>;
     canComment: (setId: string, answerId: string, nodeId: string) => boolean;
-    comment: (setId: string, answerId: string, nodeId: string) => void;
-    listComments?: (answerId: string) => Promise<readonly NodeComment[]>;
-    /** 열린 코멘트 창. selectedComment 노드의 도구 자리에서 펼쳐 그린다(#230). */
-    commentPanel?: ReactNode;
+    /** 노드를 코멘트 대상으로 한다. open 이면 띠를 펼친다(코너를 눌렀다), 아니면 코너만 만든다(노드 도구의 코멘트 아이콘). */
+    comment: (setId: string, answerId: string, nodeId: string, open?: boolean) => void;
+    /** 코멘트 대상을 푼다. restoreFocus(기본 true)면 포커스를 대상을 만든 버튼(코멘트 아이콘·코너)으로 돌려준다. */
+    closeComment: (restoreFocus?: boolean) => void;
+    commentsApi?: NodeCommentsApi;
+    commentLabels: NodeCommentLabels;
   };
   remix?: CanvasRemixOptions;
   remixDisabled?: boolean;

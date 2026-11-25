@@ -20,23 +20,17 @@ export interface NodeCommentsApi {
 const commentsKey = (token: string | null, answerId: string) =>
   ['canvas-comments', token, answerId] as const;
 
-/** 답변 하나의 코멘트 전체. 같은 키를 쓰므로 코멘트 창과 요청 한 번을 나눠 쓴다. 노드 옆 코멘트 띠가 읽는다. */
-export function useAnswerComments(
+/**
+ * 노드 하나(또는 묶음 하나)의 코멘트. nodeIds 의 코멘트를 모두 보이고, 새 코멘트는 첫 id(묶음 첫 줄)에 쓴다(#241).
+ * 같은 답변의 코멘트는 한 요청(같은 쿼리 키)을 나눠 쓴다.
+ */
+export function useNodeComments(
   answerId: string,
-  api: Pick<NodeCommentsApi, 'listComments'>,
-  enabled = true,
+  nodeIds: string | readonly string[],
+  api: NodeCommentsApi,
 ) {
-  const token = useSessionStore((state) => state.token);
-  return useQuery({
-    queryKey: commentsKey(token, answerId),
-    queryFn: async () =>
-      (await api.listComments(answerId)).map((comment) => NodeCommentSchema.parse(comment)),
-    retry: false,
-    enabled,
-  });
-}
-
-export function useNodeComments(answerId: string, nodeId: string, api: NodeCommentsApi) {
+  const ids: readonly string[] = typeof nodeIds === 'string' ? [nodeIds] : nodeIds;
+  const nodeId = ids[0] ?? '';
   const client = useQueryClient();
   const token = useSessionStore((state) => state.token);
   const key = commentsKey(token, answerId);
@@ -89,7 +83,7 @@ export function useNodeComments(answerId: string, nodeId: string, api: NodeComme
     remove.variables?.answerId === answerId ? (remove.error ?? undefined) : undefined;
   return {
     comments: (query.data ?? [])
-      .filter((comment) => comment.nodeId === nodeId)
+      .filter((comment) => ids.includes(comment.nodeId))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)),
     loadError: query.error,
     loading: query.isPending,
@@ -132,7 +126,7 @@ export function useNodeComments(answerId: string, nodeId: string, api: NodeComme
       if (
         deleting.current ||
         !query.data?.some(
-          (comment) => comment.id === id && comment.nodeId === nodeId && comment.mine,
+          (comment) => comment.id === id && ids.includes(comment.nodeId) && comment.mine,
         )
       )
         return;

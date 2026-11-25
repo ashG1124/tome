@@ -7,8 +7,7 @@
   color: var(--color-font-main-text);
   font: var(--text-body-b2-m);
 }
-.canvas-answer-versions button,
-.canvas-comment-corner {
+.canvas-answer-versions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -24,17 +23,9 @@
   color: var(--color-font-disable);
   cursor: not-allowed;
 }
-.canvas-answer-versions button:focus-visible,
-.canvas-comment-corner:focus-visible {
+.canvas-answer-versions button:focus-visible {
   outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
   outline-offset: var(--focus-outline-offset);
-}
-.canvas-comment-corner {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  background: var(--color-fill-point);
-  border-radius: var(--radius-node) 0 var(--radius-node) 0;
 }
 .canvas-answer-versions {
   width: 100%;
@@ -43,48 +34,6 @@
 .canvas-answer-versions button {
   border: 0;
   background: transparent;
-}
-.canvas-comment-corner {
-  width: calc(var(--size-icon-empty) + var(--space-gap-4));
-  height: calc(var(--size-icon-empty) + var(--space-gap-4));
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-}
-.canvas-comment-corner::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--color-fill-point);
-  clip-path: polygon(
-    0% 85.45455%,
-    58.18182% 85.45455%,
-    60.97501% 85.31405%,
-    63.68643% 84.90163%,
-    66.30251% 84.23087%,
-    68.80966% 83.31534%,
-    71.19429% 82.16863%,
-    73.44283% 80.80433%,
-    75.54168% 79.23602%,
-    77.47727% 77.47727%,
-    79.23602% 75.54168%,
-    80.80433% 73.44283%,
-    82.16863% 71.19429%,
-    83.31534% 68.80966%,
-    84.23087% 66.30251%,
-    84.90163% 63.68643%,
-    85.31405% 60.97501%,
-    85.45455% 58.18182%,
-    85.45455% 0%,
-    100% 0%,
-    100% 100%,
-    0% 100%
-  );
-  pointer-events: none;
 }
 
 .canvas-answer-versions button[data-answer-pin] {
@@ -223,181 +172,218 @@
   transform: translate(9.4231%, -14.7059%) scale(0.81);
 }
 
-/* ---- 노드 코멘트 창(#221 → #230). Figma 프레임 없음: 노드 도구(1187:62182)의 코멘트 아이콘이 그 자리에서
-   넓어지며 입력 창이 된다. 모양은 시스템 값(노드 모서리 20, 유리 면 + 흐림은 리믹스 목록 1720:79876,
-   그림자 floating, 글자 B1·B2·ST2) ---- */
-.generation-canvas .react-flow__node:has(.canvas-comments) {
-  z-index: 1001 !important;
-}
-/* 펼친 동안 도구 막대는 창 뒤에 숨긴다(창 왼쪽 위 아이콘이 같은 자리에서 대신한다) */
-.canvas-node-tool[data-expanded] .canvas-node-tool-bar {
-  visibility: hidden;
-}
-/* 도구 막대 왼쪽 위(코멘트 아이콘 자리)에서 펼쳐지는 자리. 캔버스 배율을 되돌려
-   (스크립트가 --canvas-comments-scale 을 준다) 화면 기준 크기로 그린다 */
-.canvas-comments-anchor {
+/* ---- 분홍 코너 코멘트(#241). 시안 Corner 1480:135821(closed·open1·open2), comment & connection 1185:59843.
+   코너(44×44)는 노드 오른쪽 아래 안쪽에 붙고, 띠는 노드 오른쪽 끝에서 오른쪽으로 펼쳐지며 아래끝이 노드 아래끝과 맞는다.
+   글자색: 시안은 흰색이지만 핑크 위 대비가 모자라 --color-font-point(진한 글자, 토큰 주석 참고)를 그대로 쓴다 ---- */
+/* 코너·띠·노드 도구를 두는 틀. 보통은 노드 크기, 묶음 첫 줄은 묶음 카드 전체 높이(스크립트가 높이를 준다) */
+.canvas-node-frame {
   position: absolute;
-  z-index: 3;
   top: 0;
-  left: var(--space-padding-4);
-  transform: scale(var(--canvas-comments-scale, 1));
-  transform-origin: left top;
-}
-.canvas-comments {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-4);
-  box-sizing: border-box;
-  width: var(--size-comment-panel-width);
-  padding: var(--space-padding-6);
-  border: var(--stroke-weight-light) solid var(--color-border-default);
-  border-radius: var(--radius-node);
-  background: var(--color-glass-surface);
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: var(--shadow-floating);
-  color: var(--color-font-main-text);
-  font: var(--text-body-b2-r);
-  letter-spacing: var(--letter-spacing-body-b1);
-  text-align: left;
-  cursor: default;
-  /* 아이콘(도구 폭 40 원)에서 창 크기로 넓어진다. 끝나면 잘라내기를 풀어 그림자가 보이게 한다(backwards) */
-  animation: canvas-comments-grow var(--motion-expand) var(--ease-out-soft) backwards;
-}
-.canvas-comments[data-closing] {
+  left: 0;
+  width: 100%;
+  height: var(--canvas-node-frame-height, 100%);
   pointer-events: none;
-  animation: canvas-comments-shrink var(--motion-expand) var(--ease-out-soft) forwards;
 }
-/* 아이콘 말고 나머지 글은 넓어지는 동안 서서히 나타나고, 접힐 때 먼저 사라진다 */
-.canvas-comments > :not(.canvas-comments-head),
-.canvas-comments-head > :not(.canvas-comments-toggle) {
-  animation: canvas-comments-content-in var(--motion-expand) var(--ease-out-soft) backwards;
+.canvas-node-frame > * {
+  pointer-events: auto;
 }
-.canvas-comments[data-closing] > :not(.canvas-comments-head),
-.canvas-comments[data-closing] .canvas-comments-head > :not(.canvas-comments-toggle) {
-  animation: canvas-comments-content-out var(--motion-pop) var(--ease-out-soft) forwards;
+/* 묶음은 닫히면 한 노드다: 포커스 테두리를 묶음 카드 전체에 그린다(첫 줄 카드 대신) */
+.canvas-card--row.canvas-card--first:focus-visible {
+  outline: none;
 }
-@keyframes canvas-comments-grow {
-  from {
-    clip-path: inset(
-      0 calc(100% - var(--size-node-tool)) calc(100% - var(--size-node-tool)) 0 round
-        calc(var(--size-node-tool) / 2)
-    );
-  }
-  to {
-    clip-path: inset(0 0 0 0 round var(--radius-node));
-  }
+.canvas-node-frame[data-group]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-node);
+  pointer-events: none;
 }
-@keyframes canvas-comments-shrink {
-  from {
-    clip-path: inset(0 0 0 0 round var(--radius-node));
-  }
-  to {
-    clip-path: inset(
-      0 calc(100% - var(--size-node-tool)) calc(100% - var(--size-node-tool)) 0 round
-        calc(var(--size-node-tool) / 2)
-    );
-  }
-}
-@keyframes canvas-comments-content-in {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes canvas-comments-content-out {
-  to {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .canvas-comments,
-  .canvas-comments[data-closing],
-  .canvas-comments > :not(.canvas-comments-head),
-  .canvas-comments-head > :not(.canvas-comments-toggle),
-  .canvas-comments[data-closing] > :not(.canvas-comments-head),
-  .canvas-comments[data-closing] .canvas-comments-head > :not(.canvas-comments-toggle) {
-    animation: none;
-  }
-}
-.canvas-comments :is(button, textarea):focus-visible {
+.react-flow__node:has(> .canvas-card--first:focus-visible)
+  > .canvas-node-frame[data-group]::before {
   outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
   outline-offset: var(--focus-outline-offset);
 }
+/* 묶음 첫 줄은 아래 줄보다 위에 둔다(묶음 카드 오른쪽 아래 코너가 마지막 줄에 가리지 않게).
+   아래 줄은 마우스를 올려도 위로 올리지 않고, 대신 첫 줄이 올라온다(data-group-hover) */
+.generation-canvas .react-flow__node:has(> .canvas-node-frame[data-group]) {
+  z-index: 1 !important;
+}
+.generation-canvas
+  .react-flow__node:has(> .canvas-card--row):not(:has(> .canvas-node-frame)):is(
+    :hover,
+    :focus-within
+  ) {
+  z-index: 0 !important;
+}
+.generation-canvas
+  .react-flow__node:is(:hover, :focus-within):has(> .canvas-node-frame[data-group]),
+.generation-canvas .react-flow__node:has(> .canvas-node-frame[data-group-hover]) {
+  z-index: 1000 !important;
+}
+.generation-canvas .react-flow__node:has(.canvas-comment-band[data-expanded]) {
+  z-index: 1001 !important;
+}
 
-/* 머리: 코멘트 아이콘(누르면 접힘) · 제목 · 개수. 아이콘은 노드 도구의 코멘트 버튼과 같은 자리·모양(선택 상태)이다:
-   창 안쪽 여백(16) 대신 도구 막대 안쪽(4) 만큼만 띄운다 */
-.canvas-comments-head {
+.canvas-comment-band {
+  position: absolute;
+  z-index: 1;
+  left: calc(100% - var(--size-icon-empty) - var(--space-gap-4));
+  bottom: 0;
   display: flex;
-  align-items: center;
-  gap: var(--space-gap-3);
-  margin: calc(var(--space-padding-2) - var(--space-padding-6)) 0 0
-    calc(var(--space-padding-2) - var(--space-padding-6));
+  align-items: flex-end;
+  width: max-content;
+  pointer-events: none;
 }
-.canvas-comments-toggle {
-  display: inline-flex;
+.canvas-comment-band > :is(button, .canvas-comment-sheet) {
+  pointer-events: auto;
+}
+/* 코너: 44×44 누름 칸 안에 ㄴ자 분홍 모서리(안쪽 둥근 모서리)를 그린다 */
+.canvas-comment-corner {
+  position: relative;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-padding-2);
-  border: 0;
-  border-radius: var(--radius-max);
-  background: var(--color-fill-neutral);
-  color: var(--color-font-on-fill);
-  cursor: pointer;
-}
-.canvas-comments-head h2 {
+  box-sizing: border-box;
+  width: calc(var(--size-icon-empty) + var(--space-gap-4));
+  height: calc(var(--size-icon-empty) + var(--space-gap-4));
   margin: 0;
-  color: var(--color-font-strong);
-  font: var(--text-subtitle-st2-sb);
-  letter-spacing: var(--letter-spacing-subtitle-st2);
-}
-.canvas-comments-total {
-  color: var(--color-font-helper-text);
-  font: var(--text-body-b2-r);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 아이콘만 있는 동그란 버튼(닫기·지우기). 노드 도구 버튼과 같은 모양 */
-.canvas-comments-icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--size-icon-empty);
-  height: var(--size-icon-empty);
   padding: 0;
   border: 0;
-  border-radius: var(--radius-max);
   background: transparent;
-  color: var(--color-font-sub-text);
   cursor: pointer;
-  transition:
-    background-color var(--motion-pop) var(--ease-out-soft),
-    color var(--motion-pop) var(--ease-out-soft);
 }
-.canvas-comments-icon:not(:disabled):is(:hover, [data-active]) {
-  background: var(--color-fill-neutral);
-  color: var(--color-font-on-fill);
+.canvas-comment-corner::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(var(--size-icon-empty) + var(--space-gap-4));
+  background: var(--color-fill-point);
+  clip-path: polygon(
+    0% 85.45455%,
+    58.18182% 85.45455%,
+    60.97501% 85.31405%,
+    63.68643% 84.90163%,
+    66.30251% 84.23087%,
+    68.80966% 83.31534%,
+    71.19429% 82.16863%,
+    73.44283% 80.80433%,
+    75.54168% 79.23602%,
+    77.47727% 77.47727%,
+    79.23602% 75.54168%,
+    80.80433% 73.44283%,
+    82.16863% 71.19429%,
+    83.31534% 68.80966%,
+    84.23087% 66.30251%,
+    84.90163% 63.68643%,
+    85.31405% 60.97501%,
+    85.45455% 58.18182%,
+    85.45455% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%
+  );
+  pointer-events: none;
 }
-.canvas-comments-icon:disabled {
-  color: var(--color-font-disable);
-  cursor: not-allowed;
+.canvas-comment-corner:focus-visible {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+/* 펼친 띠(open1): 코너의 세로 막대가 띠 높이만큼 이어진다 */
+.canvas-comment-band[data-expanded] {
+  align-items: stretch;
+}
+.canvas-comment-band[data-expanded] .canvas-comment-corner {
+  height: auto;
+  min-height: calc(var(--size-icon-empty) + var(--space-gap-4));
+}
+.canvas-comment-band[data-expanded] .canvas-comment-corner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: calc(var(--size-icon-empty) + var(--space-gap-4));
+  width: 14.54545%;
+  background: var(--color-fill-point);
+  pointer-events: none;
 }
 
-/* 목록: 길면 이 안에서만 스크롤한다 */
-.canvas-comments-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-3);
-  min-height: 0;
+/* 띠 공통: 핑크 면, Medium 16 · 줄 높이 1.2 · 자간 -2%, 안쪽 위아래 10 · 왼쪽 10 · 오른쪽 20 */
+.canvas-comment-text,
+.canvas-comment-sheet {
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-padding-4) var(--space-padding-7) var(--space-padding-4)
+    var(--space-padding-4);
+  background: var(--color-fill-point);
+  color: var(--color-font-point);
+  font: var(--font-weight-medium) var(--font-size-c1) / var(--line-height-connection)
+    var(--font-family-contents);
+  letter-spacing: var(--letter-spacing-body-b1);
 }
-.canvas-comments-body:empty {
+/* 닫힌 코너의 미리보기 띠(open2): 가장 최근 코멘트를 두 줄까지. 마우스를 올리거나 코너에 포커스가 있을 때 보인다 */
+.canvas-comment-text {
+  display: none;
+  align-items: center;
+  gap: var(--space-gap-3);
+  min-height: calc(var(--size-icon-empty) + var(--space-gap-4));
+  max-width: calc(var(--canvas-node-width) + var(--space-padding-7) * 2 + var(--space-padding-4));
+}
+/* 두 줄에서 자른다. 자르기는 안쪽 글에 걸어서 셋째 줄이 아래 여백으로 비치지 않게 한다 */
+.canvas-comment-text > span:first-child {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.canvas-comment-total {
+  flex: none;
+  min-width: var(--space-padding-7);
+  padding: 0 var(--space-padding-2);
+  border-radius: var(--radius-max);
+  background: var(--color-background-default);
+  color: var(--color-font-main-text);
+  font: var(--text-body-b2-m);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.react-flow__node:hover .canvas-comment-text,
+.canvas-node-frame[data-group-hover] .canvas-comment-text,
+.canvas-comment-corner:focus ~ .canvas-comment-text {
+  display: flex;
+}
+/* 노드 도구가 보이는 동안(노드 안 포커스)은 띠 글을 접는다(도구와 겹치지 않게). 코너에 포커스가 있으면 띠를 보이고 도구를 숨긴다 */
+.react-flow__node:focus-within:not(:has(.canvas-comment-corner:focus)) .canvas-comment-text {
   display: none;
 }
-.canvas-comments-list {
+.canvas-node-frame:has(.canvas-comment-corner:focus, .canvas-comment-band[data-expanded])
+  .canvas-node-tool {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 펼친 띠(open1): 이전 코멘트(오래된 순) + 띠 안 입력칸. 폭은 시안 open1(글 320 + 안쪽 30) */
+.canvas-comment-sheet {
   display: flex;
   flex-direction: column;
-  gap: var(--space-gap-3);
+  gap: var(--space-padding-3);
+  width: calc(var(--canvas-node-width) + var(--space-padding-7) * 2 + var(--space-padding-4));
+  min-height: calc(var(--size-icon-empty) + var(--space-gap-4));
+  justify-content: center;
+  text-align: left;
+  cursor: text;
+  outline: 0;
+}
+/* 포커스 테두리는 공통 규칙 하나(굵은 2px)만 띠 둘레에 그린다 */
+.canvas-comment-sheet:has(.canvas-comment-input:focus-visible) {
+  outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
+  outline-offset: var(--focus-outline-offset);
+}
+.canvas-comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-padding-3);
   max-height: var(--size-comment-list-max-height);
   margin: 0;
   padding: 0;
@@ -405,224 +391,127 @@
   overscroll-behavior: contain;
   list-style: none;
   scrollbar-width: thin;
+  cursor: default;
 }
-.canvas-comment {
+.canvas-comment-entry {
   display: flex;
-  flex: none;
   flex-direction: column;
-  gap: var(--space-padding-2);
-  padding: var(--space-padding-4) var(--space-padding-6) var(--space-padding-5);
-  border-radius: var(--radius-agora-comment);
-  background: var(--color-background-default);
+  gap: 0;
 }
-.canvas-comment[data-confirming] {
-  box-shadow: inset 0 0 0 var(--stroke-weight-light) var(--color-border-input);
+.canvas-comment-body {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .canvas-comment-meta {
   display: flex;
   align-items: center;
   gap: var(--space-gap-3);
-  min-height: var(--size-icon-empty);
+  font: var(--text-body-b2-r);
 }
-.canvas-comment-meta strong {
+.canvas-comment-meta span {
   min-width: 0;
   overflow: hidden;
-  color: var(--color-font-strong);
-  font: var(--text-body-b2-m);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .canvas-comment-meta time {
   flex: 1;
-  min-width: 0;
-  color: var(--color-font-helper-text);
-  font: var(--text-body-b2-r);
   white-space: nowrap;
 }
-.canvas-comment-meta .canvas-comments-icon {
-  margin-right: calc(-1 * var(--space-padding-3));
+.canvas-comment-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-padding-2);
+  border: 0;
+  border-radius: var(--radius-max);
+  background: transparent;
+  color: var(--color-font-point);
+  cursor: pointer;
 }
-.canvas-comment-message {
-  margin: 0;
-  color: var(--color-font-main-text);
-  font: var(--text-body-b1-r);
-  letter-spacing: var(--letter-spacing-body-b1);
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
+.canvas-comment-icon:not(:disabled):is(:hover, [aria-expanded='true']) {
+  background: var(--color-background-default);
 }
-
-/* 지우기 확인: 문장 + Cancel · Delete 알약 */
+.canvas-comment-icon:disabled {
+  cursor: not-allowed;
+}
 .canvas-comment-confirm {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-gap-3);
-  margin-top: var(--space-padding-3);
-  padding-top: var(--space-padding-4);
-  border-top: var(--stroke-weight-light) solid var(--color-border-default);
+  font: var(--text-body-b2-m);
 }
 .canvas-comment-confirm span {
   flex: 1 1 100%;
-  color: var(--color-font-main-text);
-  font: var(--text-body-b2-m);
 }
-.canvas-comment-confirm span + .canvas-comments-pill {
-  margin-left: auto;
-}
-.canvas-comments-pill {
+.canvas-comment-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-padding-3);
   padding: var(--space-padding-2) var(--space-padding-6);
-  border: var(--stroke-weight-light) solid var(--color-border-input);
+  border: 0;
   border-radius: var(--radius-max);
   background: var(--color-background-default);
   color: var(--color-font-main-text);
   font: var(--text-body-b2-m);
   cursor: pointer;
-  transition: background-color var(--motion-pop) var(--ease-out-soft);
 }
-.canvas-comments-pill:not(:disabled):hover {
-  background: var(--color-fill-neutral-weak);
-}
-.canvas-comments-pill[data-strong] {
-  border-color: var(--color-fill-neutral);
+.canvas-comment-pill[data-strong] {
   background: var(--color-fill-neutral);
   color: var(--color-font-on-fill);
 }
-.canvas-comments-pill[data-strong]:not(:disabled):hover {
-  background: var(--color-font-main-text);
-}
-.canvas-comments-pill:disabled {
-  border-color: var(--color-border-default);
-  background: var(--color-gray-20);
+.canvas-comment-pill:disabled {
   color: var(--color-font-disable);
   cursor: not-allowed;
 }
-
-/* 빈 화면(공통 규칙 ⑤): 아이콘 32 → 한 줄 */
-.canvas-comments-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-gap-3);
-  padding: var(--space-padding-8) var(--space-padding-6);
-  border-radius: var(--radius-agora-comment);
-  background: var(--color-background-default);
-  color: var(--color-font-helper-text);
-  text-align: center;
-}
-.canvas-comments-empty p {
-  margin: 0;
-  color: var(--color-font-sub-text);
-  font: var(--text-body-b1-m);
-}
-/* 불러오는 중: 움직이지 않는 회색 뼈대(공통 규칙 ④) */
-.canvas-comments-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-3);
-}
-.canvas-comments-skeleton span {
-  height: var(--size-input-height);
-  border-radius: var(--radius-agora-comment);
-  background: var(--color-gray-20);
-}
-.canvas-comments [role='alert'] {
-  flex-wrap: wrap;
-  gap: var(--space-gap-3);
-}
-/* 창 안의 Retry 는 Post 와 같은 알약 */
-.canvas-comments [role='alert'] button {
-  margin-left: auto;
-  padding: var(--space-padding-2) var(--space-padding-6);
-  border-radius: var(--radius-max);
-  font: var(--text-body-b2-m);
-}
-
-/* 입력: 흰 칸 안에 글 · 글자 수 · 상태 · Post 알약 */
-.canvas-comments-compose {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gap-3);
-  margin: 0;
-}
-.canvas-comments-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-padding-3);
-  padding: var(--space-padding-4) var(--space-padding-4) var(--space-padding-4)
-    var(--space-padding-6);
-  border: var(--stroke-weight-light) solid var(--color-border-input);
-  border-radius: var(--radius-agora-comment);
-  background: var(--color-background-default);
-}
-.canvas-comments-field:has(textarea:focus-visible) {
+.canvas-comment-sheet :is(.canvas-comment-icon, .canvas-comment-pill):focus-visible {
   outline: var(--stroke-weight-bold) solid var(--color-font-main-text);
   outline-offset: var(--focus-outline-offset);
 }
-.canvas-comments-compose[data-error] .canvas-comments-field {
-  border: var(--stroke-weight-bold) solid var(--color-tome-peach-5);
-}
-.canvas-comments .canvas-comments-field textarea {
+/* 띠 안 입력칸: 테두리·바탕 없이 띠 글자 그대로. 안내 글(Please provide a reason.)도 같은 색이다 */
+.canvas-comment-sheet .canvas-comment-input {
   box-sizing: border-box;
   width: 100%;
-  min-height: 2lh;
+  min-height: 1lh;
   max-height: 6lh;
   margin: 0;
   padding: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--color-font-main-text);
-  font: var(--text-body-b1-r);
-  letter-spacing: var(--letter-spacing-body-b1);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
   resize: none;
   field-sizing: content;
   overflow-wrap: anywhere;
 }
-.canvas-comments-field textarea::placeholder {
-  color: var(--color-font-helper-text);
+.canvas-comment-input::placeholder {
+  color: var(--color-font-point);
+  opacity: 1;
 }
-.canvas-comments-field textarea:disabled {
-  color: var(--color-font-disable);
-  cursor: not-allowed;
+.canvas-comment-input[aria-busy='true'] {
+  cursor: progress;
 }
-.canvas-comments-footer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-gap-3);
-}
-.canvas-comments-count {
-  flex: none;
-  color: var(--color-font-helper-text);
+.canvas-comment-count {
+  align-self: flex-end;
   font: var(--text-body-b2-r);
   font-variant-numeric: tabular-nums;
 }
-.canvas-comments-count[data-warning] {
-  color: var(--color-peach-text);
+.canvas-comment-count[data-empty] {
+  display: none;
 }
-.canvas-comments-status {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: var(--color-font-sub-text);
-  font: var(--text-body-b2-r);
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.canvas-comments .canvas-comments-submit {
-  flex: none;
-  padding: var(--space-padding-2) var(--space-padding-6);
-  border-radius: var(--radius-max);
+.canvas-comment-count[data-warning] {
   font: var(--text-body-b2-m);
 }
-
-/* 코멘트 창이 열려 있거나 노드 도구가 보이면 띠 글은 접는다(창·도구와 겹치지 않게). 코너는 남긴다 */
-.generation-canvas .react-flow__node:has(.canvas-comments) .canvas-comment-text,
-.generation-canvas .react-flow__node:focus-within .canvas-comment-text {
-  display: none;
+.canvas-comment-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-gap-3);
+  margin: 0;
+  font: var(--text-body-b2-m);
 }
