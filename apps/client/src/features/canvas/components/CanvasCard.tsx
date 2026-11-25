@@ -40,8 +40,8 @@ function StepPill({ number, label }: { number: number; label: string }) {
 }
 
 /**
- * 코멘트 창 자리. 노드 도구 오른쪽에 붙고 노드와 함께 움직이지만, 캔버스 확대 배율만큼 되돌려
- * 글자가 늘 같은 크기(화면 기준)로 보이게 한다.
+ * 코멘트 창 자리. 노드 도구의 코멘트 아이콘 자리(도구 위끝 왼쪽)에서 펼쳐지고 노드와 함께 움직이지만(#230),
+ * 캔버스 확대 배율만큼 되돌려 글자가 늘 같은 크기(화면 기준)로 보이게 한다.
  */
 function CommentAnchor({ children }: { children: ReactNode }) {
   const zoom = useStore((state) => state.transform[2]);
@@ -122,6 +122,20 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     !!data.output &&
     navigation.history?.selectedComment?.answerId === data.answerId &&
     navigation.history?.selectedComment?.nodeId === data.output.id;
+  // 코멘트 아이콘이 그 자리에서 입력 창으로 펼쳐진다(#230). 펼친 동안 도구 막대는 창 뒤에 숨는다.
+  const commentPanel = commenting && !editing ? navigation.history?.commentPanel : undefined;
+  // 답변(그림) 카드는 눌러서(또는 Enter) 크게 보기 모달을 연다(#230).
+  // 파생의 흐린(비활성) 카드는 먼저 활성으로 돌아가고(덮개 버튼), 활성인 카드를 누르면 모달이 열린다.
+  // 미리보기(아직 확정 전)·만드는 중인 카드는 열지 않는다.
+  const answerToOpen =
+    data.kind === 'answer' &&
+    data.answer &&
+    data.state === 'done' &&
+    !data.inactive &&
+    !data.previewing &&
+    navigation.openAnswer
+      ? data.answer
+      : undefined;
   return (
     <>
       {data.kind !== 'prompt' ? (
@@ -156,6 +170,8 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           ) : null
         }
         data-canvas-card={id}
+        data-opens-answer={answerToOpen ? true : undefined}
+        aria-keyshortcuts={answerToOpen ? 'Enter' : undefined}
         tabIndex={navigation.active[data.setId] === id ? 0 : -1}
         onPointerDownCapture={markPointer}
         onFocus={reveal}
@@ -166,10 +182,23 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
           )
             return;
           if (editing) return;
+          if (answerToOpen) {
+            // 모달을 닫으면 포커스가 이 카드로 돌아오게, 열기 전에 카드에 포커스를 둔다(마우스 누름은 포커스를 옮기지 않을 수 있다).
+            if (document.activeElement !== event.currentTarget)
+              event.currentTarget.focus({ preventScroll: true });
+            navigation.openAnswer?.(answerToOpen);
+            return;
+          }
           if (data.output && navigation.editor?.canOpen(data.setId, data.output.id))
             openFrom(event.currentTarget);
         }}
         onKeyDown={(event) => {
+          if (event.target === event.currentTarget && event.key === 'Enter' && answerToOpen) {
+            event.preventDefault();
+            event.stopPropagation();
+            navigation.openAnswer?.(answerToOpen);
+            return;
+          }
           if (
             event.target !== event.currentTarget ||
             !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)
@@ -184,7 +213,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         {data.inactive && data.activateAnswerId && navigation.history ? (
           <button
             type="button"
-            className="canvas-answer-activate nodrag nopan"
+            className="canvas-answer-activate nopan"
             aria-label={data.label}
             aria-busy={navigation.history.selectingSet === data.setId || undefined}
             disabled={navigation.history.disabled || navigation.history.selectingSet === data.setId}
@@ -220,6 +249,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         <div
           className="canvas-node-tool nodrag nopan nowheel"
           data-open={commenting || undefined}
+          data-expanded={commentPanel ? true : undefined}
           role="group"
           onPointerDownCapture={markPointer}
           onFocus={reveal}
@@ -255,11 +285,9 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
               </button>
             ) : null}
           </div>
+          {/* 코멘트 창은 코멘트 아이콘 자리에서 펼쳐진다(노드와 함께 움직인다) */}
+          {commentPanel ? <CommentAnchor>{commentPanel}</CommentAnchor> : null}
         </div>
-      ) : null}
-      {/* 코멘트 창은 노드 도구 바로 옆에 붙는다(노드와 함께 움직이고 확대된다) */}
-      {commenting && !editing && navigation.history?.commentPanel ? (
-        <CommentAnchor>{navigation.history.commentPanel}</CommentAnchor>
       ) : null}
 
       {data.kind !== 'answer' && data.kind !== 'origin' ? (

@@ -1,4 +1,4 @@
-import type { AnswerSummary, Node, NodeComment } from '@tome/shared';
+import type { Answer, AnswerSummary, Node, NodeComment } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { createContext, type ContextType, type ReactNode } from 'react';
@@ -51,7 +51,7 @@ export const CanvasNavigation = createContext<{
     canComment: (setId: string, answerId: string, nodeId: string) => boolean;
     comment: (setId: string, answerId: string, nodeId: string) => void;
     listComments?: (answerId: string) => Promise<readonly NodeComment[]>;
-    /** 열린 코멘트 창. selectedComment 노드 옆(노드 도구 오른쪽)에 그린다. */
+    /** 열린 코멘트 창. selectedComment 노드의 도구 자리에서 펼쳐 그린다(#230). */
     commentPanel?: ReactNode;
   };
   remix?: CanvasRemixOptions;
@@ -61,6 +61,8 @@ export const CanvasNavigation = createContext<{
   focus: (id: string, reveal?: boolean) => void;
   move: (id: string, key: string) => void;
   editor?: CanvasEditorConnection;
+  /** 답변(그림) 카드를 누르면(또는 Enter) 크게 보기 모달을 연다(#230). */
+  openAnswer?: (answer: Answer) => void;
 }>({ active: {}, focus: () => {}, move: () => {} });
 
 export type CanvasHistoryConnection = NonNullable<ContextType<typeof CanvasNavigation>['history']>;

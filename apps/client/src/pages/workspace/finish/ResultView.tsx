@@ -17,6 +17,8 @@ interface ResultViewProps {
   downloading?: boolean;
   /** 받기에 실패했을 때 보여 줄 안내 문구. 없으면 아무것도 그리지 않는다 */
   errorMessage?: string;
+  /** 닫힌 뒤 포커스 처리. 여는 버튼(Trigger)이 없어서, 포커스를 돌려줄 곳은 부모가 정한다 */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 const CLOSE_CIRCLE = [
@@ -40,6 +42,7 @@ export function ResultView({
   onDownload,
   downloading = false,
   errorMessage,
+  onCloseAutoFocus,
 }: ResultViewProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const { directSrc } = useApiImage(imagePath, imageRef);
@@ -49,6 +52,7 @@ export function ResultView({
         <RadixDialog.Overlay className="fixed inset-0 grid place-items-center overflow-y-auto bg-[color:var(--color-background-dim)] p-[var(--space-padding-8)]">
           <RadixDialog.Content
             aria-describedby={undefined}
+            {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
             className="flex max-h-full max-w-full flex-col items-center gap-[var(--space-padding-8)]"
           >
             <RadixDialog.Title className="sr-only">{alt}</RadixDialog.Title>

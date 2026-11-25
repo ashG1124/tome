@@ -4,7 +4,7 @@ export { BusyMark } from './BusyMark';
 export { Button } from './Button';
 export { Dialog } from './Dialog';
 export { ErrorNotice } from './ErrorNotice';
-export { Flash, type FlashKind } from './Flash';
+export { Flash, FLASH_MS, type FlashKind } from './Flash';
 export { Icon } from './Icon';
 export {
   AGORA_SEARCH_SCOPES,

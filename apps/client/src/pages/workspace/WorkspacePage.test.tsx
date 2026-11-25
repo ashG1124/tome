@@ -19,17 +19,27 @@ vi.mock('../../features/canvas', () => ({
     projectId,
     pageId,
     remix,
+    onOpenResult,
   }: {
     projectId: string;
     pageId: string;
     remix?: CanvasRemixOptions;
+    onOpenResult?: (answer: { id: string; imageUrl: string }) => void;
   }) => (
     <div
       data-testid="canvas"
       data-project={projectId}
       data-page={pageId}
       data-connections={Object.values(remix?.connectionsByAnswer ?? {}).flat().length}
-    />
+    >
+      {/* 답변(그림) 카드 누름 대역(#230) */}
+      <button
+        type="button"
+        onClick={() => onOpenResult?.({ id: 'answer-1', imageUrl: 'data:image/png;base64,ANSWER' })}
+      >
+        answer card
+      </button>
+    </div>
   ),
 }));
 
@@ -223,6 +233,24 @@ describe('WorkspacePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
     expect((await screen.findByRole('alert')).textContent).toBe(COPY['E-01a']);
     expect(screen.getByRole('button', { name: COPY['D-13'] })).toBeTruthy();
+  });
+});
+
+describe('WorkspacePage 답변 크게 보기(#230)', () => {
+  it('캔버스의 답변 카드를 누르면 크게 보기가 열리고, Download 는 그 답변 그림을 받으며, 닫으면 캔버스에 머문다', async () => {
+    const spy = vi.spyOn(downloadModule, 'downloadImage').mockResolvedValue();
+    const router = renderWorkspace();
+    const card = await screen.findByRole('button', { name: 'answer card' });
+    card.focus();
+    fireEvent.click(card);
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy.mock.calls[0]?.[0]).toBe('data:image/png;base64,ANSWER');
+
+    fireEvent.click(screen.getByRole('button', { name: COPY['D-11'] }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: COPY['D-13'] })).toBeNull());
+    expect(router.state.location.pathname).toBe(`/projects/${PROJECT}`);
+    expect(router.state.location.state).toBeNull();
   });
 });
 

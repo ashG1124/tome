@@ -61,6 +61,7 @@ for (const viewport of [
 
     const corner = page.locator('[data-id$=":k1"]').getByRole('button', { name: /Add a comment/ });
     await corner.focus();
+    const toolBox = (await corner.boundingBox())!;
     await page.keyboard.press('Enter');
     const panel = page.getByRole('region', { name: 'Comments', exact: true });
     const input = panel.getByRole('textbox', { name: 'Add a comment' });
@@ -71,11 +72,10 @@ for (const viewport of [
     await panel.getByRole('button', { name: 'Post', exact: true }).click();
     await expect(panel.getByRole('status')).toHaveText('Comment saved.');
     await expect(panel.getByText(body, { exact: true })).toBeVisible();
-    // 창은 노드 도구 바로 오른쪽에 붙는다(#221)
-    const toolBox = (await corner.boundingBox())!;
+    // 창은 노드 도구의 코멘트 아이콘 자리에서 펼쳐진다(#230): 창 왼쪽 위가 아이콘 자리다
     const panelBox = (await panel.boundingBox())!;
-    expect(panelBox.x).toBeGreaterThan(toolBox.x + toolBox.width);
-    expect(panelBox.x - (toolBox.x + toolBox.width)).toBeLessThan(40);
+    expect(Math.abs(panelBox.x - toolBox.x)).toBeLessThan(16);
+    expect(Math.abs(panelBox.y - toolBox.y)).toBeLessThan(16);
     await page.screenshot({ path: info.outputPath('02-comment-created.png'), fullPage: true });
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
@@ -160,6 +160,12 @@ test('one version disables both chevrons and editing remains available', async (
   const apply = page.getByRole('button', { name: 'Apply the fix', exact: true });
   await expect(apply).toBeEnabled({ timeout: 15000 });
   await apply.click();
+  // stack 플래시는 잠깐(2.5초) 보였다가 사라진다(#230). 상태 칸(role=status)은 남는다.
+  const flash = page.locator('.canvas-editor-flash [role=status]');
+  await expect(flash).toHaveText('This version will be updated as the accepted answer');
+  const shown = Date.now();
+  await expect(flash).toHaveText('', { timeout: 5000 });
+  expect(Date.now() - shown).toBeLessThan(3500);
   await expect(page.locator('.canvas-answer-versions [aria-live=polite]')).toHaveText('Answer 02');
   await expect(page.getByRole('button', { name: 'Previous version' })).toBeEnabled();
   await expect(page.locator('.node-open')).toHaveCount(0);
@@ -169,7 +175,7 @@ test('one version disables both chevrons and editing remains available', async (
   });
 });
 
-test('comments open from the open node tool, sit next to the node and respect reduced motion', async ({
+test('comments open from the open node tool, grow on the node tool and respect reduced motion', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1728, height: 1083 });
@@ -181,7 +187,7 @@ test('comments open from the open node tool, sit next to the node and respect re
   await edit.click();
   await expect(node.locator('.node-open')).toBeVisible();
   await node.locator('.node-open-tool').getByRole('button', { name: 'Add a comment' }).click();
-  // 펼친 노드는 접히고, 창은 그 노드 도구 바로 옆에 열린다.
+  // 펼친 노드는 접히고, 창은 그 노드의 도구(코멘트 아이콘 자리)에서 펼쳐진다.
   await expect(node.locator('.node-open')).toHaveCount(0);
   const panel = node.getByRole('region', { name: 'Comments', exact: true });
   await expect(panel).toBeVisible();
