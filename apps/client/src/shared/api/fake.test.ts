@@ -103,6 +103,16 @@ describe('가짜 응답 모드', () => {
     expect(mine.coverThumbUrl).not.toBeNull();
   });
 
+  it('프롬프트 없이 만든(작업 전) 프로젝트는 썸네일이 없고, 처음 서가 두 개는 썸네일이 있다(#227)', async () => {
+    await signIn({ consent: true });
+    const created = await api.createProject({});
+    const { projects } = await api.listProjects();
+    expect(projects.find((p) => p.id === created.project.id)?.coverThumbUrl).toBeNull();
+    expect(
+      projects.filter((p) => p.id !== created.project.id).every((p) => p.coverThumbUrl !== null),
+    ).toBe(true);
+  });
+
   it('GET /health 는 토큰 없이 부를 수 있다', async () => {
     const health = await api.health();
     expect(HealthResponseSchema.safeParse(health).success).toBe(true);
