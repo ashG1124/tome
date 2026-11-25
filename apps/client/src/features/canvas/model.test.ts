@@ -5,6 +5,7 @@ import {
   stackColumn,
   buildCanvas,
   keyboardTarget,
+  promptHeight,
   visibleStage,
   sameCardData,
   type CanvasGeometry,
@@ -98,7 +99,35 @@ describe('generation canvas', () => {
     expect(nodes.find((node) => node.id === 'set-a:evidence-placeholder')?.data.state).toBe(
       'pending',
     );
-    expect(nodes.filter((node) => node.data.kind === 'heading')).toHaveLength(6);
+    // 단계 알약 5개. 프롬프트 노드는 이름표를 카드 안에 두어 소제목이 없다(#228, 시안 1192:65515).
+    expect(nodes.filter((node) => node.data.kind === 'heading')).toHaveLength(5);
+  });
+  it('places the 400px prompt node 171 left of step 1 and below the pill (#228)', () => {
+    const promptGeometry = { ...geometry, promptWidth: 400 };
+    const { nodes } = buildCanvas([set], generation, labels, promptGeometry);
+    const prompt = nodes.find((node) => node.id === 'set-a:prompt')!;
+    const step1 = nodes.find((node) => node.id === 'set-a:analyze-heading')!;
+    expect(prompt.style?.width).toBe(400);
+    expect(prompt.style?.minHeight).toBeUndefined();
+    expect(prompt.position.x + 400 + promptGeometry.promptGap).toBe(step1.position.x);
+    // 시안 1679:11666: 프롬프트 노드 위쪽은 열 맨 위에서 166
+    expect(prompt.position.y - step1.position.y).toBe(166);
+    expect(nodes.some((node) => node.id === 'set-a:prompt-heading')).toBe(false);
+  });
+  it('falls back to the node width when the prompt width token is missing', () => {
+    const { nodes } = buildCanvas([set], generation, labels, { ...geometry, promptWidth: NaN });
+    expect(nodes.find((node) => node.id === 'set-a:prompt')?.style?.width).toBe(300);
+  });
+  it('keeps the next set below a long prompt node', () => {
+    const long = { ...set, prompt: 'word '.repeat(90).trim() };
+    const second = { ...set, id: 'set-b', position: 2 };
+    const promptGeometry = { ...geometry, promptWidth: 400 };
+    const { nodes } = buildCanvas([long, second], undefined, labels, promptGeometry);
+    const prompt = nodes.find((node) => node.id === 'set-a:prompt')!;
+    const nextTop = Math.min(
+      ...nodes.filter((node) => node.data.setId === 'set-b').map((node) => node.position.y),
+    );
+    expect(nextTop).toBeGreaterThan(prompt.position.y + promptHeight(long.prompt, 400));
   });
   it('preserves previous output when the next stage fails', () => {
     const { nodes } = buildCanvas(

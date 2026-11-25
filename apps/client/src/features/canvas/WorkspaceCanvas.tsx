@@ -49,6 +49,7 @@ import './history.css';
 const FIGMA_GEOMETRY_TOKENS = {
   columnGap: '--canvas-figma-column-gap',
   promptGap: '--canvas-figma-prompt-gap',
+  promptWidth: '--canvas-prompt-width',
   answerGap: '--canvas-figma-answer-gap',
   answerWidth: '--canvas-figma-answer-width',
 } as const;

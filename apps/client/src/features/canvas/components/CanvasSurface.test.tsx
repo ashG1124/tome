@@ -36,6 +36,30 @@ function card(imageUrl: string, isSample = false) {
     answer: { imageUrl, isSample } as Answer,
   };
 }
+it('draws the prompt node with its label and mark inside the card (#228, 1192:65515)', () => {
+  render(
+    <CanvasSurface
+      data={{
+        kind: 'prompt',
+        setId: 'set',
+        column: 0,
+        row: 0,
+        label: CANVAS_COPY.prompt,
+        labels: CANVAS_COPY,
+        state: 'done',
+        text: 'A lamp on a desk',
+      }}
+    />,
+    { wrapper },
+  );
+  const node = screen.getByRole('article', { name: CANVAS_COPY.prompt });
+  expect(node.className).toContain('canvas-card--prompt');
+  const head = node.querySelector('.canvas-prompt-head')!;
+  expect(head.getAttribute('aria-hidden')).toBe('true');
+  expect(head.textContent).toBe(CANVAS_COPY.prompt);
+  expect(head.querySelector('[data-icon="sparkle"]')).not.toBeNull();
+  expect(node.querySelector('.canvas-prompt-text')?.textContent).toBe('A lamp on a desk');
+});
 it('sets img src in fake mode using the real useApiImage hook without fetching', () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
