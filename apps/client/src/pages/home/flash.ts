@@ -1,7 +1,7 @@
 import type { FlashKind } from '../../shared/ui';
 
-/** 플래시를 보여 주는 시간. 기획 문서에 시간이 없어 기본값으로 정했다(PR 에 적음). */
-export const FLASH_MS = 3000;
+/** 플래시를 보여 주는 시간. 모든 화면이 공통 값(shared/ui FLASH_MS)을 쓴다. */
+export { FLASH_MS } from '../../shared/ui';
 
 /**
  * 다른 화면이 홈으로 오면서 넘긴 플래시(navigate 의 state.flash)를 읽는다.

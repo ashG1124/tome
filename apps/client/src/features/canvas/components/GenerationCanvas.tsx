@@ -8,7 +8,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import type { CanvasRemixOptions } from '../remix-model';
-import type { PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
+import type { Answer, PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
 import {
   buildCanvas,
   keyboardTarget,
@@ -23,6 +23,8 @@ import {
 import { CanvasCard } from './CanvasCard';
 import { useOpenShift } from '../hooks/useOpenShift';
 import { useMeasuredStack } from '../hooks/useMeasuredStack';
+import { DRAG_DISTANCE, useNodeDrag } from '../hooks/useNodeDrag';
+import { dragOffset } from '../drag-model';
 import {
   CanvasNavigation,
   type CanvasEditorConnection,
@@ -76,7 +78,7 @@ function recentView(
 
 const NODE_TYPES = { card: CanvasCard };
 /**
- * 노드는 끌 수 없게 했지만(nodesDraggable=false) 클릭은 받아야 한다. React Flow 는 끌기·선택·클릭 처리가 모두 없는 노드에
+ * 끌 수 없는 노드(단계 카드 등)도 클릭은 받아야 한다. React Flow 는 끌기·선택·클릭 처리가 모두 없는 노드에
  * pointer-events:none 을 주므로, 빈 클릭 처리기를 둬 노드가 눌리게 한다(실제 처리는 카드 안 onClick).
  */
 const KEEP_NODE_POINTER = () => {};
@@ -96,6 +98,8 @@ export interface GenerationCanvasProps {
   history?: CanvasHistoryConnection;
   remix?: CanvasRemixOptions;
   remixDisabled?: boolean;
+  /** 답변(그림) 카드를 누르면 그 답변을 크게 보기(Download)로 연다(#230). */
+  onOpenAnswer?: (answer: Answer) => void;
 }
 
 function CanvasContent({
@@ -110,6 +114,7 @@ function CanvasContent({
   history,
   remix,
   remixDisabled,
+  onOpenAnswer,
 }: GenerationCanvasProps) {
   // 글꼴이 늦게 도착하면 줄 수 어림이 달라지므로 다 받은 뒤 한 번 더 배치한다.
   const [fontsReady, setFontsReady] = useState(false);
@@ -131,6 +136,7 @@ function CanvasContent({
   const initialized = useNodesInitialized();
   const store = useStoreApi<CanvasNode, Edge>();
   const previousLayout = useRef(new Map<string, { x: number; y: number }>());
+  const drag = useNodeDrag();
   const fitted = useRef(false);
   const [active, setActive] = useState<Record<string, string>>({});
   const activeIds = useMemo(() => {
@@ -148,7 +154,18 @@ function CanvasContent({
     const previous = flow.getNodes();
     const nextIds = new Set(graph.nodes.map((node) => node.id));
     const previousIds = new Set(previous.map((node) => node.id));
-    const added = graph.nodes.filter((node) => !previousIds.has(node.id));
+    // 새로 생기는 노드는 사용자가 끌어 둔 단계 열·묶음·답변 자리만큼 옮겨 놓는다(#230).
+    const added = graph.nodes
+      .filter((node) => !previousIds.has(node.id))
+      .map((node) => {
+        const offset = dragOffset(drag.offsets.current, node.data);
+        return offset.x || offset.y
+          ? {
+              ...node,
+              position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
+            }
+          : node;
+      });
     if (previous.some((node) => !nextIds.has(node.id)) || added.length) {
       flow.setNodes([...previous.filter((node) => nextIds.has(node.id)), ...added]);
     }
@@ -172,7 +189,7 @@ function CanvasContent({
     }
     flow.setEdges(graph.edges);
     previousLayout.current = new Map(graph.nodes.map((node) => [node.id, node.position]));
-  }, [graph, flow]);
+  }, [graph, flow, drag]);
 
   useEffect(() => {
     if (initialized && !fitted.current && graph.nodes.length) {
@@ -187,7 +204,7 @@ function CanvasContent({
   // 노드를 제자리에서 펼치면 아래 노드를 밀어 내리고, 다 펼친 뒤 펼친 카드와 노드 도구가 화면 안에 오게 살짝 옮긴다.
   const openId = useOpenShift(editor?.selected);
   // 실제 높이로 단계 열을 다시 쌓아 노드 간격을 일정하게(#215). 펼친 동안은 쉰다.
-  useMeasuredStack(openId);
+  useMeasuredStack(openId, drag.offsets);
   useEffect(() => {
     if (!openId) return;
     const css = getComputedStyle(document.documentElement);
@@ -252,13 +269,14 @@ function CanvasContent({
       const panel = document.querySelector<HTMLElement>(
         `[data-id="${CSS.escape(target.id)}"] .canvas-comments`,
       );
+      // 창은 노드 도구의 코멘트 아이콘 자리(노드 오른쪽, 도구 위끝)에서 펼쳐진다(#230).
+      const panelHeight = (panel?.offsetHeight ?? 0) / zoom;
       const right =
         x +
         w +
-        2 * read('--space-padding-4') +
-        read('--size-node-tool') +
+        read('--space-padding-4') +
         (panel?.offsetWidth ?? read('--size-comment-panel-width')) / zoom;
-      const bottom = y + Math.max(h, (panel?.offsetHeight ?? 0) / zoom);
+      const bottom = Math.max(y + h, y + h / 2 - read('--size-node-tool') / 2 + panelHeight);
       // 아래쪽은 프롬프트 바·프리뷰가 떠 있으니 화면 높이의 1/5 을 비워 둔다.
       const bottomSpace = height / 5;
       let nextX = tx;
@@ -333,8 +351,17 @@ function CanvasContent({
     [flow, focus, geometry.nodeWidth, geometry.nodeHeight],
   );
   const navigation = useMemo(
-    () => ({ active: activeIds, focus, move, editor, history, remix, remixDisabled }),
-    [activeIds, focus, move, editor, history, remix, remixDisabled],
+    () => ({
+      active: activeIds,
+      focus,
+      move,
+      editor,
+      history,
+      remix,
+      remixDisabled,
+      openAnswer: onOpenAnswer,
+    }),
+    [activeIds, focus, move, editor, history, remix, remixDisabled, onOpenAnswer],
   );
 
   return (
@@ -357,7 +384,12 @@ function CanvasContent({
           edgesFocusable={false}
           nodesFocusable={false}
           nodesConnectable={false}
-          nodesDraggable={false}
+          nodesDraggable={!openId}
+          nodeDragThreshold={DRAG_DISTANCE}
+          nodeClickDistance={DRAG_DISTANCE}
+          onNodeDragStart={drag.onNodeDragStart}
+          onNodeDrag={drag.onNodeDrag}
+          onNodeDragStop={drag.onNodeDragStop}
           onNodeClick={KEEP_NODE_POINTER}
           elementsSelectable={false}
           deleteKeyCode={null}

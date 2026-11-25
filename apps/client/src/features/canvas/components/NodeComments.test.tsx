@@ -71,9 +71,14 @@ it('focuses the textarea, enforces 300 characters, rejects empty input, and clos
   fireEvent.keyDown(textarea, { key: 'Escape' });
   expect(onClose).toHaveBeenCalledOnce();
 });
-it('closes from the close button', async () => {
+it('collapses back from the comment icon it grew out of (#230)', async () => {
   const { onClose } = setup();
-  fireEvent.click(await screen.findByRole('button', { name: labels.close }));
+  const toggle = await screen.findByRole('button', { name: labels.close });
+  // 창 왼쪽 위의 버튼은 노드 도구의 코멘트 아이콘(선택 상태)이다. 따로 닫기(X) 버튼은 없다.
+  expect(toggle.className).toContain('canvas-comments-toggle');
+  expect(toggle.querySelector('[data-icon="comment"]')).not.toBeNull();
+  expect(document.querySelector('[data-icon="close"]')).toBeNull();
+  fireEvent.click(toggle);
   expect(onClose).toHaveBeenCalledOnce();
 });
 it('renders comment bodies as text, absolute timestamps, and Delete only for own comments', async () => {

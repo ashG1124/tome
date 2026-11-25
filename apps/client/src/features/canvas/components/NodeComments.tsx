@@ -35,11 +35,11 @@ const LOADING_DELAY_MS = 300;
 /** 남은 글자가 이보다 적으면 글자 수를 강조한다. */
 const COUNT_WARNING = 20;
 
-/** 창이 닫히는 움직임 시간(ms). 토큰 --motion-pop 을 읽고, 움직임 줄이기 설정이면 0 이다. */
+/** 창이 아이콘으로 접히는 움직임 시간(ms). 토큰 --motion-expand 를 읽고, 움직임 줄이기 설정이면 0 이다. */
 function closeDuration(): number {
   if (typeof window === 'undefined') return 0;
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 0;
-  const value = getComputedStyle(document.documentElement).getPropertyValue('--motion-pop');
+  const value = getComputedStyle(document.documentElement).getPropertyValue('--motion-expand');
   return Number.parseFloat(value) || 0;
 }
 
@@ -47,8 +47,9 @@ function closeDuration(): number {
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /**
- * 노드 코멘트 창. 노드 도구 바로 옆에 붙어 열린다(노드 안에 그려져 캔버스와 함께 움직인다).
- * 열리면 입력칸에 포커스가 가고, Esc 나 닫기 버튼으로 닫으면 연 버튼으로 포커스가 돌아간다(부모가 처리).
+ * 노드 코멘트 창. 노드 도구의 코멘트 아이콘이 그 자리에서 넓어지며 열린다(#230, 노드 안에 그려져 캔버스와 함께 움직인다).
+ * 창 왼쪽 위의 코멘트 아이콘은 도구 아이콘과 같은 자리에 있고, 누르면 창이 다시 아이콘으로 접힌다.
+ * 열리면 입력칸에 포커스가 가고, Esc 나 아이콘으로 접으면 연 버튼으로 포커스가 돌아간다(부모가 처리).
  * 내 코멘트 삭제는 한 번 더 묻고 지운다(서버에 되살리기가 없어서).
  */
 export const NodeComments = memo(function NodeComments({
@@ -153,21 +154,21 @@ export const NodeComments = memo(function NodeComments({
       }}
     >
       <header className="canvas-comments-head">
-        <span className="canvas-comment-corner" aria-hidden="true" />
+        <button
+          type="button"
+          className="canvas-comments-toggle"
+          aria-label={labels.close}
+          data-active=""
+          onClick={requestClose}
+        >
+          <Icon name="comment" size={24} />
+        </button>
         <h2 id={`${id}-title`}>{labels.title}</h2>
         {count > 0 ? (
           <span className="canvas-comments-total" aria-hidden="true">
             {count}
           </span>
         ) : null}
-        <button
-          type="button"
-          className="canvas-comments-icon"
-          aria-label={labels.close}
-          onClick={requestClose}
-        >
-          <Icon name="close" size={20} />
-        </button>
       </header>
 
       <div className="canvas-comments-body">

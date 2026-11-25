@@ -222,3 +222,51 @@ it('shows an unapplied off value on the closed node (struck-through priority, of
   rerender(<CanvasSurface data={output('evidence')} />);
   expect(container.querySelector('.canvas-node-switch')?.getAttribute('data-on')).toBe('true');
 });
+it('does not show Model knowledge or Not measured under step 3 / step 5 nodes (#230)', () => {
+  const base = { setId: 'set', row: 0, labels: CANVAS_COPY, kind: 'output' as const };
+  render(
+    <>
+      <CanvasSurface
+        data={{
+          ...base,
+          column: 3,
+          label: 'Brass base',
+          text: 'Brass base',
+          state: 'done',
+          output: {
+            id: 'e1',
+            kind: 'evidence',
+            stage: 'evidence',
+            text: 'Brass base',
+            enabled: true,
+            parentIds: [],
+            sourceType: 'model_knowledge',
+          },
+        }}
+      />
+      <CanvasSurface
+        data={{
+          ...base,
+          column: 5,
+          label: 'Shows brass',
+          text: 'Shows brass',
+          state: 'skipped',
+          groupPosition: 'only',
+          output: {
+            id: 'v1',
+            kind: 'criterion',
+            stage: 'verify',
+            text: 'Shows brass',
+            enabled: true,
+            parentIds: [],
+          },
+        }}
+      />
+    </>,
+    { wrapper },
+  );
+  expect(screen.getByText('Brass base')).toBeTruthy();
+  expect(screen.queryByText(CANVAS_COPY.modelKnowledge)).toBeNull();
+  expect(screen.queryByText(CANVAS_COPY.skipped)).toBeNull();
+  expect(document.querySelector('.canvas-card small')).toBeNull();
+});

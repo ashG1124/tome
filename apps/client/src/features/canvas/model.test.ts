@@ -231,7 +231,7 @@ it('binds output nodes and read-only verification lists to the displayed answer 
   expect(outputs.every((node) => node.data.onRetry === undefined)).toBe(true);
 });
 
-it('leaves room for the not-measured note so skipped criteria rows do not overlap', () => {
+it('does not reserve a not-measured line for skipped criteria rows (#230)', () => {
   const criteria: Node[] = [1, 2].map((n) => ({
     id: `v${n}`,
     kind: 'criterion',
@@ -259,7 +259,54 @@ it('leaves room for the not-measured note so skipped criteria rows do not overla
     const at = (id: string) => graph.nodes.find((node) => node.data.output?.id === id)!.position.y;
     return at('v2') - at('v1');
   };
-  expect(y('skipped') - y('done')).toBe(21);
+  expect(y('skipped') - y('done')).toBe(0);
+});
+
+it('marks only the prompt, step pills, group labels and answers as draggable (#230)', () => {
+  const evidence: Node = {
+    id: 'e1',
+    stage: 'evidence',
+    kind: 'evidence',
+    text: 'Brass',
+    enabled: true,
+    parentIds: [],
+  };
+  const answer = {
+    id: 'answer',
+    setId: set.id,
+    number: 1,
+    status: 'accepted',
+    imageUrl: '/a',
+    nodes: { schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [keyword, evidence] },
+  } as unknown as NonNullable<PromptSet['latestAnswer']>;
+  const { nodes } = buildCanvas(
+    [{ ...set, latestAnswer: answer }],
+    undefined,
+    { ...labels, groups: { keywords: 'Keywords', evidence: 'Evidence' } },
+    geometry,
+  );
+  const draggable = nodes
+    .filter((node) => node.draggable !== false)
+    .map((node) => node.id.replace('set-a:', ''))
+    .sort();
+  expect(draggable).toEqual(
+    [
+      'prompt',
+      'answer',
+      'analyze-heading',
+      'research-heading',
+      'evidence-heading',
+      'draft-heading',
+      'verify-heading',
+      'analyze-group-0',
+      'evidence-group-0',
+    ].sort(),
+  );
+  // 카드와 그 위 소제목은 같은 묶음을 가진다
+  const group = (id: string) => nodes.find((node) => node.id === `set-a:${id}`)!.data.group;
+  expect(group('k1')).toBe('analyze-0');
+  expect(group('analyze-group-0')).toBe('analyze-0');
+  expect(group('e1')).toBe('evidence-0');
 });
 
 it('draws step pills, group labels and joins priority rows into one card', () => {
@@ -343,7 +390,9 @@ describe('derive columns', () => {
     const origin = nodes.find((n) => n.id === 'set-a:origin-answer')!;
     const mine = nodes.find((n) => n.id === 'set-a:answer')!;
     expect(origin.data).toMatchObject({ kind: 'origin', label: 'Answer 6', origin: open });
-    expect(origin.draggable).toBe(false);
+    // 원작 답변 카드도 혼자 끌어 옮길 수 있다(#230). 머리글은 혼자 끌리지 않고 카드를 따라간다.
+    expect(origin.draggable).toBeUndefined();
+    expect(nodes.find((n) => n.id === 'set-a:origin-heading')!.draggable).toBe(false);
     expect(mine.position.y).toBeGreaterThan(origin.position.y + 1);
     // 시안 Derive: 내 답변은 원작 답변보다 179 오른쪽에 놓인다(1002 − 823)
     expect(mine.position.x).toBe(origin.position.x + 179);

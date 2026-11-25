@@ -71,8 +71,6 @@ const LAYOUT = {
   /** 묶음 행(우선순위·검증 기준) 사이 간격과 맨 위·맨 아래 안쪽 여백 */
   rowGap: 12,
   rowEdge: 20,
-  /** 카드 아래 작은 안내 한 줄(Not measured, 14px × 1.5). 5단계가 측정 전(skipped)이면 줄마다 붙는다. */
-  note: 21,
   /** 답변 그림 비율 11:7(canvas.css .canvas-image-slot). 파생 2열에서 위 카드 높이를 어림해 아래 카드를 놓는 데 쓴다. */
   answerAspect: 340 / 520,
   /** 열 맨 위(손잡이)에서 답변 카드 맨 앞 장 위쪽까지. 시안 1679:11606(카드 06 y369 − 열 y164) */
@@ -145,6 +143,8 @@ export type CardData = {
   groupPosition?: GroupPosition;
   /** 묶음 첫 줄(우선순위·검증 기준)이면 그 묶음의 모든 줄 id(위에서부터). 리믹스 표시를 묶음당 1개만 붙이는 데 쓴다. */
   groupIds?: string[];
+  /** 단계 열 안 묶음(소제목 + 그 아래 카드). 소제목을 끌면 같은 묶음이 함께 움직인다(#230). */
+  group?: string;
   setId: string;
   column: number;
   row: number;
@@ -375,7 +375,8 @@ export function buildCanvas(
         xOffset?: number;
       } = {},
     ) => {
-      // 노드는 끌어서 옮기지 않는다(리드 결정 #197). 노드 위에서 끌면 캔버스가 움직인다.
+      // 끌어 옮기는 노드(#230)는 프롬프트·단계 알약·묶음 소제목·답변 카드뿐이다. 나머지는 끌면 캔버스가 움직이고,
+      // 위 노드를 끌 때 함께 따라간다(drag-model.ts). 끌 수 있는 노드는 draggable 을 비워 캔버스 설정(펼친 동안 끔)을 따른다.
       const { heading = false, y, minHeight, draggable = false, xOffset } = opts;
       nodes.push({
         id: id(suffix),
@@ -389,7 +390,7 @@ export function buildCanvas(
           width: column === 6 ? geometry.answerWidth : column === 0 ? promptWidth : nodeWidth,
           minHeight: minHeight === false || heading ? undefined : (minHeight ?? nodeHeight),
         },
-        draggable,
+        ...(draggable ? {} : { draggable: false }),
         selectable: false,
         focusable: false,
         deletable: false,
@@ -401,7 +402,7 @@ export function buildCanvas(
       0,
       0,
       { kind: 'prompt', label: labels.prompt, text: set.prompt, state: 'done' },
-      { y: top + LAYOUT.promptTop, minHeight: false },
+      { y: top + LAYOUT.promptTop, minHeight: false, draggable: true },
     );
     let columnBottom = Math.max(
       nodeHeight,
@@ -419,7 +420,7 @@ export function buildCanvas(
           label: labels.stages[stage],
           text: labels.step(column),
         },
-        { heading: true },
+        { heading: true, draggable: true },
       );
       if (index > 0) {
         stepEdges.push({
@@ -470,6 +471,7 @@ export function buildCanvas(
       } else {
         let cursor = firstY;
         let previousKey: string | undefined;
+        let groupId = '';
         stageNodes.forEach((node, row) => {
           const group = groupOf(node);
           const next = stageNodes[row + 1];
@@ -477,6 +479,7 @@ export function buildCanvas(
           const last = !next || groupOf(next).key !== group.key;
           const groupPosition: GroupPosition =
             first && last ? 'only' : first ? 'first' : last ? 'last' : 'middle';
+          if (first) groupId = `${stage}-${row}`;
           if (first) {
             const text = labels.groups
               ? (labels.groups[group.label as GroupKey] ?? titleCase(group.label))
@@ -488,8 +491,8 @@ export function buildCanvas(
                 `${stage}-group-${row}`,
                 column,
                 row,
-                { kind: 'heading', variant: 'group', label: text },
-                { heading: true, y: cursor - LAYOUT.groupLabel },
+                { kind: 'heading', variant: 'group', label: text, group: groupId },
+                { heading: true, y: cursor - LAYOUT.groupLabel, draggable: true },
               );
             }
           }
@@ -511,6 +514,7 @@ export function buildCanvas(
               text: node.text,
               output: node,
               groupPosition,
+              group: groupId,
               ...(rowGroup ? { groupIds: rowGroup } : {}),
               answerId: answer?.status === 'accepted' ? answer.id : undefined,
               state,
@@ -519,10 +523,8 @@ export function buildCanvas(
             },
             { y: cursor, minHeight: false },
           );
-          // 측정 전(skipped) 안내 줄만큼 높여야 검증 기준 줄끼리 겹치지 않는다(#212).
-          const height =
-            estimateHeight(node, groupPosition, nodeWidth) +
-            (state === 'skipped' ? LAYOUT.note : 0);
+          // 측정 전(skipped) 안내 줄(Not measured)은 리드 결정으로 그리지 않는다(#230). 높이는 글 줄만큼이다.
+          const height = estimateHeight(node, groupPosition, nodeWidth);
           cursor += height + (isRow(node) && !last ? 0 : LAYOUT.cardGap);
           previousKey = group.key;
         });
@@ -601,7 +603,7 @@ export function buildCanvas(
             ? { inactive: true, ...(mine.copyId ? { activateAnswerId: mine.copyId } : {}) }
             : {}),
         },
-        { y: originCardY, minHeight: false, draggable: false },
+        { y: originCardY, minHeight: false, draggable: true },
       );
       if (!deleted)
         edges.push({
@@ -647,7 +649,7 @@ export function buildCanvas(
           inactive: true,
           activateAnswerId: mine.standby.id,
         },
-        { y: mineCardY, xOffset: LAYOUT.mineShift },
+        { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },
       );
     else if (mine?.preview)
       add(
@@ -661,7 +663,7 @@ export function buildCanvas(
           state: mine.preview.answer ? 'done' : 'running',
           previewing: true,
         },
-        { y: mineCardY, xOffset: LAYOUT.mineShift },
+        { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },
       );
     else if (mineShown)
       add(
@@ -677,7 +679,9 @@ export function buildCanvas(
           onRetry: current?.onRetry,
           ...(mine?.copyId ? { hiddenVersionIds: [mine.copyId] } : {}),
         },
-        derive ? { y: mineCardY, xOffset: LAYOUT.mineShift } : { y: top + LAYOUT.answerTop },
+        derive
+          ? { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true }
+          : { y: top + LAYOUT.answerTop, draggable: true },
       );
     for (const node of outputs.values()) {
       const parents = node.parentIds.length

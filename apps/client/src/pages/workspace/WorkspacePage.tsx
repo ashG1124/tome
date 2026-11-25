@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Id } from '@tome/shared';
+import type { Answer, Id } from '@tome/shared';
 import { useCallback, useId, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { WorkspaceCanvas } from '../../features/canvas';
@@ -42,6 +42,10 @@ export function WorkspacePage() {
   const [finishOpen, setFinishOpen] = useState(false);
   // 완료가 끝나면 대표 버전을 결과 크게 보기로 보여 주고, 닫으면 홈으로 간다(#124).
   const [resultCover, setResultCover] = useState<Id | null>(null);
+  // 캔버스의 답변(그림) 카드를 눌러 연 크게 보기(#230). 닫으면 캔버스에 그대로 머문다.
+  const [viewing, setViewing] = useState<Pick<Answer, 'id' | 'imageUrl'> | null>(null);
+  // 크게 보기를 닫으면 누른 답변 카드로 포커스를 돌려준다.
+  const viewOpener = useRef<HTMLElement | null>(null);
   const downloadingNow = useRef(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<unknown>(null);
@@ -96,14 +100,14 @@ export function WorkspacePage() {
           candidates.data?.answers.find((answer) => answer.id === resultCover)?.thumbUrl,
         );
 
-  // Download: 대표 버전 그림을 파일로 받는다. 받는 동안 버튼을 잠그고, 연달아 눌러도 한 번만 받는다.
-  const download = async () => {
-    if (downloadingNow.current || resultPath === null) return;
+  // Download: 크게 보는 그림(완료 뒤 대표 버전 또는 누른 답변)을 파일로 받는다. 받는 동안 버튼을 잠그고, 연달아 눌러도 한 번만 받는다.
+  const download = async (path: string | null) => {
+    if (downloadingNow.current || path === null) return;
     downloadingNow.current = true;
     setDownloading(true);
     setDownloadError(null);
     try {
-      await downloadImage(resultPath, workspace.data?.project.title ?? '');
+      await downloadImage(path, workspace.data?.project.title ?? '');
     } catch (error) {
       setDownloadError(error);
     } finally {
@@ -196,7 +200,18 @@ export function WorkspacePage() {
       {/* 가운데 생성 캔버스(#26, 프런트 B). 세트·단계 진행·답변 카드는 캔버스가 그리고, 이 화면은 자리와 데이터만 넘긴다.
           페이지를 바꾸면(?page=) 캔버스는 그 페이지 세트로 새로 그린다. */}
       {workspace.data ? (
-        <WorkspaceCanvas projectId={id} pageId={pageId} workspace={workspace.data} remix={remix} />
+        <WorkspaceCanvas
+          projectId={id}
+          pageId={pageId}
+          workspace={workspace.data}
+          remix={remix}
+          onOpenResult={(answer) => {
+            viewOpener.current =
+              document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            setDownloadError(null);
+            setViewing({ id: answer.id, imageUrl: answer.imageUrl });
+          }}
+        />
       ) : null}
       {menu ? (
         <div className="fixed top-[var(--space-workspace-edge)] right-[var(--space-icon-menu-right)]">
@@ -300,7 +315,27 @@ export function WorkspacePage() {
           }}
           imagePath={resultPath}
           alt={workspace.data?.project.title ?? ''}
-          onDownload={() => void download()}
+          onDownload={() => void download(resultPath)}
+          downloading={downloading}
+          {...(downloadError === null ? {} : { errorMessage: COPY[errorCopyKey(downloadError)] })}
+        />
+      ) : null}
+      {viewing !== null && resultPath === null ? (
+        <ResultView
+          key={viewing.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) setViewing(null);
+          }}
+          imagePath={viewing.imageUrl}
+          alt={workspace.data?.project.title ?? ''}
+          onDownload={() => void download(viewing.imageUrl)}
+          onCloseAutoFocus={(event) => {
+            const opener = viewOpener.current;
+            if (!opener?.isConnected) return;
+            event.preventDefault();
+            opener.focus({ preventScroll: true });
+          }}
           downloading={downloading}
           {...(downloadError === null ? {} : { errorMessage: COPY[errorCopyKey(downloadError)] })}
         />

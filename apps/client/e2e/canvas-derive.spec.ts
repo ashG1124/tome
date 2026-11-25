@@ -93,6 +93,20 @@ test('an edit makes My answer active, clicking either answer switches which one 
   await expect(mineCard(page)).not.toHaveAttribute('data-inactive', 'true');
   await expect(originCard(page)).toHaveAttribute('data-inactive', 'true');
   await expect(page.getByRole('button', { name: 'Previous version' })).toBeVisible();
+  // 흐린 카드를 누르면 활성만 바뀌고 크게 보기는 열리지 않는다. 활성인 내 답변을 누르면 크게 보기가 열린다(#230).
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await mineCard(page).locator('.canvas-image-slot').click();
+  const view = page.getByRole('dialog');
+  await expect(view.getByRole('button', { name: 'Download' })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('05-derive-mine-image-view.png') });
+  await page.keyboard.press('Escape');
+  await expect(view).toHaveCount(0);
+  // 원작 답변 카드(남의 작품)는 활성이 되어도 크게 보기·Download 를 열지 않는다.
+  await originCard(page).getByRole('button').focus();
+  await originCard(page).getByRole('button').click();
+  await expect(originCard(page)).not.toHaveAttribute('data-inactive', 'true');
+  await originCard(page).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('My answer label stays visible above stacked versions (#229)', async ({ page }, info) => {

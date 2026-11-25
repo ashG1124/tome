@@ -67,12 +67,6 @@
   overflow: hidden;
   padding-inline-end: var(--space-padding-8);
 }
-.canvas-card small {
-  display: block;
-  color: var(--color-font-helper-text);
-  font: var(--text-body-b2-r);
-  margin-top: var(--space-padding-3);
-}
 .canvas-weight {
   position: absolute;
   right: var(--space-padding-6);
@@ -329,10 +323,6 @@
   min-width: 0;
   padding-inline: 0;
   overflow-wrap: anywhere;
-}
-.canvas-card--output small {
-  margin-top: 0;
-  text-align: center;
 }
 /* 근거 문장: 왼쪽 정렬 + 켜짐 스위치 */
 .canvas-card--evidence {

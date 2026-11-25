@@ -132,26 +132,22 @@ export function CanvasSurface({
           <p className="canvas-prompt-text">{data.text}</p>
         </>
       ) : null}
+      {/* 근거의 Model knowledge·검증 전 Not measured 안내 줄은 리드 결정으로 그리지 않는다(#230). */}
       {data.kind === 'output' && !open ? (
-        <>
-          <div className="canvas-node-line">
-            {outputKind === 'priority' ? <Icon name="drag-handle" size={24} /> : null}
-            <p className="canvas-output-text" title={data.text}>
-              {data.text}
-            </p>
-            {outputKind === 'evidence' ? (
-              <span
-                className="canvas-node-switch"
-                data-on={String(enabled !== false)}
-                aria-hidden="true"
-              />
-            ) : null}
-            {row ? <Icon name="minus-circle" size={24} /> : null}
-          </div>
-          {data.output?.sourceType === 'model_knowledge' ? (
-            <small>{data.labels.modelKnowledge}</small>
+        <div className="canvas-node-line">
+          {outputKind === 'priority' ? <Icon name="drag-handle" size={24} /> : null}
+          <p className="canvas-output-text" title={data.text}>
+            {data.text}
+          </p>
+          {outputKind === 'evidence' ? (
+            <span
+              className="canvas-node-switch"
+              data-on={String(enabled !== false)}
+              aria-hidden="true"
+            />
           ) : null}
-        </>
+          {row ? <Icon name="minus-circle" size={24} /> : null}
+        </div>
       ) : null}
       {data.kind === 'placeholder' && !data.error ? (
         <div
@@ -220,9 +216,6 @@ export function CanvasSurface({
             </button>
           ) : null}
         </div>
-      ) : null}
-      {data.state === 'skipped' && data.kind === 'output' && !open ? (
-        <small>{data.labels.skipped}</small>
       ) : null}
       {children}
     </article>

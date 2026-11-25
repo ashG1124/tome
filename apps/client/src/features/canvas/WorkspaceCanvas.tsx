@@ -20,7 +20,7 @@ import { Navigate } from 'react-router';
 import { CANVAS_COPY, COPY, NODE_EDITOR_COPY, CANVAS_HISTORY_COPY } from '../../shared/copy';
 import { CANVAS_GEOMETRY_TOKENS } from '../../shared/tokens';
 import { api, ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
-import { ErrorNotice, Flash } from '../../shared/ui';
+import { ErrorNotice, Flash, FLASH_MS } from '../../shared/ui';
 import { useGeneration } from './hooks/useGeneration';
 import { VISIBLE_STAGES, visibleStage, type CanvasGeometry, type DerivePreview } from './model';
 import { GenerationCanvas } from './components/GenerationCanvas';
@@ -90,7 +90,8 @@ export interface WorkspaceCanvasProps {
   projectId: string;
   pageId: string;
   workspace: WorkspaceResponse;
-  onOpenResult?: (answerId: string) => void;
+  /** 답변(그림) 카드를 누르면 크게 보기(Download) 모달을 연다(#230). 없으면 답변 카드는 눌러도 아무 일이 없다. */
+  onOpenResult?: (answer: Answer) => void;
   editor?: CanvasEditorOptions | false;
   history?: CanvasHistoryOptions | false;
   remix?: CanvasRemixOptions;
@@ -289,6 +290,7 @@ function PageCanvas({
   editor = {},
   history = {},
   remix,
+  onOpenResult,
 }: WorkspaceCanvasProps) {
   const historyApi = history ? (history.api ?? HISTORY_API) : undefined;
   const historyLabels = history ? (history.labels ?? CANVAS_HISTORY_COPY) : CANVAS_HISTORY_COPY;
@@ -319,6 +321,12 @@ function PageCanvas({
   const client = useQueryClient();
   const [editingBusy, setEditingBusy] = useState(false);
   const [stacked, setStacked] = useState(false);
+  // stack 플래시는 잠깐만 보인다(#230). role=status 칸은 늘 있어서 뜨자마자 보조기기가 읽는다.
+  useEffect(() => {
+    if (!stacked) return;
+    const timer = window.setTimeout(() => setStacked(false), FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [stacked]);
   const [previewOpen, setPreviewOpen] = useState(false);
   // 사용자가 Preview 를 직접 닫았으면, 미리보기를 다시 만들어도 저절로 열지 않는다(요청·결과는 그대로 둔다).
   const previewDismissed = useRef(false);
@@ -464,6 +472,7 @@ function PageCanvas({
           derivedFrom={workspace.project.kind === 'derive' ? workspace.derivedFrom : undefined}
           derivePreview={workspace.project.kind === 'derive' ? preview : undefined}
           announcement={announcement}
+          onOpenAnswer={onOpenResult}
           history={
             history
               ? {
