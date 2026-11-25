@@ -237,11 +237,12 @@ export function WorkspacePage() {
       ) : null}
       {bar ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-[var(--space-workspace-bottom)] flex justify-center px-[var(--grid-margin)]">
-          <div className="pointer-events-auto flex w-[calc(var(--size-prompt-width)+var(--size-icon-menu-button)+var(--space-gap-4))] max-w-full items-center gap-[var(--space-gap-4)]">
-            {/* 첨부(클립) 버튼은 자리만 둔다. 동작은 첨부 기능(T11)에서. */}
+          <div className="group/prompt pointer-events-auto flex w-[calc(var(--size-prompt-width)+var(--size-icon-menu-button)+var(--space-gap-4))] max-w-full items-end gap-[var(--space-gap-4)]">
+            {/* 첨부(클립) 버튼은 자리만 둔다. 동작은 첨부 기능(T11)에서.
+                한 줄일 때는 입력 알약 가운데, 여러 줄일 때는 알약 아래쪽에 맞춘다(시안 1187:61873·1187:61893). */}
             <span
               aria-hidden="true"
-              className="flex size-[var(--size-icon-menu-button)] shrink-0 items-center justify-center rounded-[var(--radius-max)] bg-[color:var(--color-glass)] text-[color:var(--color-font-sub-text)] shadow-[var(--shadow-prompt)] backdrop-blur-[var(--blur-background)]"
+              className="mb-[calc((var(--size-prompt-pill-height)-var(--size-icon-menu-button))/2)] flex size-[var(--size-icon-menu-button)] shrink-0 items-center justify-center rounded-[var(--radius-max)] bg-[color:var(--color-glass)] text-[color:var(--color-font-sub-text)] shadow-[var(--shadow-prompt)] backdrop-blur-[var(--blur-background)] group-has-[[data-prompt-multiline]]/prompt:mb-0"
             >
               <ClipIcon />
             </span>
