@@ -166,6 +166,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
               disabled={navigation.history.disabled}
               onSelect={(answerId) => navigation.history!.select(data.setId, answerId)}
               onPin={navigation.history.pin}
+              numberOffset={data.numberOffset}
             />
           ) : null
         }

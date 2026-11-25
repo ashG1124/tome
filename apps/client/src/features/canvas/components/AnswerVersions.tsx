@@ -4,6 +4,7 @@ import { CANVAS_COPY, COPY } from '../../../shared/copy';
 import { useApiImage } from '../../../shared/api';
 import { Icon } from '../../../shared/ui';
 import { orderedAnswers } from '../hooks/useAnswerHistory';
+import { shownNumber } from '../model';
 import '../history.css';
 
 export interface AnswerVersionLabels {
@@ -21,6 +22,8 @@ export interface AnswerVersionsProps {
   disabled?: boolean;
   onSelect: (answerId: string) => void;
   onPin: (answerId: string, pinned: boolean) => Promise<void>;
+  /** 화면 번호에서 뺄 수(파생의 원작 복사본, #235) */
+  numberOffset?: number;
 }
 function StackImage({ url }: { url: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -46,6 +49,7 @@ export const AnswerVersions = memo(function AnswerVersions({
   disabled = false,
   onSelect,
   onPin,
+  numberOffset = 0,
 }: AnswerVersionsProps) {
   const versions = orderedAnswers(answers);
   const index = versions.findIndex((entry) => entry.id === answer.id);
@@ -58,7 +62,9 @@ export const AnswerVersions = memo(function AnswerVersions({
           )
         : null}
       <span className="canvas-answer-chip" aria-live="polite" aria-atomic="true">
-        {answer.number === null ? COPY['C-06'] : CANVAS_COPY.answer(answer.number)}
+        {answer.number === null
+          ? COPY['C-06']
+          : CANVAS_COPY.answer(shownNumber(answer.number, numberOffset))}
       </span>
       <button
         type="button"
