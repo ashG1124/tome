@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   applyOrder,
   formatEditedDate,
+  fullShelfPosition,
+  hasWork,
   moveCard,
+  placeAt,
   shelfCardType,
   shelfTags,
   sortShelf,
@@ -122,5 +125,38 @@ describe('applyOrder', () => {
 
   it('순서에 없는 새 프로젝트는 맨 앞에, 사라진 프로젝트는 빼고 놓는다', () => {
     expect(applyOrder([a, c], [b.id, a.id]).map((p) => p.title)).toEqual(['c', 'a']);
+  });
+});
+
+describe('hasWork (#227)', () => {
+  it('확정 답변이 없어 썸네일 주소가 없으면 작업 전 프로젝트다', () => {
+    expect(hasWork(project({ coverThumbUrl: null }))).toBe(false);
+    expect(hasWork(project({ coverThumbUrl: '/assets/answers/a/thumb' }))).toBe(true);
+  });
+});
+
+describe('fullShelfPosition·placeAt (#227)', () => {
+  const FULL = ['a', 'empty', 'b', 'c'];
+
+  it('보이는 순서에서 바로 뒤 카드 앞 자리를 전체 순번으로 돌려준다', () => {
+    // 보이는 [b, a, c] → a 는 c 바로 앞
+    expect(fullShelfPosition(FULL, ['b', 'a', 'c'], 'a')).toBe(2);
+    expect(placeAt(FULL, 'a', 2)).toEqual(['empty', 'b', 'a', 'c']);
+  });
+
+  it('맨 끝으로 가면 바로 앞 카드 뒤, 혼자면 0', () => {
+    expect(fullShelfPosition(FULL, ['b', 'c', 'a'], 'a')).toBe(3);
+    expect(placeAt(FULL, 'a', 3)).toEqual(['empty', 'b', 'c', 'a']);
+    expect(fullShelfPosition(['empty', 'a'], ['a'], 'a')).toBe(0);
+  });
+
+  it('맨 앞으로 가면 첫 카드 바로 앞(숨긴 빈 프로젝트보다 뒤일 수 있다)', () => {
+    expect(fullShelfPosition(['empty', 'a', 'b'], ['b', 'a'], 'b')).toBe(1);
+    expect(placeAt(['empty', 'a', 'b'], 'b', 1)).toEqual(['empty', 'b', 'a']);
+  });
+
+  it('placeAt 은 범위를 넘으면 맨 끝·맨 앞에 넣는다', () => {
+    expect(placeAt(['a', 'b'], 'a', 99)).toEqual(['b', 'a']);
+    expect(placeAt(['a', 'b'], 'b', -3)).toEqual(['b', 'a']);
   });
 });

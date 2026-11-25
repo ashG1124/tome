@@ -32,16 +32,37 @@ interface ShelfCardProps {
   project: ProjectSummary;
   /** 맨 오른쪽 칸 쪽이면 왼쪽으로 넓어진다. */
   openToLeft: boolean;
-  /** 키보드로 순서를 한 칸 앞(-1)·뒤(+1)로 옮긴다. */
-  onMove: (step: -1 | 1) => void;
+  /** 키보드로 순서를 옮긴다. step 은 칸 수(-1·+1 은 한 칸, ±rowStep 은 한 줄). */
+  onMove: (step: number) => void;
+  /** Alt+↑/↓ 로 옮기는 칸 수(서가 한 줄의 칸 수). */
+  rowStep?: number;
+  /** 끌려 다니는 중이면 넓어지지 않고 그림자를 띄운다. */
+  lifted?: boolean;
+  /** 링크 설명(순서 옮기기 키 안내) 요소 id. */
+  describedBy?: string;
 }
+
+const MOVE_KEYS: Record<string, 'left' | 'right' | 'up' | 'down'> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+};
 
 /**
  * 서가 카드 한 장(108×192). 마우스를 올리거나 키보드 포커스가 오면 넓어지며 종류·편집일이 보인다.
  * 표지 사진이 뜨면 글자를 흰색으로 바꾸고, 좁을 때는 사진 유무와 관계없이 제목을 투명하게 둔다(낭독기·Tab·클릭은 그대로).
- * 링크에는 제목만 넣어 화면 낭독기가 제목으로 읽게 하고, Alt+←/→ 로 순서를 바꾼다(드래그의 키보드 대체).
+ * 링크에는 제목만 넣어 화면 낭독기가 제목으로 읽게 하고, Alt+←/→(한 칸)·Alt+↑/↓(한 줄)로 순서를 바꾼다(드래그의 키보드 대체).
+ * 링크는 카드 상자 전체를 덮어서(늘린 누름 영역) 상자 어디를 눌러도 프로젝트로 들어간다. 카드 안 다른 버튼은 없다.
  */
-export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
+export function ShelfCard({
+  project,
+  openToLeft,
+  onMove,
+  rowStep = 1,
+  lifted = false,
+  describedBy,
+}: ShelfCardProps) {
   const type = shelfCardType(project);
   const tags = shelfTags(project);
   const path = project.coverThumbUrl;
@@ -65,15 +86,22 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
     : 'text-[color:var(--color-font-sub-text)]';
 
   const handleKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
-    if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+    const direction = MOVE_KEYS[event.key];
+    if (!event.altKey || direction === undefined) return;
     event.preventDefault();
-    onMove(event.key === 'ArrowLeft' ? -1 : 1);
+    const step = direction === 'left' ? -1 : direction === 'right' ? 1 : rowStep;
+    onMove(direction === 'up' ? -step : step);
   };
 
   return (
     <div
       data-cover={cover}
-      className="group relative h-[var(--size-shelf-card-height)] w-[var(--size-shelf-card-width)]"
+      data-lifted={lifted || undefined}
+      className={[
+        // 끌려 다니는 동안은 group 을 빼서 hover·focus 로 넓어지지 않게 한다.
+        lifted ? '' : 'group',
+        'relative h-[var(--size-shelf-card-height)] w-[var(--size-shelf-card-width)]',
+      ].join(' ')}
     >
       <div
         className={[
@@ -86,6 +114,7 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
           'group-hover:z-10 group-hover:w-[var(--size-shelf-card-width-open)]',
           // 키보드로 들어왔을 때만 카드 바깥에 Figma 톤 테두리(마우스 클릭 포커스엔 안 보인다)
           'group-has-[:focus-visible]:outline-[length:var(--stroke-weight-bold)] group-has-[:focus-visible]:outline-offset-[var(--focus-outline-offset)] group-has-[:focus-visible]:outline-[color:var(--color-shelf-focus)]',
+          lifted ? 'shadow-[var(--shadow-floating)]' : '',
         ].join(' ')}
       >
         {path !== null && cover !== 'failed' ? (
@@ -153,8 +182,13 @@ export function ShelfCard({ project, openToLeft, onMove }: ShelfCardProps) {
           <Link
             to={`/projects/${project.id}`}
             onKeyDown={handleKeyDown}
+            aria-describedby={describedBy}
+            // 끌기는 서가가 pointer 이벤트로 맡는다. 브라우저의 링크 끌기(주소 끌어 놓기)는 끈다.
+            draggable={false}
             className={[
               'mt-auto line-clamp-3 break-words no-underline',
+              // 늘린 누름 영역: 링크의 ::after 가 카드 상자 전체(안쪽 여백까지)를 덮는다.
+              "after:absolute after:inset-[calc(var(--space-padding-4)*-1)] after:content-['']",
               '[font:var(--text-subtitle-st2-sb)] tracking-[var(--letter-spacing-shelf-title)]',
               'group-focus-within:line-clamp-1 group-hover:line-clamp-1',
               // 기본(좁을 때)은 이미지만 보이게 제목을 투명하게 둔다(링크 이름은 그대로라 낭독기·Tab·클릭 가능).

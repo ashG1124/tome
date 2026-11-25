@@ -82,3 +82,57 @@ describe('ShelfCard 표지 사진', () => {
     expect(titleHidden()).toBe(true);
   });
 });
+
+function renderWith(props: Partial<Parameters<typeof ShelfCard>[0]>): HTMLElement {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/',
+        element: <ShelfCard project={BASE} openToLeft={false} onMove={() => {}} {...props} />,
+      },
+    ],
+    { initialEntries: ['/'] },
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  ).container;
+}
+
+describe('ShelfCard 상자 누르기·옮기기 (#227)', () => {
+  it('링크 하나가 카드 상자 전체를 덮어(안쪽 여백까지) 상자 어디를 눌러도 들어간다', () => {
+    const container = renderWith({});
+    const links = container.querySelectorAll('a');
+    expect(links).toHaveLength(1);
+    expect(container.querySelectorAll('button')).toHaveLength(0);
+    const link = links[0] as HTMLAnchorElement;
+    expect(link.className).toContain('after:absolute');
+    expect(link.className).toContain('after:inset-[calc(var(--space-padding-4)*-1)]');
+    // 브라우저 기본 링크 끌기는 끈다(끌기는 서가 pointer 이벤트가 맡는다)
+    expect(link.getAttribute('draggable')).toBe('false');
+  });
+
+  it('Alt+←/→ 는 한 칸, Alt+↑/↓ 는 한 줄(rowStep 칸)씩 옮기고, Alt 없는 화살표는 무시한다', () => {
+    const moves: number[] = [];
+    renderWith({ rowStep: 13, onMove: (step) => moves.push(step) });
+    const link = screen.getByRole('link', { name: 'Alpha' });
+
+    fireEvent.keyDown(link, { key: 'ArrowLeft', altKey: true });
+    fireEvent.keyDown(link, { key: 'ArrowRight', altKey: true });
+    fireEvent.keyDown(link, { key: 'ArrowUp', altKey: true });
+    fireEvent.keyDown(link, { key: 'ArrowDown', altKey: true });
+    fireEvent.keyDown(link, { key: 'ArrowDown' });
+
+    expect(moves).toEqual([-1, 1, -13, 13]);
+  });
+
+  it('끌려 다니는 동안(lifted)은 hover·focus 로 넓어지지 않게 group 을 빼고 그림자를 띄운다', () => {
+    const container = renderWith({ lifted: true });
+    const card = container.querySelector('[data-cover]') as HTMLElement;
+    expect(card.getAttribute('data-lifted')).toBe('true');
+    expect(card.classList.contains('group')).toBe(false);
+    expect(card.firstElementChild?.className).toContain('shadow-[var(--shadow-floating)]');
+  });
+});
