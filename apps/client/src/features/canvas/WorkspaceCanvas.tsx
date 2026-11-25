@@ -22,7 +22,7 @@ import { CANVAS_GEOMETRY_TOKENS } from '../../shared/tokens';
 import { api, ApiRequestError, authRedirectTarget, errorCopyKey } from '../../shared/api';
 import { ErrorNotice, Flash } from '../../shared/ui';
 import { useGeneration } from './hooks/useGeneration';
-import { VISIBLE_STAGES, visibleStage, type CanvasGeometry } from './model';
+import { VISIBLE_STAGES, visibleStage, type CanvasGeometry, type DerivePreview } from './model';
 import { GenerationCanvas } from './components/GenerationCanvas';
 import { NodeEditPanel, type NodeEditorLabels } from './components/NodeEditPanel';
 import { PreviewPanel } from './components/PreviewPanel';
@@ -112,6 +112,7 @@ function EditorSession({
   onClose,
   onComment,
   onDraft,
+  onPreview,
   onApplyingChange,
   previewOpen,
   onPreviewOpenChange,
@@ -131,6 +132,8 @@ function EditorSession({
   onComment?: () => void;
   /** 고친 값(아직 Apply 전)을 캔버스의 접힌 노드에도 보이게 알린다. */
   onDraft: (draft: { setId: string; nodes: NodeSnapshot['nodes'] } | undefined) => void;
+  /** 만드는 중(answer 없음)·다 만든 미리보기. 없으면 undefined */
+  onPreview: (preview: DerivePreview | undefined) => void;
   onApplyingChange: (value: boolean) => void;
   previewOpen: boolean;
   onPreviewOpenChange: (open: boolean) => void;
@@ -195,6 +198,17 @@ function EditorSession({
     onDraft({ setId: base.setId, nodes: snapshotNodes });
   }, [base.setId, snapshotNodes, onDraft]);
   useEffect(() => () => onDraft(undefined), [onDraft]);
+  // 미리보기를 만드는 중·다 만든 것을 캔버스에 알린다(파생의 My answer 자리, #229).
+  const previewAnswer = editor.preview.status === 'ready' ? editor.preview.answer : undefined;
+  const previewLive = previewStatus === 'generating' || previewStatus === 'ready';
+  useEffect(() => {
+    onPreview(
+      previewLive
+        ? { setId: base.setId, ...(previewAnswer ? { answer: previewAnswer } : {}) }
+        : undefined,
+    );
+  }, [base.setId, previewLive, previewAnswer, onPreview]);
+  useEffect(() => () => onPreview(undefined), [onPreview]);
   const progress = useQuery<GetJobResponse | null>({
     queryKey: ['revision-preview', base.id],
     queryFn: skipToken,
@@ -319,6 +333,8 @@ function PageCanvas({
   // 편집 세션(고친 값·미리보기)이 붙은 세트. 노드를 접어도 남고, Apply·버전 이동 때 끝난다.
   const [sessionSet, setSessionSet] = useState<string>();
   const [draft, setDraft] = useState<{ setId: string; nodes: NodeSnapshot['nodes'] }>();
+  // 편집 세션의 미리보기. 파생 프로젝트에서 My answer 자리에 그린다(#229).
+  const [preview, setPreview] = useState<DerivePreview>();
   const endSession = useCallback(() => {
     setSessionSet(undefined);
     setDraft(undefined);
@@ -446,6 +462,7 @@ function PageCanvas({
           labels={CANVAS_COPY}
           geometry={geometry}
           derivedFrom={workspace.project.kind === 'derive' ? workspace.derivedFrom : undefined}
+          derivePreview={workspace.project.kind === 'derive' ? preview : undefined}
           announcement={announcement}
           history={
             history
@@ -609,6 +626,7 @@ function PageCanvas({
           nodeId={selected?.setId === sessionSet ? selected.nodeId : undefined}
           slot={selected?.setId === sessionSet ? slot : null}
           onDraft={setDraft}
+          onPreview={setPreview}
           appliedIds={connectionApply.appliedIds}
           pendingApply={connectionApply.pending}
           onPendingApplied={connectionApply.done}

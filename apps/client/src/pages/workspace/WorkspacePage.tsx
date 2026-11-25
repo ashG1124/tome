@@ -130,9 +130,9 @@ export function WorkspacePage() {
     }
   };
 
-  // 리믹스 상대를 고른다. 저장되면 제목에 상대가 붙도록 화면을 다시 받고 패널을 닫는다.
+  // 리믹스 상대를 고른다(null 이면 해제). 저장되면 제목에 상대가 붙도록 화면을 다시 받고 패널을 닫는다.
   // 실패하면 패널 안에 오류를 보여 주고, 원래 상대(또는 상대 없음)를 그대로 둔다.
-  const choosePartner = async (partnerId: string) => {
+  const choosePartner = async (partnerId: string | null) => {
     if (choosingPartner.current) return;
     choosingPartner.current = true;
     setChoosing(true);

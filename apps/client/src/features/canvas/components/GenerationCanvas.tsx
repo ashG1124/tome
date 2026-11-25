@@ -17,6 +17,7 @@ import {
   type CanvasGeometry,
   type CanvasLabels,
   type CanvasNode,
+  type DerivePreview,
   type GenerationView,
 } from '../model';
 import { CanvasCard } from './CanvasCard';
@@ -88,6 +89,8 @@ export interface GenerationCanvasProps {
   geometry: CanvasGeometry;
   /** 파생 프로젝트면 원작 답변 카드를 위에 더한다. */
   derivedFrom?: WorkspaceDerivedFrom;
+  /** 파생 세트에서 노드를 고쳐 만드는 미리보기. 있으면 My answer 자리에 그린다(#229). */
+  derivePreview?: DerivePreview;
   announcement?: string;
   editor?: CanvasEditorConnection;
   history?: CanvasHistoryConnection;
@@ -101,6 +104,7 @@ function CanvasContent({
   labels,
   geometry,
   derivedFrom,
+  derivePreview,
   announcement,
   editor,
   history,
@@ -119,9 +123,9 @@ function CanvasContent({
     };
   }, []);
   const graph = useMemo(
-    () => buildCanvas(sets, generation, labels, geometry, derivedFrom),
+    () => buildCanvas(sets, generation, labels, geometry, derivedFrom, derivePreview),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fontsReady 는 배치 재계산 신호다.
-    [sets, generation, labels, geometry, derivedFrom, fontsReady],
+    [sets, generation, labels, geometry, derivedFrom, derivePreview, fontsReady],
   );
   const flow = useReactFlow<CanvasNode, Edge>();
   const initialized = useNodesInitialized();
