@@ -9,6 +9,7 @@ import {
   promptHeight,
   visibleStage,
   sameCardData,
+  viewableOrigin,
   type CanvasGeometry,
   type CanvasLabels,
   type GenerationView,
@@ -448,6 +449,13 @@ describe('derive columns', () => {
     expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
     expect(nodes.find((n) => n.id === 'set-a:origin-answer')?.data.origin?.answer).toBeNull();
   });
+  it('opens the original picture with the original title, never a gone original (#237)', () => {
+    expect(viewableOrigin(open)).toEqual({ id: 'o1', imageUrl: '/origin', title: 'City sneakers' });
+    expect(viewableOrigin({ ...open, answer: null })).toBeUndefined();
+    expect(viewableOrigin(fakeDeletedOriginDerivedFrom())).toBeUndefined();
+    expect(viewableOrigin({ ...open, creator: null })).toBeUndefined();
+    expect(viewableOrigin(undefined)).toBeUndefined();
+  });
   describe('active answer (#229)', () => {
     const summary = (id: string, number: number) => ({
       id,
@@ -523,6 +531,34 @@ describe('derive columns', () => {
         setId: 'other',
       });
       expect(nodeOf(other.nodes, 'answer')).toBeUndefined();
+    });
+
+    it('a failed preview keeps My answer in place with the error and Retry (#237)', () => {
+      const onRetry = async () => {};
+      const error = { message: 'Could not make it', retryable: true };
+      for (const versions of [0, 1]) {
+        const { nodes, edges } = buildCanvas(
+          [derivedSet('copy', versions)],
+          undefined,
+          labels,
+          geometry,
+          open,
+          { setId: 'set-a', error, onRetry },
+        );
+        // 적용한 버전이 없어도 My answer 머리글·카드가 남고, 카드는 실패 상태로 오류·Retry 를 그린다.
+        expect(headings(nodes)).toEqual(['shina’s answer', 'My answer']);
+        const mine = nodeOf(nodes, 'answer')!;
+        expect(mine.data).toMatchObject({ previewing: true, state: 'failed', error, onRetry });
+        expect(mine.data.inactive).toBeUndefined();
+        expect(mine.data.answer).toBeUndefined();
+        expect(nodeOf(nodes, 'answer-heading')!.data.inactive).toBeUndefined();
+        // 원작은 흐리고, 누르면 그대로 원작(복사본)으로 돌아간다.
+        expect(nodeOf(nodes, 'origin-answer')!.data).toMatchObject({
+          inactive: true,
+          activateAnswerId: 'copy',
+        });
+        expect(edges.find((e) => e.target === 'set-a:answer')?.className).toBeUndefined();
+      }
     });
 
     it('my applied version is active; the copy is left out of its versions', () => {

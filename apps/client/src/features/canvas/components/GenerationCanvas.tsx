@@ -8,7 +8,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import type { CanvasRemixOptions } from '../remix-model';
-import type { Answer, PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
+import type { PromptSet, WorkspaceDerivedFrom } from '@tome/shared';
 import {
   buildCanvas,
   keyboardTarget,
@@ -19,12 +19,13 @@ import {
   type CanvasNode,
   type DerivePreview,
   type GenerationView,
+  type ViewableAnswer,
 } from '../model';
 import { CanvasCard } from './CanvasCard';
 import { useOpenShift } from '../hooks/useOpenShift';
 import { useMeasuredStack } from '../hooks/useMeasuredStack';
 import { DRAG_DISTANCE, useNodeDrag } from '../hooks/useNodeDrag';
-import { dragOffset } from '../drag-model';
+import { withDragOffset } from '../drag-model';
 import {
   CanvasNavigation,
   type CanvasEditorConnection,
@@ -98,8 +99,10 @@ export interface GenerationCanvasProps {
   history?: CanvasHistoryConnection;
   remix?: CanvasRemixOptions;
   remixDisabled?: boolean;
-  /** 답변(그림) 카드를 누르면 그 답변을 크게 보기(Download)로 연다(#230). */
-  onOpenAnswer?: (answer: Answer) => void;
+  /** 답변(그림) 카드·원작 답변 카드를 누르면 그 그림을 크게 보기(Download)로 연다(#230·#237). */
+  onOpenAnswer?: (answer: ViewableAnswer) => void;
+  /** 끌어 옮긴 노드 자리를 저장할 브라우저 저장소 키(프로젝트·페이지별, #237). 없으면 저장하지 않는다. */
+  dragStorageKey?: string;
 }
 
 function CanvasContent({
@@ -115,6 +118,7 @@ function CanvasContent({
   remix,
   remixDisabled,
   onOpenAnswer,
+  dragStorageKey,
 }: GenerationCanvasProps) {
   // 글꼴이 늦게 도착하면 줄 수 어림이 달라지므로 다 받은 뒤 한 번 더 배치한다.
   const [fontsReady, setFontsReady] = useState(false);
@@ -136,7 +140,12 @@ function CanvasContent({
   const initialized = useNodesInitialized();
   const store = useStoreApi<CanvasNode, Edge>();
   const previousLayout = useRef(new Map<string, { x: number; y: number }>());
-  const drag = useNodeDrag();
+  const setIds = useMemo(() => new Set(sets.map((set) => set.id)), [sets]);
+  const drag = useNodeDrag(dragStorageKey, setIds);
+  // 처음 그리는 노드부터 저장해 둔 끈 자리에 놓는다(#237). 그려진 뒤 옮기면 화면이 한 번 튄다.
+  const [initialNodes] = useState(() =>
+    graph.nodes.map((node) => withDragOffset(node, drag.offsets.current)),
+  );
   const fitted = useRef(false);
   const [active, setActive] = useState<Record<string, string>>({});
   const activeIds = useMemo(() => {
@@ -157,15 +166,7 @@ function CanvasContent({
     // 새로 생기는 노드는 사용자가 끌어 둔 단계 열·묶음·답변 자리만큼 옮겨 놓는다(#230).
     const added = graph.nodes
       .filter((node) => !previousIds.has(node.id))
-      .map((node) => {
-        const offset = dragOffset(drag.offsets.current, node.data);
-        return offset.x || offset.y
-          ? {
-              ...node,
-              position: { x: node.position.x + offset.x, y: node.position.y + offset.y },
-            }
-          : node;
-      });
+      .map((node) => withDragOffset(node, drag.offsets.current));
     if (previous.some((node) => !nextIds.has(node.id)) || added.length) {
       flow.setNodes([...previous.filter((node) => nextIds.has(node.id)), ...added]);
     }
@@ -195,11 +196,12 @@ function CanvasContent({
     if (initialized && !fitted.current && graph.nodes.length) {
       fitted.current = true;
       const { width, height } = store.getState();
-      const view = recentView(flow.getNodes(), sets, width, height, !!derivedFrom);
+      // 첫 화면은 끌어 둔 자리가 아니라 처음 배치(graph) 기준으로 맞춘다. 새로고침 전과 같은 화면 위에 끈 노드가 제자리에 있다(#237).
+      const view = recentView(graph.nodes, sets, width, height, !!derivedFrom);
       if (view) void flow.setViewport(view);
       else void flow.fitView({ padding: 0.12, minZoom: 0.3, maxZoom: 0.8 });
     }
-  }, [initialized, flow, store, sets, graph.nodes.length, derivedFrom]);
+  }, [initialized, flow, store, sets, graph.nodes, derivedFrom]);
 
   // 노드를 제자리에서 펼치면 아래 노드를 밀어 내리고, 다 펼친 뒤 펼친 카드와 노드 도구가 화면 안에 오게 살짝 옮긴다.
   const openId = useOpenShift(editor?.selected);
@@ -377,7 +379,7 @@ function CanvasContent({
           {announcement}
         </div>
         <ReactFlow<CanvasNode, Edge>
-          defaultNodes={graph.nodes}
+          defaultNodes={initialNodes}
           defaultEdges={graph.edges}
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}

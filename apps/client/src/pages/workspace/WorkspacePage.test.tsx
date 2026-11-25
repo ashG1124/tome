@@ -24,7 +24,7 @@ vi.mock('../../features/canvas', () => ({
     projectId: string;
     pageId: string;
     remix?: CanvasRemixOptions;
-    onOpenResult?: (answer: { id: string; imageUrl: string }) => void;
+    onOpenResult?: (answer: { id: string; imageUrl: string; title?: string }) => void;
   }) => (
     <div
       data-testid="canvas"
@@ -38,6 +38,19 @@ vi.mock('../../features/canvas', () => ({
         onClick={() => onOpenResult?.({ id: 'answer-1', imageUrl: 'data:image/png;base64,ANSWER' })}
       >
         answer card
+      </button>
+      {/* 파생의 원작 답변 카드 누름 대역(#237): 원작 제목이 함께 온다 */}
+      <button
+        type="button"
+        onClick={() =>
+          onOpenResult?.({
+            id: 'origin-1',
+            imageUrl: 'data:image/png;base64,ORIGIN',
+            title: 'Original title',
+          })
+        }
+      >
+        origin card
       </button>
     </div>
   ),
@@ -251,6 +264,17 @@ describe('WorkspacePage 답변 크게 보기(#230)', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: COPY['D-13'] })).toBeNull());
     expect(router.state.location.pathname).toBe(`/projects/${PROJECT}`);
     expect(router.state.location.state).toBeNull();
+  });
+
+  it('파생의 원작 답변 카드를 누르면 원작 그림을 원작 제목으로 크게 보고 받는다(#237)', async () => {
+    const spy = vi.spyOn(downloadModule, 'downloadImage').mockResolvedValue();
+    renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: 'origin card' }));
+    const view = await screen.findByRole('dialog', { name: 'Original title' });
+    expect(view.querySelector('img')?.getAttribute('alt')).toBe('Original title');
+    fireEvent.click(await screen.findByRole('button', { name: COPY['D-13'] }));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith('data:image/png;base64,ORIGIN', 'Original title');
   });
 });
 

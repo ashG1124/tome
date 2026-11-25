@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CanvasNode, CardData } from './model';
-import { dragMembers, dragOffset, dragSource, dragUnits } from './drag-model';
+import { dragMembers, dragOffset, dragSource, dragUnits, withDragOffset } from './drag-model';
 
 const labels = {} as CardData['labels'];
 function node(id: string, data: Partial<CardData> & Pick<CardData, 'kind' | 'column'>): CanvasNode {
@@ -76,5 +76,14 @@ describe('drag rules (#230)', () => {
     expect(dragOffset(offsets, get('d1').data)).toEqual({ x: 10, y: 5 });
     expect(dragOffset(offsets, get('answer-heading').data)).toEqual({ x: 7, y: 7 });
     expect(dragOffset(offsets, get('other-set-k1').data)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('places a node at its dragged spot, or returns it untouched (#237)', () => {
+    const offsets = new Map([['s:column:1', { x: 10, y: -5 }]]);
+    const k1 = { ...get('k1'), position: { x: 100, y: 200 } };
+    expect(withDragOffset(k1, offsets).position).toEqual({ x: 110, y: 195 });
+    expect(k1.position).toEqual({ x: 100, y: 200 });
+    const prompt = get('prompt');
+    expect(withDragOffset(prompt, offsets)).toBe(prompt);
   });
 });

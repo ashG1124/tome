@@ -67,6 +67,17 @@ function near(actual: number, expected: number, tolerance = 2) {
   expect(Math.abs(actual - expected), `${actual} ≈ ${expected}`).toBeLessThanOrEqual(tolerance);
 }
 
+/** 노드의 캔버스 좌표(React Flow 가 transform 에 적는 위치). 화면 확대·이동과 상관없다. */
+async function flowPosition(locator: Locator) {
+  return locator.evaluate((element) => {
+    const match = /translate\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(
+      (element as HTMLElement).style.transform,
+    );
+    if (!match) throw new Error('no transform');
+    return { x: Number(match[1]), y: Number(match[2]) };
+  });
+}
+
 test('upper nodes carry their lower nodes; lower nodes do not move alone; clicks still open', async ({
   page,
 }, info) => {
@@ -132,6 +143,16 @@ test('upper nodes carry their lower nodes; lower nodes do not move alone; clicks
   // 누르기(움직이지 않음)는 여전히 노드를 연다. 펼친 동안에는 알약을 끌어도 열이 움직이지 않는다.
   await k1.locator('[data-canvas-card]').click();
   await expect(k1.locator('.node-open')).toBeVisible();
+  // 펼치는 동안 아래 노드가 밀려 내려간다. 다 펼쳐 멈춘 뒤 간격을 잰다.
+  let lastK2 = Number.NaN;
+  await expect
+    .poll(async () => {
+      const current = (await box(k2)).y;
+      const stable = Math.abs(current - lastK2) < 0.5;
+      lastK2 = current;
+      return stable;
+    })
+    .toBe(true);
   const openGap = (await box(k2)).y - (await box(pill1)).y;
   const pillToPill = (await box(pill2)).x - (await box(pill1)).x;
   await drag(page, pill1, 0, 80);
@@ -250,3 +271,108 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(tool).toBeFocused();
   });
 }
+
+test('dragged nodes stay where they were after a reload, from the first paint (#237)', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openFinished(page);
+  const projectId = page.url().split('/projects/')[1]!.split(/[?#]/)[0]!;
+
+  const pill1 = node(page, 'analyze-heading');
+  const k1 = node(page, 'k1');
+  const s1 = node(page, 's1');
+  const prompt = node(page, 'prompt');
+  const answer = node(page, 'answer');
+  await drag(page, pill1, 60, 90);
+  await drag(page, node(page, 'research-group-1'), 40, 60);
+  await drag(page, prompt, -30, -50);
+  await drag(page, answer.locator('.canvas-image-slot'), -40, 30);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const ids = ['analyze-heading', 'k1', 's1', 'prompt', 'answer', 'research-heading'] as const;
+  const before = Object.fromEntries(
+    await Promise.all(ids.map(async (id) => [id, await flowPosition(node(page, id))] as const)),
+  );
+  // 프로젝트·페이지별 키에 버전이 붙은 값으로 저장한다.
+  const stored = await page.evaluate(
+    (prefix) =>
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(prefix))
+        .map((key) => [key, JSON.parse(localStorage.getItem(key) ?? 'null')] as const),
+    `tome.canvas.drag.${projectId}.`,
+  );
+  expect(stored).toHaveLength(1);
+  expect(stored[0]![1]).toMatchObject({ v: 1 });
+
+  // 새로고침한 뒤 첫 그림부터 끈 자리에 있는지(한 번 그렸다가 옮기지 않는지) 1단계 알약·답변 카드의 위치를 모두 적어 둔다.
+  await page.addInitScript(() => {
+    const seen: Record<string, string[]> = { pill: [], answer: [] };
+    (window as unknown as { __dragSeen: typeof seen }).__dragSeen = seen;
+    const record = () => {
+      for (const [key, suffix] of [
+        ['pill', ':analyze-heading'],
+        ['answer', ':answer'],
+      ] as const) {
+        const element = document.querySelector<HTMLElement>(
+          `.react-flow__node[data-id$="${suffix}"]`,
+        );
+        const transform = element?.style.transform;
+        const list = seen[key]!;
+        if (transform && list[list.length - 1] !== transform) list.push(transform);
+      }
+    };
+    new MutationObserver(record).observe(document, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['style'],
+    });
+  });
+  await page.reload();
+  await expect(page.locator('.canvas-answer-versions')).toBeVisible();
+  // 실제 높이로 다시 쌓기(useMeasuredStack)가 끝날 때까지 기다린 뒤 비교한다.
+  await expect.poll(async () => (await flowPosition(s1)).y).toBeCloseTo(before.s1!.y, 0);
+  for (const id of ids) {
+    const after = await flowPosition(node(page, id));
+    near(after.x, before[id]!.x, 1);
+    near(after.y, before[id]!.y, 1);
+  }
+  const seen = await page.evaluate(
+    () => (window as unknown as { __dragSeen: Record<string, string[]> }).__dragSeen,
+  );
+  expect(seen.pill).toHaveLength(1);
+  expect(seen.answer).toHaveLength(1);
+  // 끈 노드도 여전히 눌러 열 수 있다.
+  await expect(pill1).toBeVisible();
+  await k1.locator('[data-canvas-card]').click();
+  await expect(k1.locator('.node-open')).toBeVisible();
+  await page.screenshot({ path: info.outputPath('06-drag-restored-after-reload.png') });
+  expect(errors).toEqual([]);
+});
+
+test('a broken stored value is ignored and the canvas uses its own layout (#237)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await openFinished(page);
+  const projectId = page.url().split('/projects/')[1]!.split(/[?#]/)[0]!;
+  const pill = node(page, 'analyze-heading');
+  const original = await flowPosition(pill);
+  await drag(page, pill, 60, 90);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.evaluate((prefix) => {
+    const keys = Object.keys(localStorage).filter((key) => key.startsWith(prefix));
+    if (keys.length !== 1) throw new Error(`expected one stored page, got ${keys.length}`);
+    for (const key of keys) localStorage.setItem(key, '{"v":1,"offsets":"oops"}');
+    localStorage.setItem(`${prefix}unknown-page`, 'not json');
+  }, `tome.canvas.drag.${projectId}.`);
+  await page.reload();
+  await expect(page.locator('.canvas-answer-versions')).toBeVisible();
+  const after = await flowPosition(pill);
+  near(after.x, original.x, 1);
+  near(after.y, original.y, 1);
+  expect(errors).toEqual([]);
+});

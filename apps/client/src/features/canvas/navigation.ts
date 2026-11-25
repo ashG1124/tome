@@ -1,8 +1,9 @@
-import type { Answer, AnswerSummary, Node, NodeComment } from '@tome/shared';
+import type { AnswerSummary, Node, NodeComment } from '@tome/shared';
 import type { CanvasRemixOptions } from './remix-model';
 import type { AnswerVersionLabels } from './components/AnswerVersions';
 import { createContext, type ContextType, type ReactNode } from 'react';
 import { GROUP_KINDS } from './edit-model';
+import type { ViewableAnswer } from './model';
 
 export interface CanvasEditorSelection {
   setId: string;
@@ -61,8 +62,8 @@ export const CanvasNavigation = createContext<{
   focus: (id: string, reveal?: boolean) => void;
   move: (id: string, key: string) => void;
   editor?: CanvasEditorConnection;
-  /** 답변(그림) 카드를 누르면(또는 Enter) 크게 보기 모달을 연다(#230). */
-  openAnswer?: (answer: Answer) => void;
+  /** 답변(그림) 카드·파생의 원작 답변 카드를 누르면(또는 Enter) 크게 보기 모달을 연다(#230·#237). */
+  openAnswer?: (answer: ViewableAnswer) => void;
 }>({ active: {}, focus: () => {}, move: () => {} });
 
 export type CanvasHistoryConnection = NonNullable<ContextType<typeof CanvasNavigation>['history']>;

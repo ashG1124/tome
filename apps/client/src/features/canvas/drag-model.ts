@@ -56,3 +56,11 @@ export function dragOffset(offsets: ReadonlyMap<string, Point>, data: CardData):
   }
   return { x, y };
 }
+
+/** 노드를 사용자가 끌어 둔 거리만큼 옮긴 사본. 끈 거리가 없으면 그 노드를 그대로 돌려준다. */
+export function withDragOffset(node: CanvasNode, offsets: ReadonlyMap<string, Point>): CanvasNode {
+  const offset = dragOffset(offsets, node.data);
+  return offset.x || offset.y
+    ? { ...node, position: { x: node.position.x + offset.x, y: node.position.y + offset.y } }
+    : node;
+}

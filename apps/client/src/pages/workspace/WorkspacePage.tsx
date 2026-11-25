@@ -43,7 +43,10 @@ export function WorkspacePage() {
   // 완료가 끝나면 대표 버전을 결과 크게 보기로 보여 주고, 닫으면 홈으로 간다(#124).
   const [resultCover, setResultCover] = useState<Id | null>(null);
   // 캔버스의 답변(그림) 카드를 눌러 연 크게 보기(#230). 닫으면 캔버스에 그대로 머문다.
-  const [viewing, setViewing] = useState<Pick<Answer, 'id' | 'imageUrl'> | null>(null);
+  // 파생의 원작 답변 카드면 title 이 원작 제목이다(#237). 없으면 이 프로젝트 제목을 쓴다.
+  const [viewing, setViewing] = useState<
+    (Pick<Answer, 'id' | 'imageUrl'> & { title?: string }) | null
+  >(null);
   // 크게 보기를 닫으면 누른 답변 카드로 포커스를 돌려준다.
   const viewOpener = useRef<HTMLElement | null>(null);
   const downloadingNow = useRef(false);
@@ -101,13 +104,13 @@ export function WorkspacePage() {
         );
 
   // Download: 크게 보는 그림(완료 뒤 대표 버전 또는 누른 답변)을 파일로 받는다. 받는 동안 버튼을 잠그고, 연달아 눌러도 한 번만 받는다.
-  const download = async (path: string | null) => {
+  const download = async (path: string | null, title = workspace.data?.project.title ?? '') => {
     if (downloadingNow.current || path === null) return;
     downloadingNow.current = true;
     setDownloading(true);
     setDownloadError(null);
     try {
-      await downloadImage(path, workspace.data?.project.title ?? '');
+      await downloadImage(path, title);
     } catch (error) {
       setDownloadError(error);
     } finally {
@@ -209,7 +212,11 @@ export function WorkspacePage() {
             viewOpener.current =
               document.activeElement instanceof HTMLElement ? document.activeElement : null;
             setDownloadError(null);
-            setViewing({ id: answer.id, imageUrl: answer.imageUrl });
+            setViewing({
+              id: answer.id,
+              imageUrl: answer.imageUrl,
+              ...(answer.title === undefined ? {} : { title: answer.title }),
+            });
           }}
         />
       ) : null}
@@ -328,8 +335,8 @@ export function WorkspacePage() {
             if (!open) setViewing(null);
           }}
           imagePath={viewing.imageUrl}
-          alt={workspace.data?.project.title ?? ''}
-          onDownload={() => void download(viewing.imageUrl)}
+          alt={viewing.title ?? workspace.data?.project.title ?? ''}
+          onDownload={() => void download(viewing.imageUrl, viewing.title)}
           onCloseAutoFocus={(event) => {
             const opener = viewOpener.current;
             if (!opener?.isConnected) return;
