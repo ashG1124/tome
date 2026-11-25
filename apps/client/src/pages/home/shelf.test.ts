@@ -5,7 +5,6 @@ import {
   formatEditedDate,
   fullShelfPosition,
   hasWork,
-  moveCard,
   placeAt,
   shelfCardType,
   shelfTags,
@@ -84,29 +83,6 @@ describe('formatEditedDate', () => {
 
   it('로케일을 따른다', () => {
     expect(formatEditedDate('2026-11-03T10:30:00.000Z', 'ko-KR', 'UTC')).toBe('2026. 11. 3.');
-  });
-});
-
-describe('moveCard', () => {
-  const list = ['a', 'b', 'c', 'd'];
-
-  it('뒤로 옮긴다', () => {
-    expect(moveCard(list, 0, 2)).toEqual(['b', 'c', 'a', 'd']);
-  });
-
-  it('앞으로 옮긴다', () => {
-    expect(moveCard(list, 3, 1)).toEqual(['a', 'd', 'b', 'c']);
-  });
-
-  it('같은 칸이거나 범위를 벗어나면 그대로 둔다', () => {
-    expect(moveCard(list, 1, 1)).toEqual(list);
-    expect(moveCard(list, 1, 4)).toEqual(list);
-    expect(moveCard(list, 5, 0)).toEqual(list);
-  });
-
-  it('원본 배열은 바꾸지 않는다', () => {
-    moveCard(list, 0, 3);
-    expect(list).toEqual(['a', 'b', 'c', 'd']);
   });
 });
 

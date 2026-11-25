@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ProjectSummary } from '@tome/shared';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, clearSession, NetworkError, setSession } from '../../shared/api';
@@ -41,31 +41,52 @@ const EMPTY = project('e9f3b1a7-5d2c-4b86-8f0a-3c4d5e6f7a8b', 'Untitled', 1, {
 });
 
 /**
- * jsdom 은 배치를 계산하지 않아서, 서가 칸 자리를 Figma 처럼 한 줄(칸 108px, 간격 20px)로 꾸며 준다.
- * li 의 형제 순서(0 = + Project)가 칸 번호다.
+ * jsdom 은 배치를 계산하지 않아서, 서가 목록의 격자 치수를 Figma 값으로 꾸며 준다
+ * (여백·간격 20px, 칸 108×192 → 가로 128·세로 212 간격, 폭 1686 → 한 줄 13칸).
  */
 function stubShelfGeometry() {
-  const cellOf = (element: HTMLElement) =>
-    element.tagName === 'LI' && element.parentElement
-      ? Array.from(element.parentElement.children).indexOf(element)
-      : 0;
-  vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function (
-    this: HTMLElement,
-  ) {
-    return cellOf(this) * 128;
+  const real = window.getComputedStyle.bind(window);
+  const values: Record<string, string> = {
+    paddingLeft: '20px',
+    paddingRight: '20px',
+    paddingTop: '20px',
+    columnGap: '20px',
+    rowGap: '20px',
+  };
+  const tokens: Record<string, string> = {
+    '--size-shelf-card-width': '108px',
+    '--size-shelf-card-height': '192px',
+  };
+  vi.spyOn(window, 'getComputedStyle').mockImplementation((element, pseudo) => {
+    const styles = real(element, pseudo);
+    if (!(element instanceof HTMLOListElement)) return styles;
+    return new Proxy(styles, {
+      get(target, prop) {
+        if (prop === 'getPropertyValue') {
+          return (name: string) => tokens[name] ?? target.getPropertyValue(name);
+        }
+        if (typeof prop === 'string' && prop in values) return values[prop];
+        const value: unknown = Reflect.get(target, prop);
+        return typeof value === 'function' ? (value as () => unknown).bind(target) : value;
+      },
+    });
   });
-  vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(0);
-  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(108);
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(192);
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1686);
 }
 
 const POINTER = { pointerId: 1, button: 0, isPrimary: true, pointerType: 'mouse' };
 
-/** 카드를 (x, 0) 에서 눌러 dx 만큼 끈다. 떼지는 않는다. */
-function pressAndMove(item: HTMLElement, dx: number) {
+/** 카드를 (200, 100) 에서 눌러 (dx, dy) 만큼 끈다. 떼지는 않는다. */
+function pressAndMove(item: HTMLElement, dx: number, dy = 0) {
   fireEvent.pointerDown(item, { ...POINTER, clientX: 200, clientY: 100 });
-  fireEvent.pointerMove(item, { ...POINTER, clientX: 200 + dx / 2, clientY: 100 });
-  fireEvent.pointerMove(item, { ...POINTER, clientX: 200 + dx, clientY: 100 });
+  fireEvent.pointerMove(item, { ...POINTER, clientX: 200 + dx / 2, clientY: 100 + dy / 2 });
+  fireEvent.pointerMove(item, { ...POINTER, clientX: 200 + dx, clientY: 100 + dy });
+}
+
+/** 카드 칸 자리(data-cell = "col,row") */
+async function cellOfTitle(title: string): Promise<string | null> {
+  const link = await screen.findByRole('link', { name: title });
+  return link.closest('li')?.getAttribute('data-cell') ?? null;
 }
 
 function renderHome(projects: ProjectSummary[], state?: unknown) {
@@ -156,7 +177,14 @@ describe('HomePage 서가', () => {
     expect(charlie?.textContent).not.toContain(COPY['H-02b']);
   });
 
-  it('Alt+→ 로 카드를 한 칸 뒤로 옮기고 저장한다. 포커스는 그 카드에 남는다', async () => {
+  it('카드는 + Project 다음 칸부터 서가 순서대로 격자 칸에 놓인다 (#240)', async () => {
+    renderHome([A, B, C]);
+    expect(await cellOfTitle('Alpha')).toBe('1,0');
+    expect(await cellOfTitle('Bravo')).toBe('2,0');
+    expect(await cellOfTitle('Charlie')).toBe('3,0');
+  });
+
+  it('Alt+→ 로 옆 칸 카드와 자리를 맞바꾸고 저장한다. 포커스는 그 카드에 남는다', async () => {
     renderHome([A, B, C]);
     const alpha = await screen.findByRole('link', { name: 'Alpha' });
     alpha.focus();
@@ -164,9 +192,35 @@ describe('HomePage 서가', () => {
     fireEvent.keyDown(alpha, { key: 'ArrowRight', altKey: true });
 
     expect(await cardTitles()).toEqual(['Bravo', 'Alpha', 'Charlie']);
+    expect(await cellOfTitle('Alpha')).toBe('2,0');
+    expect(await cellOfTitle('Bravo')).toBe('1,0');
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Alpha' }));
     expect(api.updateProject).toHaveBeenCalledWith(A.id, { shelfPosition: 1 });
-    expect(screen.getByText('Moved to position 2 of 3.').getAttribute('role')).toBe('status');
+    expect(screen.getByText('Moved to row 1, column 3.').getAttribute('role')).toBe('status');
+  });
+
+  it('Alt+↓ 로 아래 빈 칸에 놓고(서가가 한 줄 늘어난다), 새로고침해도 그 자리에 있다 (#240)', async () => {
+    const first = renderHome([A, B, C]);
+    const alpha = await screen.findByRole('link', { name: 'Alpha' });
+    alpha.focus();
+
+    fireEvent.keyDown(alpha, { key: 'ArrowDown', altKey: true });
+
+    expect(await cellOfTitle('Alpha')).toBe('1,1');
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Alpha' }));
+    expect(screen.getByText('Moved to row 2, column 2.').getAttribute('role')).toBe('status');
+    // 읽는 순서(위→아래, 왼→오른쪽)가 서버 서가 순서가 된다
+    expect(await cardTitles()).toEqual(['Bravo', 'Charlie', 'Alpha']);
+    expect(api.updateProject).toHaveBeenCalledWith(A.id, { shelfPosition: 2 });
+    const list = await screen.findByRole('list');
+    expect(list.style.gridTemplateRows).toContain('repeat(3,');
+    expect(Object.keys(localStorage).some((key) => key.startsWith('tome.home.layout.'))).toBe(true);
+
+    first.dispose();
+    cleanup();
+    renderHome([A, B, C]);
+    expect(await cellOfTitle('Alpha')).toBe('1,1');
+    expect(await cellOfTitle('Bravo')).toBe('2,0');
   });
 
   it('Alt 없이 화살표만 누르거나 맨 앞에서 더 앞으로 가면 바꾸지 않는다', async () => {
@@ -180,7 +234,7 @@ describe('HomePage 서가', () => {
     expect(api.updateProject).not.toHaveBeenCalled();
   });
 
-  it('카드를 마우스로 잡아 끌면 포인터를 따라가고, 다른 카드는 놓일 자리로 미리 비켜 선다', async () => {
+  it('카드를 마우스로 잡아 끌면 포인터를 따라가고, 놓일 칸의 카드만 원래 칸으로 미리 비켜 선다', async () => {
     stubShelfGeometry();
     renderHome([A, B, C]);
     const [alpha, bravo, charlie] = (await cardItems()) as [HTMLElement, HTMLElement, HTMLElement];
@@ -189,13 +243,17 @@ describe('HomePage 서가', () => {
 
     expect(alpha.style.transform).toBe('translate(256px, 0px)');
     expect(alpha.querySelector('[data-lifted]')).not.toBeNull();
-    // Alpha 를 Charlie 자리에 놓을 참이라 Bravo·Charlie 가 한 칸씩 앞으로 비켜 선다
-    expect(bravo.style.transform).toBe('translate(-128px, 0px)');
-    expect(charlie.style.transform).toBe('translate(-128px, 0px)');
+    // Alpha 를 Charlie 칸에 놓을 참이라 Charlie 만 Alpha 칸으로 비켜 서고 Bravo 는 그대로
+    expect(charlie.style.transform).toBe('translate(-256px, 0px)');
+    expect(bravo.style.transform).toBe('');
+    // 놓일 칸 자리 표시(장식)
+    const drop = document.querySelector<HTMLElement>('[data-shelf-drop]');
+    expect(drop?.getAttribute('aria-hidden')).toBe('true');
+    expect(drop?.style.left).toContain('* 3');
     expect(api.updateProject).not.toHaveBeenCalled();
   });
 
-  it('끌어서 다른 칸에 놓으면 순서가 바뀌고 저장하며, 옮긴 자리를 낭독한다', async () => {
+  it('끌어서 다른 카드 칸에 놓으면 맞바꾸고 저장하며, 옮긴 자리를 낭독한다', async () => {
     stubShelfGeometry();
     const router = renderHome([A, B, C]);
     const [alpha] = (await cardItems()) as [HTMLElement];
@@ -205,10 +263,41 @@ describe('HomePage 서가', () => {
     // 끌기 뒤 따라오는 click 은 프로젝트를 열지 않는다
     fireEvent.click(within(alpha).getByRole('link'));
 
+    expect(await cardTitles()).toEqual(['Charlie', 'Bravo', 'Alpha']);
+    expect(await cellOfTitle('Charlie')).toBe('1,0');
+    expect(await cellOfTitle('Alpha')).toBe('3,0');
+    await waitFor(() => expect(api.updateProject).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Moved to row 1, column 4.').getAttribute('role')).toBe('status');
+    expect(router.state.location.pathname).toBe('/');
+    expect(document.querySelector('[data-shelf-drop]')).toBeNull();
+  });
+
+  it('끌어서 서가 아무 빈 칸에나 놓을 수 있다(격자 칸에 붙는다) (#240)', async () => {
+    stubShelfGeometry();
+    renderHome([A, B, C]);
+    const [alpha] = (await cardItems()) as [HTMLElement];
+
+    // 오른쪽 5칸 반, 아래 1줄 조금 넘게 → (6, 1) 칸
+    pressAndMove(alpha, 128 * 5 + 50, 212 + 30);
+    fireEvent.pointerUp(alpha, { ...POINTER, clientX: 200 + 690, clientY: 100 + 242 });
+
+    expect(await cellOfTitle('Alpha')).toBe('6,1');
+    expect(await cellOfTitle('Bravo')).toBe('2,0');
     expect(await cardTitles()).toEqual(['Bravo', 'Charlie', 'Alpha']);
     expect(api.updateProject).toHaveBeenCalledWith(A.id, { shelfPosition: 2 });
-    expect(screen.getByText('Moved to position 3 of 3.').getAttribute('role')).toBe('status');
-    expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByText('Moved to row 2, column 7.').getAttribute('role')).toBe('status');
+  });
+
+  it('+ Project 칸에 놓으면 제자리로 돌아간다', async () => {
+    stubShelfGeometry();
+    renderHome([A, B, C]);
+    const [alpha] = (await cardItems()) as [HTMLElement];
+
+    pressAndMove(alpha, -128);
+    fireEvent.pointerUp(alpha, { ...POINTER, clientX: 72, clientY: 100 });
+
+    expect(await cellOfTitle('Alpha')).toBe('1,0');
+    expect(api.updateProject).not.toHaveBeenCalled();
   });
 
   it('기준 거리(6px)보다 적게 움직이고 떼면 끌기가 아니라 클릭이라 프로젝트로 들어간다', async () => {
@@ -236,6 +325,7 @@ describe('HomePage 서가', () => {
 
     expect(await cardTitles()).toEqual(['Alpha', 'Bravo', 'Charlie']);
     expect(bravo.style.transform).toBe('');
+    expect(await cellOfTitle('Alpha')).toBe('1,0');
     expect(api.updateProject).not.toHaveBeenCalled();
   });
 
@@ -290,6 +380,7 @@ describe('HomePage 서가', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain(COPY['E-03']);
     expect(await cardTitles()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+    expect(await cellOfTitle('Alpha')).toBe('1,0');
   });
 
   it('+ Project 를 연달아 눌러도 한 번만 만들고, 새 프로젝트 화면으로 간다', async () => {
