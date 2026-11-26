@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ProjectListResponse, ProjectSummary } from '@tome/shared';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { api, authRedirectTarget, errorCopyKey } from '../../shared/api';
@@ -23,10 +24,12 @@ import {
   type CellMap,
   type MoveDirection,
 } from './freeLayout';
+import { DeleteProjectDialog } from './DeleteProjectDialog';
 import { columnsFor, OPEN_CARD_SPAN, opensToLeft, pushStyle } from './layout';
 import { NewProjectCell } from './NewProjectCell';
 import { RecentWork } from './RecentWork';
 import { ShelfCard } from './ShelfCard';
+import { ShelfMenu } from './ShelfMenu';
 import { applyOrder, hasWork, latestEdited, sortShelf } from './shelf';
 import { useShelfDrag } from './useShelfDrag';
 
@@ -91,8 +94,29 @@ function useHomeFlash(): FlashKind | null {
   return flash;
 }
 
+/** 지운 뒤 잠깐 띄우는 플래시(H-10). show 를 부를 때마다 FLASH_MS 동안 보인다. */
+function useDeletedFlash(): [boolean, () => void] {
+  // 띄운 차례 번호(null 이면 숨김). 연달아 지우면 번호가 바뀌어 시간을 처음부터 다시 잰다.
+  const [shown, setShown] = useState<number | null>(null);
+  useEffect(() => {
+    if (shown === null) return;
+    const timer = window.setTimeout(() => setShown(null), FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [shown]);
+  return [shown !== null, () => setShown((value) => (value ?? 0) + 1)];
+}
+
+/** 우클릭(또는 Shift+F10·메뉴 키)으로 연 카드 메뉴: 어느 카드의 메뉴이고 화면 어디에 뜨는지 */
+interface CardMenu {
+  id: string;
+  x: number;
+  y: number;
+}
+
 export function HomePage() {
   const flash = useHomeFlash();
+  const queryClient = useQueryClient();
+  const [deletedFlash, showDeletedFlash] = useDeletedFlash();
   const projects = useQuery({ queryKey: ['projects'], queryFn: api.listProjects });
   const me = useQuery({ queryKey: ['me'], queryFn: api.getMe });
   const profileTo = me.data ? `/creators/${encodeURIComponent(me.data.creator.id)}` : '/';
@@ -111,6 +135,10 @@ export function HomePage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [list, setList] = useState<HTMLOListElement | null>(null);
   const columns = useShelfColumns(list);
+  // 카드 메뉴(#254)와 지울지 묻는 프로젝트. 창이 닫힌 뒤 포커스를 둘 카드 id(null 이면 + Project).
+  const [menu, setMenu] = useState<CardMenu | null>(null);
+  const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
+  const focusAfterDialog = useRef<string | null>(null);
 
   const all = applyOrder(sortShelf(projects.data?.projects ?? []), order);
   // 아무 작업도 하지 않은(확정 답변이 없는) 프로젝트는 카드를 만들지 않는다(#227).
@@ -195,6 +223,53 @@ export function HomePage() {
     if (link !== null && document.activeElement !== link) link.focus();
   });
 
+  /** 카드 링크(없으면 + Project 버튼)에 포커스를 둔다. */
+  const focusCard = (id: string | null) => {
+    const link =
+      id === null ? null : list?.querySelector<HTMLElement>(`li[data-project-id="${id}"] a`);
+    (link ?? list?.querySelector<HTMLElement>('li:first-child button'))?.focus();
+  };
+
+  const openMenu = (id: string, x: number, y: number) => {
+    setOpenId(null);
+    setMenu({ id, x, y });
+  };
+
+  // 키보드로 열면 카드 가운데에 띄운다.
+  const openMenuFromKeyboard = (id: string) => {
+    const item = list?.querySelector<HTMLElement>(`li[data-project-id="${id}"]`);
+    const box = item?.getBoundingClientRect();
+    if (box === undefined) return;
+    openMenu(id, box.left + box.width / 2, box.top + box.height / 2);
+  };
+
+  // 지웠다: 카드·Recent Work 에서 빼고, 저장한 자리에서도 지운다. 남은 카드는 지금 칸에 그대로 둔다
+  // (자리를 저장하지 않은 카드가 빈 칸으로 당겨 오지 않게 지금 칸을 저장한다). 포커스는 다음(없으면 앞) 카드로.
+  const removeProject = (project: ProjectSummary) => {
+    const id = project.id;
+    const at = visible.findIndex((card) => card.id === id);
+    focusAfterDialog.current = (visible[at + 1] ?? visible[at - 1])?.id ?? null;
+    const pinned = new Map<string, Cell>();
+    for (const cardId of ids) {
+      if (cardId === id) continue;
+      const cell = saved.get(cardId) ?? cells.get(cardId);
+      if (cell !== undefined) pinned.set(cardId, cell);
+    }
+    setSaved(pinned, new Set(all.map((card) => card.id).filter((cardId) => cardId !== id)));
+    setOrder((value) => (value === null ? null : value.filter((cardId) => cardId !== id)));
+    queryClient.setQueryData<ProjectListResponse>(['projects'], (data) =>
+      data === undefined
+        ? data
+        : { ...data, projects: data.projects.filter((card) => card.id !== id) },
+    );
+    queryClient.removeQueries({ queryKey: ['workspace', id] });
+    for (const key of ['projects', 'me', 'creator', 'agora-home']) {
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    }
+    setDeleting(null);
+    showDeletedFlash();
+  };
+
   const openCell = openId === null ? undefined : cells.get(openId);
   const shifts = pushShifts(
     cells,
@@ -223,8 +298,26 @@ export function HomePage() {
       >
         <h1 className="sr-only">{SKELETON_COPY.home}</h1>
         {/* 플래시: 화면 위 가운데에 떠 있고 내용을 밀지 않는다 */}
-        <div className="pointer-events-none fixed top-[var(--space-padding-8)] left-1/2 z-10 -translate-x-1/2">
+        <div className="pointer-events-none fixed top-[var(--space-padding-8)] left-1/2 z-10 flex -translate-x-1/2 flex-col items-center">
           <Flash kind={flash} />
+          {/* 지운 뒤 플래시(H-10). 공통 Flash 에 종류가 없어 같은 알약 모양으로 여기서 그린다. */}
+          <div role="status">
+            {deletedFlash ? (
+              <div
+                className={[
+                  'inline-flex items-center gap-[var(--space-gap-3)] rounded-[var(--radius-max)]',
+                  'px-[var(--space-padding-7)] py-[var(--space-padding-4)]',
+                  'bg-[color:var(--color-shadow-weak)] backdrop-blur-[var(--blur-background)]',
+                  'text-[color:var(--color-font-sub-text)]',
+                ].join(' ')}
+              >
+                <Icon name="trash-can" />
+                <span className="[font:var(--text-body-b1-m)] tracking-[var(--letter-spacing-body-b1)] whitespace-nowrap">
+                  {COPY['H-10']}
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
         {projects.isError ? (
           <ErrorNotice
@@ -284,6 +377,11 @@ export function HomePage() {
                       if (!dragging) setOpenId(project.id);
                     }}
                     onBlur={() => setOpenId((value) => (value === project.id ? null : value))}
+                    // 우클릭은 브라우저 메뉴 대신 카드 메뉴(#254). 끄는 중에는 열지 않는다.
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      if (!dragging) openMenu(project.id, event.clientX, event.clientY);
+                    }}
                     style={{
                       gridColumnStart: cell.col + 1,
                       gridRowStart: cell.row + 1,
@@ -308,6 +406,7 @@ export function HomePage() {
                       lifted={lifted}
                       describedBy={hintId}
                       onMove={(direction) => moveBy(project.id, direction)}
+                      onMenu={() => openMenuFromKeyboard(project.id)}
                     />
                   </li>
                 );
@@ -316,7 +415,7 @@ export function HomePage() {
           ) : null}
           {/* 순서 옮기기 키 안내(카드 링크의 설명)와, 옮긴 뒤 낭독하는 자리 */}
           <p id={hintId} hidden>
-            {COPY['H-05']}
+            {`${COPY['H-05']} ${COPY['H-11']}`}
           </p>
           <p role="status" className="sr-only">
             {moveNotice}
@@ -332,6 +431,33 @@ export function HomePage() {
         </div>
       </section>
       {recent ? <RecentWork key={recent.id} project={recent} /> : null}
+      {menu !== null ? (
+        <ShelfMenu
+          x={menu.x}
+          y={menu.y}
+          label={COPY['H-07'].replace('{title}', byId.get(menu.id)?.title ?? '')}
+          onDelete={() => {
+            const project = byId.get(menu.id);
+            setMenu(null);
+            if (project === undefined) return;
+            focusAfterDialog.current = project.id;
+            setDeleting(project);
+          }}
+          onClose={(refocus) => {
+            setMenu(null);
+            if (refocus) focusCard(menu.id);
+          }}
+        />
+      ) : null}
+      <DeleteProjectDialog
+        project={deleting}
+        onCancel={() => setDeleting(null)}
+        onDeleted={removeProject}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          focusCard(focusAfterDialog.current);
+        }}
+      />
     </div>
   );
 }

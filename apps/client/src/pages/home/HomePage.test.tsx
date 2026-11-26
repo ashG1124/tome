@@ -3,7 +3,7 @@ import type { ProjectSummary } from '@tome/shared';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, clearSession, NetworkError, setSession } from '../../shared/api';
+import { api, ApiRequestError, clearSession, NetworkError, setSession } from '../../shared/api';
 import { FAKE_NOTICE_VERSION, FAKE_TOKEN } from '../../shared/api/fake/data';
 import { resetFake } from '../../shared/api/fake/state';
 import { COPY } from '../../shared/copy';
@@ -368,7 +368,7 @@ describe('HomePage 서가', () => {
 
     const link = await screen.findByRole('link', { name: 'Alpha' });
     const hint = document.getElementById(link.getAttribute('aria-describedby') ?? '');
-    expect(hint?.textContent).toBe(COPY['H-05']);
+    expect(hint?.textContent).toBe(`${COPY['H-05']} ${COPY['H-11']}`);
   });
 
   it('순서 저장이 실패하면 원래 자리로 되돌리고 E-03 을 보여 준다', async () => {
@@ -434,5 +434,220 @@ describe('HomePage 서가', () => {
   it('완료하고 오면 done 플래시를 띄운다', async () => {
     renderHome([], { flash: 'done' });
     expect(await screen.findByText(COPY['D-10'])).not.toBeNull();
+  });
+});
+
+describe('HomePage 서가 — 우클릭으로 지우기 (#254)', () => {
+  /** 서버처럼 지운 프로젝트를 목록에서 빼고 돌려준다(다시 받아도 돌아오지 않게). */
+  function serveShelf(projects: ProjectSummary[]) {
+    const gone = new Set<string>();
+    const remove = vi.spyOn(api, 'deleteProject').mockImplementation(async (id) => {
+      gone.add(id);
+    });
+    const router = renderHome(projects);
+    vi.mocked(api.listProjects).mockImplementation(async () => ({
+      projects: projects.filter((item) => !gone.has(item.id)),
+    }));
+    return { remove, router };
+  }
+
+  async function openMenuOn(title: string) {
+    const link = await screen.findByRole('link', { name: title });
+    fireEvent.contextMenu(link.closest('li') as HTMLElement, { clientX: 300, clientY: 200 });
+    return screen.findByRole('menu', { name: `Options for ${title}` });
+  }
+
+  async function confirmDelete() {
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: COPY['S-07b'] }));
+    return dialog;
+  }
+
+  it('카드를 우클릭하면 브라우저 메뉴 대신 Delete 메뉴가 뜨고 첫 항목에 포커스가 간다', async () => {
+    serveShelf([A, B]);
+    const link = await screen.findByRole('link', { name: 'Alpha' });
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    act(() => {
+      link.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(true);
+    const menu = await screen.findByRole('menu', { name: 'Options for Alpha' });
+    const item = within(menu).getByRole('menuitem', { name: COPY['S-07b'] });
+    expect(document.activeElement).toBe(item);
+  });
+
+  it('카드가 아닌 곳의 우클릭은 막지 않는다', async () => {
+    serveShelf([A]);
+    await screen.findByRole('link', { name: 'Alpha' });
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    document.body.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('Esc 는 메뉴를 닫고 카드로 포커스를 돌려준다. 바깥을 눌러도 닫힌다', async () => {
+    serveShelf([A, B]);
+    const menu = await openMenuOn('Alpha');
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Alpha' }));
+
+    await openMenuOn('Alpha');
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('Delete → 확인 창(Cancel 에 포커스). 지우면 카드가 빠지고 플래시를 띄우고 다음 카드로 포커스가 간다', async () => {
+    const { remove } = serveShelf([A, B, C]);
+    const menu = await openMenuOn('Alpha');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: COPY['S-07b'] }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete “Alpha”?' });
+    expect(within(dialog).getByText(COPY['H-09'])).toBeTruthy();
+    const cancel = within(dialog).getByRole('button', { name: COPY['D-09a'] });
+    expect(document.activeElement).toBe(cancel);
+
+    await confirmDelete();
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(remove).toHaveBeenCalledWith(A.id);
+    expect(await cardTitles()).toEqual(['Bravo', 'Charlie']);
+    expect(screen.getByText(COPY['H-10']).closest('[role="status"]')).not.toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Bravo' })),
+    );
+  });
+
+  it('지워도 남은 카드는 제자리에 있고, 저장한 자리에서 지운 카드는 빠진다', async () => {
+    serveShelf([A, B, C]);
+    const menu = await openMenuOn('Bravo');
+    fireEvent.click(within(menu).getByRole('menuitem'));
+    await confirmDelete();
+
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Bravo' })).toBeNull());
+    expect(await cellOfTitle('Alpha')).toBe('1,0');
+    expect(await cellOfTitle('Charlie')).toBe('3,0');
+    const key = Object.keys(localStorage).find((name) => name.startsWith('tome.home.layout.'));
+    const stored = JSON.parse(localStorage.getItem(key ?? '') ?? '{}') as {
+      cells: Record<string, unknown>;
+    };
+    expect(Object.keys(stored.cells).sort()).toEqual([A.id, C.id].sort());
+  });
+
+  it('마지막 카드를 지우면 빈 서가 안내가 뜨고 + Project 로 포커스가 간다', async () => {
+    serveShelf([A]);
+    const menu = await openMenuOn('Alpha');
+    fireEvent.click(within(menu).getByRole('menuitem'));
+    await confirmDelete();
+
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Alpha' })).toBeNull());
+    expect(screen.getByText(COPY['S-01'])).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: COPY['H-01'] })),
+    );
+  });
+
+  it('Cancel 하면 지우지 않고 그 카드로 포커스를 돌려준다', async () => {
+    const { remove } = serveShelf([A, B]);
+    const menu = await openMenuOn('Bravo');
+    fireEvent.click(within(menu).getByRole('menuitem'));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: COPY['D-09a'] }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(remove).not.toHaveBeenCalled();
+    expect(await cardTitles()).toEqual(['Alpha', 'Bravo']);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Bravo' })),
+    );
+  });
+
+  it('Shift+F10·메뉴 키로도 같은 메뉴가 열리고, 고르면 확인 창이 뜬다', async () => {
+    serveShelf([A, B]);
+    const alpha = await screen.findByRole('link', { name: 'Alpha' });
+    alpha.focus();
+    fireEvent.keyDown(alpha, { key: 'F10', shiftKey: true });
+    const menu = await screen.findByRole('menu', { name: 'Options for Alpha' });
+    expect(document.activeElement).toBe(within(menu).getByRole('menuitem'));
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(document.activeElement).toBe(alpha);
+
+    const bravo = screen.getByRole('link', { name: 'Bravo' });
+    bravo.focus();
+    fireEvent.keyDown(bravo, { key: 'ContextMenu' });
+    const second = await screen.findByRole('menu', { name: 'Options for Bravo' });
+    // 화살표는 항목 사이를 돈다(항목이 하나라 그대로).
+    fireEvent.keyDown(second, { key: 'ArrowDown' });
+    const item = within(second).getByRole('menuitem');
+    expect(document.activeElement).toBe(item);
+    fireEvent.click(item);
+    expect(await screen.findByRole('dialog', { name: 'Delete “Bravo”?' })).toBeTruthy();
+  });
+
+  it('지우기가 실패하면 창 안에 오류(role=alert)를 띄우고 창과 카드는 그대로 둔다', async () => {
+    serveShelf([A, B]);
+    vi.mocked(api.deleteProject).mockRejectedValueOnce(new NetworkError());
+    const menu = await openMenuOn('Alpha');
+    fireEvent.click(within(menu).getByRole('menuitem'));
+    const dialog = await confirmDelete();
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(COPY['E-03']);
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    expect(
+      (within(dialog).getByRole('button', { name: COPY['S-07b'] }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    // 창이 열려 있는 동안 뒤 화면은 낭독기에서 숨겨진다(hidden 포함으로 찾는다).
+    expect(screen.getByRole('link', { name: 'Alpha', hidden: true })).toBeTruthy();
+  });
+
+  it('보내는 동안은 두 버튼을 잠그고 Esc 로 닫히지 않는다', async () => {
+    serveShelf([A]);
+    let finish: () => void = () => undefined;
+    vi.mocked(api.deleteProject).mockImplementationOnce(
+      () =>
+        new Promise<undefined>((resolve) => {
+          finish = () => resolve(undefined);
+        }),
+    );
+    const menu = await openMenuOn('Alpha');
+    fireEvent.click(within(menu).getByRole('menuitem'));
+    const dialog = await confirmDelete();
+    const confirm = within(dialog).getByRole('button', { name: COPY['S-07b'] });
+
+    expect(confirm.getAttribute('aria-busy')).toBe('true');
+    expect(
+      (within(dialog).getByRole('button', { name: COPY['D-09a'] }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    await act(async () => finish());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('이미 지워진 프로젝트(404)는 지운 것으로 보고 서가에서 뺀다', async () => {
+    serveShelf([A, B]);
+    // 다른 곳에서 이미 지워서 서버 목록에도 없다.
+    vi.mocked(api.listProjects).mockResolvedValue({ projects: [B] });
+    vi.mocked(api.deleteProject).mockRejectedValueOnce(
+      new ApiRequestError(404, { code: 'NOT_FOUND', message: 'NOT_FOUND', retryable: false }),
+    );
+    const menu = await openMenuOn('Alpha');
+    fireEvent.click(within(menu).getByRole('menuitem'));
+    await confirmDelete();
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await cardTitles()).toEqual(['Bravo']);
+  });
+
+  it('왼쪽 버튼이 아니면 끌기를 시작하지 않는다(우클릭한 채 움직여도 그대로)', async () => {
+    stubShelfGeometry();
+    serveShelf([A, B]);
+    const [alpha] = (await cardItems()) as [HTMLElement];
+    fireEvent.pointerDown(alpha, { ...POINTER, button: 2, clientX: 200, clientY: 100 });
+    fireEvent.pointerMove(alpha, { ...POINTER, button: 2, clientX: 300, clientY: 100 });
+    expect(alpha.querySelector('[data-lifted]')).toBeNull();
+    fireEvent.contextMenu(alpha, { clientX: 300, clientY: 100 });
+    expect(await screen.findByRole('menu')).toBeTruthy();
   });
 });

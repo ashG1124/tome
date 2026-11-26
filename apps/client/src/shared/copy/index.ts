@@ -59,6 +59,13 @@ export const COPY = {
   // 서가 카드 옮기기(#227, 자유 배치 #240): 임시 ID — 문구 표에 옮길 때 확정. Figma에 없는 낭독 문구(키 안내, 옮긴 뒤 role=status). {row}·{column} 자리(1부터)
   'H-05': 'Press Alt and an arrow key to move this project on the shelf.',
   'H-06': 'Moved to row {row}, column {column}.',
+  // 서가 카드 우클릭 삭제(#254): 임시 ID — 문구 표에 옮길 때 확정. Figma에 없는 문구(메뉴 이름·확인 창·플래시·키 안내).
+  // 메뉴 항목·버튼은 S-07b(Delete)·D-09a(Cancel)를 같이 쓴다. {title} 자리는 프로젝트 제목
+  'H-07': 'Options for {title}',
+  'H-08': 'Delete “{title}”?',
+  'H-09': "This project will be removed from your shelf. You can't undo this in the app.",
+  'H-10': 'Project deleted.',
+  'H-11': 'Press Shift and F10 for more options.',
   // ---- 워크스페이스 틀(#25): 확정 ID(#128). W-05 는 Figma 원문(1187:62709), 나머지는 버튼 이름.
   'W-01': 'Page',
   'W-02': 'Pages',

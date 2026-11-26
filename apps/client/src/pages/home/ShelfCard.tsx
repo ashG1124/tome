@@ -35,6 +35,8 @@ interface ShelfCardProps {
   openToLeft: boolean;
   /** 키보드로 카드를 그 방향 옆 칸으로 옮긴다(Alt+화살표). */
   onMove: (direction: MoveDirection) => void;
+  /** 키보드로 카드 메뉴(우클릭 메뉴)를 연다(Shift+F10·메뉴 키, #254). */
+  onMenu?: () => void;
   /** 끌려 다니는 중이면 넓어지지 않고 그림자를 띄운다. */
   lifted?: boolean;
   /** 링크 설명(순서 옮기기 키 안내) 요소 id. */
@@ -53,11 +55,13 @@ const MOVE_KEYS: Record<string, MoveDirection> = {
  * 표지 사진이 뜨면 글자를 흰색으로 바꾸고, 좁을 때는 사진 유무와 관계없이 제목을 투명하게 둔다(낭독기·Tab·클릭은 그대로).
  * 링크에는 제목만 넣어 화면 낭독기가 제목으로 읽게 하고, Alt+화살표로 그 방향 옆 칸으로 옮긴다(드래그의 키보드 대체, #240).
  * 링크는 카드 상자 전체를 덮어서(늘린 누름 영역) 상자 어디를 눌러도 프로젝트로 들어간다. 카드 안 다른 버튼은 없다.
+ * Shift+F10·메뉴 키는 우클릭과 같은 카드 메뉴를 연다(#254).
  */
 export function ShelfCard({
   project,
   openToLeft,
   onMove,
+  onMenu,
   lifted = false,
   describedBy,
 }: ShelfCardProps) {
@@ -84,6 +88,14 @@ export function ShelfCard({
     : 'text-[color:var(--color-font-sub-text)]';
 
   const handleKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
+    if (
+      onMenu !== undefined &&
+      (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
+    ) {
+      event.preventDefault();
+      onMenu();
+      return;
+    }
     const direction = MOVE_KEYS[event.key];
     if (!event.altKey || direction === undefined) return;
     event.preventDefault();
