@@ -3,6 +3,7 @@ import * as RadixSwitch from '@radix-ui/react-switch';
 import type { Node, NodeSnapshot } from '@tome/shared';
 import { Icon, Tabs } from '../../../shared/ui';
 import { SNAP_KINDS, canEditNode, nodePad, nodeWeight } from '../edit-model';
+import { isCloseClick } from '../close-click';
 import { WeightDial } from './WeightDial';
 import { MeaningPad } from './MeaningPad';
 import '../node-edit.css';
@@ -365,6 +366,10 @@ export const NodeEditPanel = memo(function NodeEditPanel({
       data-kind={node.kind}
       data-enabled={String(node.enabled)}
       aria-label={`${labels.title}: ${node.text}`}
+      onClick={(event) => {
+        // 펼친 노드를 다시 누르면 접는다(#261). 단추·숫자 휠·좌표 판을 누를 때는 접지 않는다.
+        if (!disabled && !closing && isCloseClick(event)) onClose();
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !disabled) {
           event.preventDefault();

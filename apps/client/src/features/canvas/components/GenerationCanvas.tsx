@@ -17,7 +17,6 @@ import {
   type CanvasGeometry,
   type CanvasLabels,
   type CanvasNode,
-  type DerivePreview,
   type GenerationView,
   type ViewableAnswer,
 } from '../model';
@@ -92,8 +91,6 @@ export interface GenerationCanvasProps {
   geometry: CanvasGeometry;
   /** 파생 프로젝트면 원작 답변 카드를 위에 더한다. */
   derivedFrom?: WorkspaceDerivedFrom;
-  /** 파생 세트에서 노드를 고쳐 만드는 미리보기. 있으면 My answer 자리에 그린다(#229). */
-  derivePreview?: DerivePreview;
   announcement?: string;
   editor?: CanvasEditorConnection;
   history?: CanvasHistoryConnection;
@@ -111,7 +108,6 @@ function CanvasContent({
   labels,
   geometry,
   derivedFrom,
-  derivePreview,
   announcement,
   editor,
   history,
@@ -132,9 +128,9 @@ function CanvasContent({
     };
   }, []);
   const graph = useMemo(
-    () => buildCanvas(sets, generation, labels, geometry, derivedFrom, derivePreview),
+    () => buildCanvas(sets, generation, labels, geometry, derivedFrom),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fontsReady 는 배치 재계산 신호다.
-    [sets, generation, labels, geometry, derivedFrom, derivePreview, fontsReady],
+    [sets, generation, labels, geometry, derivedFrom, fontsReady],
   );
   const flow = useReactFlow<CanvasNode, Edge>();
   const initialized = useNodesInitialized();
@@ -204,10 +200,16 @@ function CanvasContent({
   }, [initialized, flow, store, sets, graph.nodes, derivedFrom]);
 
   // 노드를 제자리에서 펼치면 아래 노드를 밀어 내리고, 다 펼친 뒤 펼친 카드와 노드 도구가 화면 안에 오게 살짝 옮긴다.
-  const openId = useOpenShift(editor?.selected);
-  // 실제 높이로 단계 열을 다시 쌓아 노드 간격을 일정하게(#215). 펼친 동안은 쉰다.
-  useMeasuredStack(openId, drag.offsets);
+  // 여러 노드를 함께 펼쳐 둘 수 있다(#261).
+  const openIds = useOpenShift(editor?.selected);
+  const anyOpen = openIds.length > 0;
+  // 실제 높이로 단계 열을 다시 쌓아 노드 간격을 일정하게(#215). 펼쳐 둔 노드가 있는 동안은 쉰다.
+  useMeasuredStack(anyOpen, drag.offsets);
+  // 화면을 옮기는 것은 방금 펼친 카드에만 한다. 다른 카드를 접었을 때는 화면이 움직이지 않는다.
+  const revealed = useRef<ReadonlySet<string>>(new Set());
   useEffect(() => {
+    const openId = openIds.filter((id) => !revealed.current.has(id)).at(-1);
+    revealed.current = new Set(openIds);
     if (!openId) return;
     const css = getComputedStyle(document.documentElement);
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -240,7 +242,7 @@ function CanvasContent({
       void flow.setViewport({ x: nextX, y: nextY, zoom }, { duration: calm ? 0 : 280 });
     }, wait);
     return () => window.clearTimeout(timer);
-  }, [openId, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
+  }, [openIds, flow, store, geometry.nodeWidth, geometry.nodeHeight]);
 
   // 코멘트 코너가 생기거나 띠가 펼쳐지면 노드 · 노드 도구 · 띠가 화면 안에 오게 살짝 옮긴다(#221·#241).
   // 좌표는 React Flow store 기준이다. 띠는 캔버스 안에 그려지므로 레이아웃 크기(offset*)가 곧 캔버스 좌표 크기다.
@@ -381,7 +383,7 @@ function CanvasContent({
     <CanvasNavigation.Provider value={navigation}>
       <div
         className="generation-canvas"
-        data-editing={openId ? true : undefined}
+        data-editing={anyOpen ? true : undefined}
         role="region"
         aria-label={labels.title}
         onKeyDown={zoomByKey}
@@ -397,7 +399,6 @@ function CanvasContent({
           edgesFocusable={false}
           nodesFocusable={false}
           nodesConnectable={false}
-          nodesDraggable={!openId}
           nodeDragThreshold={DRAG_DISTANCE}
           nodeClickDistance={DRAG_DISTANCE}
           onNodeDragStart={drag.onNodeDragStart}
@@ -409,7 +410,6 @@ function CanvasContent({
           minZoom={0.2}
           maxZoom={1.5}
           panOnScroll
-          onPaneClick={editor?.close}
           proOptions={{ hideAttribution: true }}
           ariaLabelConfig={{
             'node.a11yDescription.default': labels.instructions,

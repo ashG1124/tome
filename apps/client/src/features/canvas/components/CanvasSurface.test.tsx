@@ -138,7 +138,7 @@ it('draws the original answer read-only with its number chip, veiled only while 
   expect(container.querySelector('.canvas-origin-veil')).not.toBeNull();
   expect(container.querySelector('article')?.getAttribute('data-inactive')).toBe('true');
 });
-it('draws an inactive My answer from its summary with a chip and veil, and a preview without versions (#229)', () => {
+it('draws an inactive My answer from its summary with a chip and veil (#229)', () => {
   const summary = {
     id: 'mine',
     number: 2,
@@ -156,21 +156,14 @@ it('draws an inactive My answer from its summary with a chip and veil, and a pre
     labels: CANVAS_COPY,
     state: 'done' as const,
   };
-  const { container, rerender } = render(
-    <CanvasSurface data={{ ...base, summary, inactive: true }} />,
-    { wrapper },
-  );
+  const { container } = render(<CanvasSurface data={{ ...base, summary, inactive: true }} />, {
+    wrapper,
+  });
   expect(screen.getByRole('img', { name: 'Answer 02' }).getAttribute('src')).toBe(
     '/mine-thumb.png',
   );
   expect(container.querySelector('.canvas-answer-chip')?.textContent).toBe('Answer 02');
   expect(container.querySelector('.canvas-origin-veil')).not.toBeNull();
-  expect(container.querySelector('.canvas-answer-footer')).toBeNull();
-  rerender(
-    <CanvasSurface data={{ ...base, label: 'My answer', state: 'running', previewing: true }} />,
-  );
-  expect(container.querySelector('.canvas-gradient')).not.toBeNull();
-  expect(container.querySelector('.canvas-origin-veil')).toBeNull();
   expect(container.querySelector('.canvas-answer-footer')).toBeNull();
 });
 it('shows Deleted original when the original is gone', () => {

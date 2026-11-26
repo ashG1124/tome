@@ -166,7 +166,37 @@ test('closing the editor without any change leaves no My answer (#237)', async (
   await expect(originCard(page)).not.toHaveAttribute('data-inactive', 'true');
 });
 
-test('a failed preview keeps My answer in place with the error and Retry (#237)', async ({
+test('a preview shows only in Preview; the answer cards do not change until Apply (#261)', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await derive(page);
+  const originSrc = await originCard(page).locator('img.canvas-image').getAttribute('src');
+  const dial = await openK1(page);
+  await dial.focus();
+  await page.keyboard.press('Home');
+  const panel = page.locator('.node-preview-panel');
+  const apply = page.getByRole('button', { name: 'Apply the fix', exact: true });
+  // 값을 고친 직후에도, 미리보기를 다 만든 뒤에도 캔버스의 답변은 그대로다: My answer 가 없고 원작 답변이 활성이다.
+  await expect(dial).toHaveValue('0');
+  await expect(page.getByText('My answer', { exact: true })).toHaveCount(0);
+  await expect(mineCard(page)).toHaveCount(0);
+  await expect(originCard(page)).not.toHaveAttribute('data-inactive', 'true');
+  await expect(apply).toBeEnabled({ timeout: 15000 });
+  await expect(panel.locator('.node-preview-image img')).toBeVisible();
+  await expect(page.getByText('My answer', { exact: true })).toHaveCount(0);
+  await expect(mineCard(page)).toHaveCount(0);
+  await expect(originCard(page)).not.toHaveAttribute('data-inactive', 'true');
+  await expect(originCard(page).locator('img.canvas-image')).toHaveAttribute('src', originSrc!);
+  await page.screenshot({ path: info.outputPath('07-derive-preview-only-in-panel.png') });
+  // Apply 해야 My answer 가 생기고 활성이 된다.
+  await apply.click();
+  await expect(page.getByText('My answer', { exact: true })).toBeVisible();
+  await expect(mineCard(page)).not.toHaveAttribute('data-inactive', 'true');
+  await expect(originCard(page)).toHaveAttribute('data-inactive', 'true');
+});
+
+test('a failed preview shows the error and Retry in Preview, not on the answer cards (#261)', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -175,46 +205,22 @@ test('a failed preview keeps My answer in place with the error and Retry (#237)'
   const dial = await openK1(page);
   await dial.focus();
   await page.keyboard.press('Home');
-  // 적용한 버전이 없어도 My answer 머리글·카드가 남고, 카드 자리에 오류와 Retry 가 보인다.
-  const mine = page.getByText('My answer', { exact: true });
-  const alert = mineCard(page).getByRole('alert');
+  const panel = page.locator('.node-preview-panel');
+  const alert = panel.getByRole('alert');
   await expect(alert).toBeVisible({ timeout: 15000 });
-  await expect(mine).toBeVisible();
-  await expect(mineCard(page)).not.toHaveAttribute('data-inactive', 'true');
-  await expect(originCard(page)).toHaveAttribute('data-inactive', 'true');
-  const retry = mineCard(page).getByRole('button', { name: 'Retry', exact: true });
-  // 노드를 접어도 실패한 My answer 는 남는다.
-  await dial.focus();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.node-open')).toHaveCount(0);
-  await retry.focus();
-  await page.waitForTimeout(400);
-  await expect(alert).toBeVisible();
-  await expect(mine).toBeVisible();
-  await page.screenshot({ path: info.outputPath('07-derive-preview-failed.png') });
-  // Retry 를 누르면 같은 자리에서 다시 만들고, 다 만들면 그림이 보이고 Apply 할 수 있다.
-  await retry.click();
-  await expect(mineCard(page).locator('img.canvas-image')).toBeVisible({ timeout: 15000 });
-  await expect(mineCard(page).getByRole('alert')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Apply the fix', exact: true })).toBeEnabled();
-  await page.screenshot({ path: info.outputPath('08-derive-preview-retried.png') });
-});
-
-test('after a failed preview, clicking the original switches back as before (#237)', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await failFirstAdvance(page);
-  await derive(page);
-  const dial = await openK1(page);
-  await dial.focus();
-  await page.keyboard.press('Home');
-  await expect(mineCard(page).getByRole('alert')).toBeVisible({ timeout: 15000 });
-  await originCard(page).getByRole('button').focus();
-  await originCard(page).getByRole('button').click();
-  // 원작으로 돌아가면 고친 값·실패한 미리보기는 버려지고, 내 버전이 없으니 My answer 도 없다.
-  await expect(originCard(page)).not.toHaveAttribute('data-inactive', 'true');
+  // 캔버스에는 My answer 도, 카드 위 오류도 없다. 원작 답변이 그대로 활성이다.
   await expect(page.getByText('My answer', { exact: true })).toHaveCount(0);
+  await expect(mineCard(page)).toHaveCount(0);
+  await expect(originCard(page)).not.toHaveAttribute('data-inactive', 'true');
+  await expect(originCard(page).getByRole('alert')).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('08-derive-preview-failed-in-panel.png') });
+  // Preview 의 Retry 로 다시 만들면 Preview 에 그림이 보이고 Apply 할 수 있다.
+  await alert.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Apply the fix', exact: true })).toBeEnabled({
+    timeout: 15000,
+  });
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  await expect(panel.locator('.node-preview-image img')).toBeVisible();
   await expect(mineCard(page)).toHaveCount(0);
 });
 
