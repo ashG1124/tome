@@ -1,7 +1,7 @@
 import { COPY } from '../copy';
 import { Icon } from './Icon';
 
-export type FlashKind = 'done' | 'update' | 'stack';
+export type FlashKind = 'done' | 'update' | 'stack' | 'reset';
 
 /**
  * 플래시를 보여 주는 시간(ms). 기획 문서에 시간이 없어 정한 값이다. 리드 요청(#230)으로 3초에서 줄였다.
@@ -14,6 +14,8 @@ const FLASH = {
   done: { icon: 'done', text: COPY['D-10'] },
   update: { icon: 'history', text: COPY['W-05'] },
   stack: { icon: 'version-stacking', text: COPY['W-07'] },
+  // 세션 초기화 뒤 처음 화면(#251). 완료 아이콘을 같이 쓴다.
+  reset: { icon: 'done', text: COPY['RS-08'] },
 } as const satisfies Record<FlashKind, { icon: string; text: string }>;
 
 interface FlashProps {

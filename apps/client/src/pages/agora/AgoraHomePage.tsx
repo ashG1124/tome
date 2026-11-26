@@ -45,12 +45,15 @@ function Row({
   );
 }
 
-/** 추천 프로젝트 카드(Project Preview 3188:177923): 364×284 사진 전체, 아래 흰 제목, 오른쪽 아래 작성자 사진. */
+/**
+ * 추천 프로젝트 카드(Project Preview 3188:177923): 사진 전체, 아래 흰 제목, 오른쪽 아래 작성자 사진.
+ * 크기는 화면 높이 1083(맥 1728×1117 − 메뉴 막대)에서 시안 그대로 364×284 이고, 화면이 더 높거나 낮으면 같은 비율로 늘고 준다.
+ */
 function RecommendedCard({ card }: { card: AgoraProjectCard }) {
   return (
     <Link
       to={`/agora/projects/${encodeURIComponent(card.id)}`}
-      className="relative isolate flex h-[var(--size-agora-recommended-height)] w-[var(--size-agora-recommended-width)] flex-col justify-end overflow-hidden rounded-[var(--radius-agora-card)] px-[var(--space-padding-6)] py-[var(--space-agora-recommended-y)]"
+      className="relative isolate flex h-[var(--size-agora-recommended-fit-height)] w-[var(--size-agora-recommended-fit-width)] flex-col justify-end overflow-hidden rounded-[var(--radius-agora-card)] px-[var(--space-padding-6)] py-[var(--space-agora-recommended-y)]"
     >
       <AgoraImage path={card.coverThumbUrl} className="-z-20" />
       <span
@@ -73,6 +76,8 @@ function RecommendedCard({ card }: { card: AgoraProjectCard }) {
 /**
  * 아고라 Project 탭 = 아고라 홈(Agora 5170:135845): Recommended Project · Rising Creator · Hot Topic. 게시물이 없으면 S-02.
  * 헤더 검색어(?q=…)가 있으면 이미 받은 데이터를 프로젝트 제목으로 거른다. 핫토픽 전체 목록은 헤더 Topic 탭이 맡는다.
+ * 시안(3100:129594)처럼 세 구역이 화면 높이를 꼭 채우도록, 추천 카드와 핫토픽 콜라주 높이만 화면 높이를 따라간다
+ * (1083 에서 시안 그대로, 브라우저 도구 막대가 있는 약 1000 이나 전체 화면 1117 에서도 아래 여백 56 으로 끝난다).
  */
 export function AgoraHomePage() {
   const home = useQuery({ queryKey: ['agora-home'], queryFn: api.getAgoraHome });
@@ -130,7 +135,7 @@ export function AgoraHomePage() {
             <Row id="agora-topics" title={COPY['A-01']} gapClass="gap-[var(--grid-gutter)]">
               {shown.hotTopics.map((entry) => (
                 <li key={entry.topic.id} className="shrink-0">
-                  <TopicBundle entry={entry} />
+                  <TopicBundle entry={entry} layout="row" />
                 </li>
               ))}
             </Row>

@@ -10,6 +10,7 @@ import {
 import { ConsentPage } from '../pages/consent';
 import { EnterPage } from '../pages/enter';
 import { ProfilePage } from '../pages/profile';
+import { ResetPage } from '../pages/reset';
 import { WorkspacePage } from '../pages/workspace';
 import { Layout } from './layout';
 import { RootPage, type RootLoaderData } from './root-page';
@@ -30,6 +31,8 @@ export const routes: RouteObject[] = [
     element: <Layout />,
     children: [
       { path: '/enter', element: <EnterPage /> },
+      // 전시 운영자용 세션 초기화(#251). 세션이 없어도 열린다.
+      { path: '/reset', element: <ResetPage /> },
       { path: '/consent', loader: requireSession, element: <ConsentPage /> },
       { path: '/', loader: rootLoader, element: <RootPage /> },
       { path: '/projects/:id', loader: requireSession, element: <WorkspacePage /> },

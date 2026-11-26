@@ -16,10 +16,23 @@ const CELL_EDGES = [
  * 핫토픽 묶음(Topic Card 5170:135878): 표지 4장(2×2) 콜라주와 아래 주제 제목(18 SemiBold, 간격 12). 누르면 그 핫토픽 화면으로 간다.
  * 콜라주 오른쪽 아래 "+N"(Topic Count 5170:135885)은 묶음에 보이는 4장 밖에 남은 이 주제의 공개 프로젝트 수(projectCount 기준)다.
  * 숫자는 낭독기에 링크 이름 "제목, N more projects"(AT-02)로 읽히고, 눈에 보이는 "+N"은 숨긴다.
+ * layout row = 홈 가로 줄(화면 1083 높이에서 393×269, 화면 높이에 맞춰 같은 비율로 늘고 준다),
+ * grid = Topic 탭 칸 목록(칸 폭을 꽉 채우고 393:269 비율로 높이를 정한다).
  */
-export function TopicBundle({ entry }: { entry: AgoraHomeResponse['hotTopics'][number] }) {
+export function TopicBundle({
+  entry,
+  layout,
+}: {
+  entry: AgoraHomeResponse['hotTopics'][number];
+  layout: 'row' | 'grid';
+}) {
   const tiles = topicTiles(entry.projects);
   const extra = topicExtraCount(entry);
+  const width = layout === 'row' ? 'w-[var(--size-agora-topic-fit-width)]' : 'w-full';
+  const height =
+    layout === 'row'
+      ? 'h-[var(--size-agora-topic-fit-height)]'
+      : 'aspect-(--size-agora-topic-ratio)';
   return (
     <Link
       to={`/agora/topics/${encodeURIComponent(entry.topic.id)}`}
@@ -29,9 +42,11 @@ export function TopicBundle({ entry }: { entry: AgoraHomeResponse['hotTopics'][n
           ? `${entry.topic.title}, ${COPY['AT-02'].replace('{count}', formatCount(extra))}`
           : undefined
       }
-      className="flex w-[var(--size-agora-topic-width)] flex-col gap-[var(--space-gap-4)]"
+      className={`flex ${width} flex-col gap-[var(--space-gap-4)]`}
     >
-      <span className="relative grid h-[var(--size-agora-topic-height)] grid-cols-2 grid-rows-2 overflow-hidden rounded-[var(--radius-agora-card)] bg-[color:var(--color-fill-neutral-weak)]">
+      <span
+        className={`relative grid ${height} grid-cols-2 grid-rows-2 overflow-hidden rounded-[var(--radius-agora-card)] bg-[color:var(--color-fill-neutral-weak)]`}
+      >
         {CELL_EDGES.slice(0, TOPIC_TILE_COUNT).map((edges, index) => {
           const cover = tiles.covers[index];
           return (
