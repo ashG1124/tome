@@ -20,6 +20,7 @@ async function identityOrPrivate(creatorId: string): Promise<IdentityResponse | 
 /**
  * 프로필 화면 `/creators/:id`. 프로필·아이덴티티·비교 데이터를 받아 ProfileView 에 넘긴다.
  * 위에는 공통 헤더(ETC 변형: 글자 로고 둘 다 연하고 아바타만, Proto v7 Header 4181:34985).
+ * 헤더의 내 사진 둘레 선은 내 프로필을 볼 때만 그린다. 남의 프로필에서는 선이 없다(#262).
  * 없는 사람(NOT_FOUND)이나 연결 실패는 오류 안내와 다시 시도. 세션이 끊기면 입장 화면으로 보낸다.
  */
 export function ProfilePage() {
@@ -70,6 +71,7 @@ export function ProfilePage() {
         current={null}
         profileTo={profileTo}
         avatarUrl={me.data?.creator.avatarUrl ?? null}
+        avatarRing={myId !== null && myId === id}
       />
       <section aria-busy={busy || undefined} className="flex flex-col">
         {error ? (

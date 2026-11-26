@@ -62,6 +62,20 @@ describe('프로필 화면 /creators/:id', () => {
     expect(await screen.findByRole('complementary', { name: COPY['P-23a'] })).toBeTruthy();
   });
 
+  it('헤더의 내 사진 둘레 선은 내 프로필에서만 보이고, 남의 프로필에서는 없다(#262)', async () => {
+    await signIn();
+    const mine = renderAt(`/creators/${FAKE_CREATOR.id}`);
+    await screen.findByRole('heading', { level: 1, name: FAKE_CREATOR.displayName });
+    const avatar = () => screen.getByRole('link', { name: COPY['HD-02'] });
+    await waitFor(() => expect(avatar().hasAttribute('data-avatar-ring')).toBe(true));
+
+    await mine.navigate(`/creators/${OTHER?.id ?? ''}`);
+    await screen.findByRole('heading', { level: 1, name: OTHER?.displayName });
+    expect(avatar().hasAttribute('data-avatar-ring')).toBe(false);
+    // 내 프로필로 가는 링크는 그대로다
+    expect(avatar().getAttribute('href')).toBe(`/creators/${FAKE_CREATOR.id}`);
+  });
+
   it('기록 0건이면 Identity 탭에 기록 중(P-17)이 보인다', async () => {
     await signIn('?fakeIdentity=none');
     renderAt(`/creators/${FAKE_CREATOR.id}`);
