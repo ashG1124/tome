@@ -1,6 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useRef } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { apiConfig } from '../../../shared/api/config';
+import { useApiImage } from '../../../shared/api';
 import { COPY } from '../../../shared/copy';
 import { ResultView } from './ResultView';
 
@@ -58,5 +61,58 @@ describe('ResultView', () => {
     onOpenChange.mockClear();
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('ResultView image (#242)', () => {
+  const PATH = '/assets/answers/7d2a9e44-6b3f-4c10-b5d8-9e0f1a2b3c4d/full';
+  const original = { ...apiConfig };
+  const { createObjectURL, revokeObjectURL } = URL;
+
+  afterEach(() => {
+    Object.assign(apiConfig, original);
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    vi.restoreAllMocks();
+  });
+
+  function Card() {
+    const ref = useRef<HTMLImageElement>(null);
+    const { directSrc } = useApiImage(PATH, ref);
+    return <img ref={ref} src={directSrc} alt="card" />;
+  }
+
+  it('shows an image another view already fetched when the view opens later', async () => {
+    Object.assign(apiConfig, { mode: 'live', baseUrl: 'https://api.example.test' });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: () => Promise.resolve(new Blob(['x'])),
+    } as Response);
+    let n = 0;
+    Object.assign(URL, {
+      createObjectURL: vi.fn(() => `blob:image-${++n}`),
+      revokeObjectURL: vi.fn(),
+    });
+    const client = new QueryClient();
+    const view = (open: boolean) => (
+      <QueryClientProvider client={client}>
+        <Card />
+        <ResultView
+          open={open}
+          onOpenChange={vi.fn()}
+          imagePath={PATH}
+          alt="Big result"
+          onDownload={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
+    // 캔버스 카드가 같은 그림을 먼저 받아 둔다
+    const { rerender } = render(view(false));
+    await waitFor(() => expect(screen.getByAltText('card').getAttribute('src')).toMatch(/^blob:/));
+    // 그 뒤에 크게 보기를 열어도 그림이 들어간다
+    rerender(view(true));
+    await waitFor(() =>
+      expect(screen.getByAltText('Big result').getAttribute('src')).toMatch(/^blob:/),
+    );
   });
 });

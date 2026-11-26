@@ -163,6 +163,13 @@ export type CardData = {
   groupPosition?: GroupPosition;
   /** 묶음 첫 줄(우선순위·검증 기준)이면 그 묶음의 모든 줄 id(위에서부터). 리믹스 표시를 묶음당 1개만 붙이는 데 쓴다. */
   groupIds?: string[];
+  /**
+   * 묶음 첫 줄이 아닌 줄(우선순위·검증 기준)이면 첫 줄 노드의 캔버스 id(#241).
+   * 닫힌 묶음은 한 노드처럼 동작한다: 코멘트 코너·노드 도구는 첫 줄이 묶음 카드 전체에 맞춰 그리고, 다른 줄은 첫 줄에 맡긴다.
+   */
+  groupHead?: string;
+  /** 묶음 첫 줄이면 묶음 소제목(Search priority 등). 노드 도구·코멘트의 화면 읽기 이름에 쓴다. */
+  groupLabel?: string;
   /** 단계 열 안 묶음(소제목 + 그 아래 카드). 소제목을 끌면 같은 묶음이 함께 움직인다(#230). */
   group?: string;
   setId: string;
@@ -455,11 +462,13 @@ export function buildCanvas(
         { heading: true, draggable: true },
       );
       if (index > 0) {
+        // 단계 알약 사이 선은 프롬프트→1단계 곡선과 같은 베지어다(시안 Remix 01 1679:18724).
+        // 알약이 한 줄이면 곧은 가로선이고, 끌어 높이가 달라지면 부드러운 곡선이 된다(꺾인 선 대신, #241).
         stepEdges.push({
           id: id(`${VISIBLE_STAGES[index - 1]}-heading->${stage}-heading`),
           source: id(`${VISIBLE_STAGES[index - 1]}-heading`),
           target: id(`${stage}-heading`),
-          type: 'smoothstep',
+          type: 'default',
           focusable: false,
           selectable: false,
           deletable: false,
@@ -504,6 +513,8 @@ export function buildCanvas(
         let cursor = firstY;
         let previousKey: string | undefined;
         let groupId = '';
+        let groupText: string | undefined;
+        let headId = '';
         stageNodes.forEach((node, row) => {
           const group = groupOf(node);
           const next = stageNodes[row + 1];
@@ -512,10 +523,12 @@ export function buildCanvas(
           const groupPosition: GroupPosition =
             first && last ? 'only' : first ? 'first' : last ? 'last' : 'middle';
           if (first) groupId = `${stage}-${row}`;
+          if (first) headId = id(node.id);
           if (first) {
             const text = labels.groups
               ? (labels.groups[group.label as GroupKey] ?? titleCase(group.label))
               : undefined;
+            groupText = text || undefined;
             const gap = previousKey === undefined ? 0 : LAYOUT.groupGap + LAYOUT.groupLabel;
             if (previousKey !== undefined) cursor += gap - LAYOUT.cardGap;
             if (text && (labels.groups?.[group.label as GroupKey] || group.label)) {
@@ -547,7 +560,10 @@ export function buildCanvas(
               output: node,
               groupPosition,
               group: groupId,
-              ...(rowGroup ? { groupIds: rowGroup } : {}),
+              ...(rowGroup
+                ? { groupIds: rowGroup, ...(groupText ? { groupLabel: groupText } : {}) }
+                : {}),
+              ...(isRow(node) && !first ? { groupHead: headId } : {}),
               answerId: answer?.status === 'accepted' ? answer.id : undefined,
               state,
               error: row === 0 ? error : undefined,
@@ -795,29 +811,60 @@ export function stackColumn(entries: readonly ColumnEntry[]): Map<string, number
   return next;
 }
 
+/**
+ * 코멘트를 모을 노드 id(#241). 우선순위·검증 기준 묶음은 닫히면 한 노드처럼 동작하므로, 묶음 코멘트는
+ * 화면 첫 줄 노드 id 에 쓴다. 묶음·순서는 buildCanvas 와 같다(같은 단계에서 order 순, 이어진 같은 종류).
+ * nodes 는 그 답변의 노드 전부(검증 기준·불일치 포함)이고, 묶음이 아닌 노드면 nodeId 를 그대로 돌려준다.
+ */
+export function commentNodeId(nodes: readonly OutputNode[], nodeId: string): string {
+  const target = nodes.find((node) => node.id === nodeId);
+  if (!target || !isRow(target)) return nodeId;
+  const stageNodes = nodes
+    .filter((node) => node.stage === target.stage)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const key = groupOf(target).key;
+  let head = stageNodes.findIndex((node) => node.id === nodeId);
+  while (head > 0 && groupOf(stageNodes[head - 1]!).key === key) head -= 1;
+  return stageNodes[head]?.id ?? nodeId;
+}
+
 export function keyboardTarget(
   nodes: CanvasNode[],
   currentId: string,
   key: string,
 ): CanvasNode | undefined {
-  const current = nodes.find((node) => node.id === currentId);
+  const found = nodes.find((node) => node.id === currentId);
+  // 묶음 안의 다른 줄에 있으면 묶음 첫 줄에서 움직인 것으로 본다(닫힌 묶음은 한 노드, #241).
+  const current = found?.data.groupHead
+    ? (nodes.find((node) => node.id === found.data.groupHead) ?? found)
+    : found;
   if (!current) return;
+  // 묶음의 다른 줄은 건너뛴다. 키보드 포커스는 묶음 첫 줄 하나만 받는다.
   const siblings = nodes.filter(
-    (node) => node.data.setId === current.data.setId && node.data.kind !== 'heading',
+    (node) =>
+      node.data.setId === current.data.setId &&
+      node.data.kind !== 'heading' &&
+      !node.data.groupHead,
   );
   const ordered = siblings.sort((a, b) => a.data.column - b.data.column || a.data.row - b.data.row);
   if (key === 'Home') return ordered[0];
   if (key === 'End') return ordered.at(-1);
   const { column, row } = current.data;
-  if (key === 'ArrowUp' || key === 'ArrowDown')
-    return siblings.find(
-      (node) => node.data.column === column && node.data.row === row + (key === 'ArrowUp' ? -1 : 1),
-    );
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
+    const same = ordered.filter((node) => node.data.column === column);
+    return key === 'ArrowUp'
+      ? same.filter((node) => node.data.row < row).at(-1)
+      : same.find((node) => node.data.row > row);
+  }
   if (key === 'ArrowLeft' || key === 'ArrowRight') {
-    const next = siblings.filter(
+    const next = ordered.filter(
       (node) => node.data.column === column + (key === 'ArrowLeft' ? -1 : 1),
     );
-    return next.find((node) => node.data.row === row) ?? next.at(-1);
+    return (
+      next.find((node) => node.data.row === row) ??
+      next.filter((node) => node.data.row < row).at(-1) ??
+      next.at(-1)
+    );
   }
 }
 

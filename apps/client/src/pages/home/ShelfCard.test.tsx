@@ -114,9 +114,9 @@ describe('ShelfCard 상자 누르기·옮기기 (#227)', () => {
     expect(link.getAttribute('draggable')).toBe('false');
   });
 
-  it('Alt+←/→ 는 한 칸, Alt+↑/↓ 는 한 줄(rowStep 칸)씩 옮기고, Alt 없는 화살표는 무시한다', () => {
-    const moves: number[] = [];
-    renderWith({ rowStep: 13, onMove: (step) => moves.push(step) });
+  it('Alt+화살표는 그 방향 옆 칸으로 옮기고, Alt 없는 화살표는 무시한다 (#240)', () => {
+    const moves: string[] = [];
+    renderWith({ onMove: (direction) => moves.push(direction) });
     const link = screen.getByRole('link', { name: 'Alpha' });
 
     fireEvent.keyDown(link, { key: 'ArrowLeft', altKey: true });
@@ -125,7 +125,7 @@ describe('ShelfCard 상자 누르기·옮기기 (#227)', () => {
     fireEvent.keyDown(link, { key: 'ArrowDown', altKey: true });
     fireEvent.keyDown(link, { key: 'ArrowDown' });
 
-    expect(moves).toEqual([-1, 1, -13, 13]);
+    expect(moves).toEqual(['left', 'right', 'up', 'down']);
   });
 
   it('끌려 다니는 동안(lifted)은 hover·focus 로 넓어지지 않게 group 을 빼고 그림자를 띄운다', () => {

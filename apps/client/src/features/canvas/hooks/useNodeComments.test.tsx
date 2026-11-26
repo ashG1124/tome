@@ -104,3 +104,20 @@ it('never deletes another author’s comment and retains own comments on failure
   });
   await waitFor(() => expect(result.current.comments).toEqual([other]));
 });
+it('gathers a group under its first row id and posts there (#241)', async () => {
+  const { api, wrapper } = setup();
+  const second = { ...comment, id: '00000000-0000-4000-8000-000000000004', nodeId: 'v2' };
+  const other = { ...comment, id: '00000000-0000-4000-8000-000000000005', nodeId: 'k1' };
+  api.listComments.mockResolvedValue([second, other]);
+  api.addComment.mockResolvedValue({ ...comment, nodeId: 'v1' });
+  const { result } = renderHook(() => useNodeComments('answer', ['v1', 'v2'], api), { wrapper });
+  await waitFor(() => expect(result.current.comments).toEqual([second]));
+  await act(async () => {
+    await result.current.submit('Group reason');
+  });
+  expect(api.addComment.mock.calls[0]![1]).toEqual({ nodeId: 'v1', body: 'Group reason' });
+  await act(async () => {
+    await result.current.remove(second.id);
+  });
+  expect(api.deleteComment).toHaveBeenCalledWith(second.id);
+});

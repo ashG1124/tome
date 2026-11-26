@@ -7,6 +7,7 @@ import { creatorAvatarUrl } from '../avatars/avatar-url';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import type { AuthContext } from '../session/auth.decorators';
 import { type CommentRow, CommentsRepository } from './comments.repository';
+import { commentableNodeIds } from './comments.rules';
 
 function toComment(row: CommentRow, auth: AuthContext): NodeComment {
   return {
@@ -23,12 +24,6 @@ function toComment(row: CommentRow, auth: AuthContext): NodeComment {
     createdAt: row.createdAt.toISOString(),
     mine: row.authorId === auth.creatorId,
   };
-}
-
-/** 답변 nodes 스냅샷에 들어 있는 노드 id 들. */
-function snapshotNodeIds(nodes: unknown): Set<string> {
-  const list = (nodes as { nodes?: Array<{ id?: unknown }> } | null)?.nodes ?? [];
-  return new Set(list.map((n) => n.id).filter((id): id is string => typeof id === 'string'));
 }
 
 @Injectable()
@@ -61,7 +56,8 @@ export class CommentsService {
       },
       async (tx) => {
         const answer = await this.answers.requireReadable(auth, answerId);
-        if (!snapshotNodeIds(answer.nodes).has(body.nodeId)) {
+        // 1~4단계 노드와 5단계 검증 기준에 쓸 수 있다(불일치는 보기 전용).
+        if (!commentableNodeIds(answer).has(body.nodeId)) {
           throw new AppError('VALIDATION_FAILED', undefined, {
             fields: [{ path: 'nodeId', message: 'Node not found in this answer.' }],
           });

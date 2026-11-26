@@ -6,6 +6,7 @@ import {
   buildCanvas,
   shownNumber,
   keyboardTarget,
+  commentNodeId,
   promptHeight,
   visibleStage,
   sameCardData,
@@ -354,6 +355,55 @@ it('draws step pills, group labels and joins priority rows into one card', () =>
   ]);
   expect(nodes.find((n) => n.id === 'set-a:k1')!.data.groupIds).toBeUndefined();
   expect(edges.some((e) => e.id === 'set-a:analyze-heading->research-heading')).toBe(true);
+  // 닫힌 묶음은 한 노드(#241): 다른 줄은 첫 줄을 가리키고, 첫 줄은 묶음 소제목을 안다.
+  const row = (id: string) => nodes.find((n) => n.id === `set-a:${id}`)!.data;
+  expect([row('s1').groupHead, row('s2').groupHead, row('s3').groupHead]).toEqual([
+    undefined,
+    'set-a:s1',
+    'set-a:s1',
+  ]);
+  expect(row('s1').groupLabel).toBe('Search priority');
+  expect(row('k1').groupHead).toBeUndefined();
+  // 단계 알약 사이 선은 베지어(끌어도 꺾이지 않는다, #241). 프롬프트→1단계 곡선과 같은 종류다.
+  const stepEdges = edges.filter((e) => /-heading->.*-heading$/.test(e.id));
+  expect(stepEdges).toHaveLength(4);
+  expect(new Set(stepEdges.map((e) => e.type))).toEqual(new Set(['default']));
+  expect(edges.find((e) => e.id === 'set-a:prompt->analyze-heading')?.type).toBe('default');
+  // 키보드는 묶음 첫 줄만 들른다. 다른 줄에서 움직여도 첫 줄 기준이다.
+  expect(keyboardTarget(nodes, 'set-a:s1', 'ArrowDown')).toBeUndefined();
+  expect(keyboardTarget(nodes, 'set-a:k1', 'ArrowRight')?.id).toBe('set-a:s1');
+  expect(keyboardTarget(nodes, 'set-a:s3', 'ArrowUp')).toBeUndefined();
+});
+
+describe('commentNodeId (#241)', () => {
+  const node = (id: string, kind: Node['kind'], stage: Node['stage'], order?: number): Node => ({
+    id,
+    kind,
+    stage,
+    text: id,
+    enabled: true,
+    parentIds: [],
+    ...(order === undefined ? {} : { order }),
+  });
+  const nodes = [
+    node('k1', 'keyword', 'analyze'),
+    node('d1', 'dataType', 'research', 0),
+    node('s2', 'priority', 'research', 2),
+    node('s1', 'priority', 'research', 1),
+    node('v1', 'criterion', 'verify'),
+    node('v2', 'criterion', 'verify'),
+    node('m1', 'mismatch', 'verify'),
+  ];
+  it('stores group comments on the first displayed row', () => {
+    expect(commentNodeId(nodes, 's2')).toBe('s1');
+    expect(commentNodeId(nodes, 's1')).toBe('s1');
+    expect(commentNodeId(nodes, 'v2')).toBe('v1');
+  });
+  it('keeps single nodes and unknown ids as they are', () => {
+    expect(commentNodeId(nodes, 'k1')).toBe('k1');
+    expect(commentNodeId(nodes, 'm1')).toBe('m1');
+    expect(commentNodeId(nodes, 'zz')).toBe('zz');
+  });
 });
 
 describe('shownNumber (#235)', () => {

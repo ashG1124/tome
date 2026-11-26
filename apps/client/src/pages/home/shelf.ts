@@ -96,13 +96,3 @@ export function placeAt(ids: readonly string[], movedId: string, target: number)
   const index = Math.min(Math.max(target, 0), rest.length);
   return [...rest.slice(0, index), movedId, ...rest.slice(index)];
 }
-
-/** from 칸의 카드를 to 칸으로 옮긴 새 순서. 칸 번호가 범위를 벗어나면 순서를 그대로 둔다. */
-export function moveCard<T>(list: readonly T[], from: number, to: number): T[] {
-  const next = [...list];
-  if (from === to || to < 0 || to >= list.length) return next;
-  const [moved] = next.splice(from, 1);
-  if (moved === undefined) return [...list];
-  next.splice(to, 0, moved);
-  return next;
-}

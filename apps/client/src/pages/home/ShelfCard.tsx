@@ -10,6 +10,7 @@ import {
   type ShelfCardType,
   type ShelfTag,
 } from './shelf';
+import type { MoveDirection } from './freeLayout';
 import { useApiImage } from '../../shared/api';
 
 /** 카드 종류별 글리프 이름(브랜드 그림 파일) */
@@ -32,17 +33,15 @@ interface ShelfCardProps {
   project: ProjectSummary;
   /** 맨 오른쪽 칸 쪽이면 왼쪽으로 넓어진다. */
   openToLeft: boolean;
-  /** 키보드로 순서를 옮긴다. step 은 칸 수(-1·+1 은 한 칸, ±rowStep 은 한 줄). */
-  onMove: (step: number) => void;
-  /** Alt+↑/↓ 로 옮기는 칸 수(서가 한 줄의 칸 수). */
-  rowStep?: number;
+  /** 키보드로 카드를 그 방향 옆 칸으로 옮긴다(Alt+화살표). */
+  onMove: (direction: MoveDirection) => void;
   /** 끌려 다니는 중이면 넓어지지 않고 그림자를 띄운다. */
   lifted?: boolean;
   /** 링크 설명(순서 옮기기 키 안내) 요소 id. */
   describedBy?: string;
 }
 
-const MOVE_KEYS: Record<string, 'left' | 'right' | 'up' | 'down'> = {
+const MOVE_KEYS: Record<string, MoveDirection> = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
   ArrowUp: 'up',
@@ -52,14 +51,13 @@ const MOVE_KEYS: Record<string, 'left' | 'right' | 'up' | 'down'> = {
 /**
  * 서가 카드 한 장(108×192). 마우스를 올리거나 키보드 포커스가 오면 넓어지며 종류·편집일이 보인다.
  * 표지 사진이 뜨면 글자를 흰색으로 바꾸고, 좁을 때는 사진 유무와 관계없이 제목을 투명하게 둔다(낭독기·Tab·클릭은 그대로).
- * 링크에는 제목만 넣어 화면 낭독기가 제목으로 읽게 하고, Alt+←/→(한 칸)·Alt+↑/↓(한 줄)로 순서를 바꾼다(드래그의 키보드 대체).
+ * 링크에는 제목만 넣어 화면 낭독기가 제목으로 읽게 하고, Alt+화살표로 그 방향 옆 칸으로 옮긴다(드래그의 키보드 대체, #240).
  * 링크는 카드 상자 전체를 덮어서(늘린 누름 영역) 상자 어디를 눌러도 프로젝트로 들어간다. 카드 안 다른 버튼은 없다.
  */
 export function ShelfCard({
   project,
   openToLeft,
   onMove,
-  rowStep = 1,
   lifted = false,
   describedBy,
 }: ShelfCardProps) {
@@ -89,8 +87,7 @@ export function ShelfCard({
     const direction = MOVE_KEYS[event.key];
     if (!event.altKey || direction === undefined) return;
     event.preventDefault();
-    const step = direction === 'left' ? -1 : direction === 'right' ? 1 : rowStep;
-    onMove(direction === 'up' ? -step : step);
+    onMove(direction);
   };
 
   return (

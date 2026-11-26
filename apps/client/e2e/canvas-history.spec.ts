@@ -59,27 +59,38 @@ for (const viewport of [
     );
     await page.screenshot({ path: info.outputPath('01-version-and-pin.png'), fullPage: true });
 
-    const corner = page.locator('[data-id$=":k1"]').getByRole('button', { name: /Add a comment/ });
-    await corner.focus();
-    const toolBox = (await corner.boundingBox())!;
+    // 분홍 코너 코멘트 흐름(#241): 노드 도구 코멘트 아이콘 → 코너 → 코너를 눌러 띠 → 띠 안에서 바로 쓴다.
+    const k1 = page.locator('[data-id$=":k1"]');
+    const tool = k1.getByRole('button', { name: /^Add a comment:/ });
+    await tool.focus();
     await page.keyboard.press('Enter');
-    const panel = page.getByRole('region', { name: 'Comments', exact: true });
-    const input = panel.getByRole('textbox', { name: 'Add a comment' });
+    const corner = k1.getByRole('button', { name: /^Comments/ });
+    await expect(corner).toBeFocused();
+    await expect(corner).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('Enter');
+    const input = k1.getByRole('textbox', { name: /^Add a comment:/ });
     await expect(input).toBeFocused();
+    await expect(input).toHaveAttribute('placeholder', 'Please provide a reason.');
+    // 무거운 이중 테두리 대신 공통 포커스 테두리 하나(띠 둘레)
+    const sheet = k1.locator('.canvas-comment-sheet');
+    expect(await input.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('none');
+    expect(await sheet.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
     const body = 'A'.repeat(300);
     await input.fill(body);
-    await expect(panel.getByText('300 / 300')).toBeVisible();
-    await panel.getByRole('button', { name: 'Post', exact: true }).click();
-    await expect(panel.getByRole('status')).toHaveText('Comment saved.');
-    await expect(panel.getByText(body, { exact: true })).toBeVisible();
-    // 창은 노드 도구의 코멘트 아이콘 자리에서 펼쳐진다(#230): 창 왼쪽 위가 아이콘 자리다
-    const panelBox = (await panel.boundingBox())!;
-    expect(Math.abs(panelBox.x - toolBox.x)).toBeLessThan(16);
-    expect(Math.abs(panelBox.y - toolBox.y)).toBeLessThan(16);
-    await page.screenshot({ path: info.outputPath('02-comment-created.png'), fullPage: true });
-    await page.keyboard.press('Escape');
-    await expect(panel).toHaveCount(0);
+    await expect(k1.getByText('300 / 300')).toBeVisible();
+    await page.screenshot({ path: info.outputPath('02a-comment-typing.png') });
+    await page.keyboard.press('Enter');
+    await expect(k1.getByRole('status')).toHaveText('Comment saved.');
+    await expect(input).toHaveCount(0);
     await expect(corner).toBeFocused();
+    // 올린 글은 접힌 띠에 두 줄까지 보인다.
+    await expect(k1.locator('.canvas-comment-text')).toBeVisible();
+    await expect(k1.locator('.canvas-comment-text')).toContainText(body.slice(0, 20));
+    await page.screenshot({ path: info.outputPath('02-comment-created.png'), fullPage: true });
+    // 코너에서 Esc 는 대상을 풀고 코멘트 아이콘으로 포커스를 돌려준다(코너는 코멘트가 있어 남는다).
+    await page.keyboard.press('Escape');
+    await expect(tool).toBeFocused();
+    await expect(corner).toBeVisible();
 
     await page.reload();
     await expect(versions.locator('[aria-live=polite]')).toHaveText('Answer 02');
@@ -95,22 +106,24 @@ for (const viewport of [
     // 첫 화면은 4·5단계 쪽으로 확대돼 있다. 포커스하면 캔버스가 노드를 화면 안으로 옮기니, 그 뒤에 누른다.
     await corner.focus();
     await corner.click();
-    await expect(panel.getByText(body, { exact: true })).toBeVisible();
-    await panel.getByRole('button', { name: 'Delete', exact: true }).focus();
+    const thread = k1.getByRole('group', { name: /^Comments: / });
+    await expect(thread.getByText(body, { exact: true })).toBeVisible();
+    await expect(input).toBeFocused();
+    await thread.getByRole('button', { name: 'Delete', exact: true }).focus();
     await page.keyboard.press('Enter');
     // 지우기 전에 한 번 더 묻는다. 포커스는 안전한 Cancel 에 온다. Esc 는 질문만 접는다.
-    const ask = panel.getByRole('group', { name: 'Delete this comment?' });
+    const ask = thread.getByRole('group', { name: 'Delete this comment?' });
     await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(ask).toHaveCount(0);
-    await expect(panel).toBeVisible();
-    await expect(panel.getByRole('button', { name: 'Delete', exact: true })).toBeFocused();
+    await expect(thread).toBeVisible();
+    await expect(thread.getByRole('button', { name: 'Delete', exact: true })).toBeFocused();
     await page.keyboard.press('Enter');
     await page.keyboard.press('Tab');
     await expect(ask.getByRole('button', { name: 'Delete', exact: true })).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(panel.getByText(body, { exact: true })).toHaveCount(0);
-    await expect(panel.getByRole('status')).toHaveText('Comment deleted.');
+    await expect(thread.getByText(body, { exact: true })).toHaveCount(0);
+    await expect(k1.getByRole('status')).toHaveText('Comment deleted.');
     await expect(input).toBeFocused();
     await page.screenshot({ path: info.outputPath('03-comment-deleted.png'), fullPage: true });
     await page.keyboard.press('Escape');
@@ -175,9 +188,9 @@ test('one version disables both chevrons and editing remains available', async (
   });
 });
 
-test('comments open from the open node tool, grow on the node tool and respect reduced motion', async ({
+test('the open node tool comment button folds the node and makes a corner there (#241)', async ({
   page,
-}) => {
+}, info) => {
   await page.setViewportSize({ width: 1728, height: 1083 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openHistory(page, 1);
@@ -187,19 +200,33 @@ test('comments open from the open node tool, grow on the node tool and respect r
   await edit.click();
   await expect(node.locator('.node-open')).toBeVisible();
   await node.locator('.node-open-tool').getByRole('button', { name: 'Add a comment' }).click();
-  // 펼친 노드는 접히고, 창은 그 노드의 도구(코멘트 아이콘 자리)에서 펼쳐진다.
+  // 펼친 노드는 접히고, 그 노드 오른쪽 아래에 코너가 생겨 포커스를 받는다.
   await expect(node.locator('.node-open')).toHaveCount(0);
-  const panel = node.getByRole('region', { name: 'Comments', exact: true });
-  await expect(panel).toBeVisible();
-  await expect(panel.getByRole('textbox', { name: 'Add a comment' })).toBeFocused();
-  await expect(panel.getByText('No comments yet.')).toBeVisible();
-  expect(await panel.evaluate((element) => getComputedStyle(element).animationName)).toBe('none');
-  // 창 전체가 화면 안에 있다.
-  const box = (await panel.boundingBox())!;
+  const corner = node.getByRole('button', { name: /^Comments: / });
+  await expect(corner).toBeFocused();
+  const card = await node.locator('[data-canvas-card]').boundingBox();
+  const cornerBox = await corner.boundingBox();
+  expect(Math.abs(cornerBox!.x + cornerBox!.width - (card!.x + card!.width))).toBeLessThan(2);
+  expect(Math.abs(cornerBox!.y + cornerBox!.height - (card!.y + card!.height))).toBeLessThan(2);
+  await page.screenshot({ path: info.outputPath('06-corner-closed.png') });
+  await corner.click();
+  const input = node.getByRole('textbox', { name: /^Add a comment:/ });
+  await expect(input).toBeFocused();
+  // 띠 전체가 화면 안에 있다.
+  const box = (await node.locator('.canvas-comment-sheet').boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(1728);
   expect(box.y + box.height).toBeLessThanOrEqual(1083);
-  // 닫으면 노드 옆 코멘트 버튼으로 포커스가 돌아온다(펼친 노드의 버튼은 사라졌다).
-  await panel.getByRole('button', { name: 'Close' }).click();
-  await expect(panel).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('07-corner-open-guide.png') });
+  // Esc 는 띠를 접어 코너로, 한 번 더 누르면 (코멘트가 없으니) 코너도 사라지고 노드 도구의 코멘트 버튼으로 돌아온다.
+  await page.keyboard.press('Escape');
+  await expect(input).toHaveCount(0);
+  await expect(corner).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(corner).toHaveCount(0);
   await expect(node.getByRole('button', { name: /^Add a comment:/ })).toBeFocused();
+  // 아무것도 쓰지 않고 다른 곳을 누르면 빈 코너는 거둔다.
+  await node.getByRole('button', { name: /^Add a comment:/ }).click();
+  await expect(corner).toBeFocused();
+  await page.mouse.click(5, 700);
+  await expect(corner).toHaveCount(0);
 });

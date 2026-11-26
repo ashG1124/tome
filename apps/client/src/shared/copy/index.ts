@@ -56,9 +56,9 @@ export const COPY = {
   'H-03c': 'Derive',
   // Figma "Edited 2 hours ago" → 절대 날짜 규칙이라 "Edited {날짜}"로 붙여 쓴다
   'H-04': 'Edited',
-  // 서가 순서 옮기기(#227): 임시 ID — 문구 표에 옮길 때 확정. Figma에 없는 낭독 문구(키 안내, 옮긴 뒤 role=status). {position}·{total} 자리
+  // 서가 카드 옮기기(#227, 자유 배치 #240): 임시 ID — 문구 표에 옮길 때 확정. Figma에 없는 낭독 문구(키 안내, 옮긴 뒤 role=status). {row}·{column} 자리(1부터)
   'H-05': 'Press Alt and an arrow key to move this project on the shelf.',
-  'H-06': 'Moved to position {position} of {total}.',
+  'H-06': 'Moved to row {row}, column {column}.',
   // ---- 워크스페이스 틀(#25): 확정 ID(#128). W-05 는 Figma 원문(1187:62709), 나머지는 버튼 이름.
   'W-01': 'Page',
   'W-02': 'Pages',
@@ -333,6 +333,10 @@ export const COPY = {
   // 노드 코멘트 다시 디자인(#221): 새 ID. 시안에 원문이 없어 공통 문구 톤으로 정함.
   'NH-08': 'Delete this comment?',
   'NH-09': 'Comment deleted.',
+  // 분홍 코너 코멘트 흐름(#241): 임시 ID — 문구 표에 옮길 때 확정. NH-10 은 시안 Corner open 안내 원문(리드 피드백),
+  // NH-11 은 Figma에 없는 화면 읽기 프로그램용 키 안내
+  'NH-10': 'Please provide a reason.',
+  'NH-11': 'Press Enter to post, Shift+Enter for a new line, Escape to cancel.',
   // Connection(#127): 확정 ID.
   'RC-01': 'Connection',
   'RC-02': 'Apply',
@@ -450,9 +454,8 @@ export const CANVAS_HISTORY_COPY = {
   comments: {
     title: COPY['A-02'],
     input: COPY['S-07a'],
-    submit: COPY['A-08'],
-    close: COPY['D-11'],
-    empty: COPY['NH-05'],
+    placeholder: COPY['NH-10'],
+    hint: COPY['NH-11'],
     loading: COPY['NH-06'],
     saved: COPY['NH-07'],
     remove: COPY['S-07b'],

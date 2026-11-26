@@ -89,6 +89,30 @@ describe.skipIf(!url)('node comments API (real Postgres)', () => {
       { id: 'k1', stage: 'keyword', kind: 'keyword', text: 'harbor', enabled: true, parentIds: [] },
     ],
   };
+  /** 5단계 검증 기록: 기준(v1)은 코멘트를 받고, 불일치(m1)는 보기 전용이라 받지 않는다. */
+  const verification = {
+    status: 'done',
+    criteria: [
+      {
+        id: 'v1',
+        stage: 'verify',
+        kind: 'criterion',
+        text: 'Shows a harbor',
+        enabled: true,
+        parentIds: [],
+      },
+    ],
+    mismatches: [
+      {
+        id: 'm1',
+        stage: 'verify',
+        kind: 'mismatch',
+        text: 'No boats',
+        enabled: true,
+        parentIds: [],
+      },
+    ],
+  };
 
   /** 프로젝트·답변을 만든다. posted 면 게시 상태. */
   const newAnswer = async (
@@ -123,6 +147,7 @@ describe.skipIf(!url)('node comments API (real Postgres)', () => {
         phrases: {},
         excluded: [],
         nodes: snapshot,
+        verification,
         provider: 'mock',
         model: 'mock',
         createdById: owner.creatorId,
@@ -303,6 +328,21 @@ describe.skipIf(!url)('node comments API (real Postgres)', () => {
     expect((await post(owner, answerId, { nodeId: 'k999', body: 'x' }, key)).status).toBe(400);
     expect((await post(owner, answerId, { nodeId: 'k1', body: 'x' }, key)).status).toBe(201);
     expect(await list(owner, answerId)).toHaveLength(1);
+  });
+
+  it('accepts verification criterion ids, rejects mismatch ids', async () => {
+    const owner = await newOwner();
+    const { answerId } = await newAnswer(owner);
+    const ok = await post(owner, answerId, { nodeId: 'v1', body: 'criterion reason' });
+    expect(ok.status).toBe(201);
+    expect(OneSchema.parse(await ok.json()).comment.nodeId).toBe('v1');
+    const mismatch = await post(owner, answerId, { nodeId: 'm1', body: 'x' });
+    expect(mismatch.status).toBe(400);
+    expect(await errorCode(mismatch)).toBe('VALIDATION_FAILED');
+    const unknown = await post(owner, answerId, { nodeId: 'v9', body: 'x' });
+    expect(unknown.status).toBe(400);
+    expect((await list(owner, answerId)).map((c) => c.nodeId)).toEqual(['v1']);
+    expect(await eventCount(answerId)).toBe(1);
   });
 
   it("other's unposted answer: list and create are 404", async () => {

@@ -1,7 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Answer, Job } from '@tome/shared';
 
-// #230: 노드 끌어 옮기기 · 표시 정리 · 코멘트 제자리 펼침 · 답변 카드 크게 보기
+// #230: 노드 끌어 옮기기 · 표시 정리 · 답변 카드 크게 보기
+// #241: 끌어도 부드러운 단계 연결선 · 닫힌 묶음은 한 노드
 async function openFinished(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('tome.token', 'fake-token');
@@ -230,47 +231,100 @@ test('clicking or pressing Enter on the answer card opens the image view with Do
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
-for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-  test(`the comment icon grows into the comment box in place (${reducedMotion})`, async ({
-    page,
-  }, info) => {
-    await page.setViewportSize({ width: 1728, height: 1083 });
-    await page.emulateMedia({ reducedMotion });
-    await openFinished(page);
-    const k1 = node(page, 'k1');
-    const tool = k1.getByRole('button', { name: /^Add a comment:/ });
-    await tool.focus();
-    const toolBox = await box(tool);
-    await tool.click();
-    const panel = k1.getByRole('region', { name: 'Comments', exact: true });
-    await expect(panel).toBeVisible();
-    await expect(panel.getByRole('textbox', { name: 'Add a comment' })).toBeFocused();
-    expect(await panel.evaluate((element) => getComputedStyle(element).animationName)).toBe(
-      reducedMotion === 'reduce' ? 'none' : 'canvas-comments-grow',
-    );
-    await page.waitForTimeout(400);
-    // 창은 코멘트 아이콘 자리(왼쪽 위)에서 펼쳐진다. 창 안 아이콘이 도구 아이콘과 같은 자리다.
-    const panelBox = await box(panel);
-    near(panelBox.x, toolBox.x, 12);
-    near(panelBox.y, toolBox.y, 12);
-    const toggle = panel.getByRole('button', { name: 'Close' });
-    const toggleBox = await box(toggle);
-    near(toggleBox.x, toolBox.x, 6);
-    near(toggleBox.y, toolBox.y, 6);
-    // 도구 막대는 창 뒤에 숨는다.
-    await expect(tool).toBeHidden();
-    await page.screenshot({ path: info.outputPath(`05-comment-expanded-${reducedMotion}.png`) });
-    const input = panel.getByRole('textbox', { name: 'Add a comment' });
-    await input.fill('Make the shade brass.');
-    await panel.getByRole('button', { name: 'Post', exact: true }).click();
-    await expect(panel.getByRole('status')).toHaveText('Comment saved.');
-    await expect(panel.getByText('Make the shade brass.', { exact: true })).toBeVisible();
-    // Esc 로 아이콘으로 접히고 포커스가 아이콘으로 돌아온다.
-    await page.keyboard.press('Escape');
-    await expect(panel).toHaveCount(0);
-    await expect(tool).toBeFocused();
-  });
+/** 연결선 path 의 명령 글자들(M·C·L·Q…). 베지어는 M…C, 꺾인 선(smoothstep)은 L·Q 가 섞인다. */
+async function pathCommands(page: Page, suffix: string) {
+  const d = await page
+    .locator(`.react-flow__edge[data-id$=":${suffix}"] path.react-flow__edge-path`)
+    .getAttribute('d');
+  return (d ?? '').replace(/[^A-Za-z]/g, '');
 }
+
+test('step-to-step edges stay smooth curves after a drag (#241)', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await openFinished(page);
+  const edges = [
+    'analyze-heading->research-heading',
+    'research-heading->evidence-heading',
+    'evidence-heading->draft-heading',
+    'draft-heading->verify-heading',
+  ];
+  // 끌기 전: 알약이 한 줄이라 곧은 가로선(베지어, 시작·끝 높이가 같다)이다.
+  for (const edge of edges) expect(await pathCommands(page, edge)).toBe('MC');
+  const straight = await page
+    .locator(
+      '.react-flow__edge[data-id$=":evidence-heading->draft-heading"] path.react-flow__edge-path',
+    )
+    .getAttribute('d');
+  const [, y1, y2] = /^M[\d.-]+,([\d.-]+) C.* [\d.-]+,([\d.-]+)$/.exec(straight ?? '') ?? [];
+  expect(Number(y1)).toBeCloseTo(Number(y2), 1);
+  // 4단계 알약을 아래로 끌면 3→4, 4→5 선이 꺾이지 않고 부드러운 곡선으로 따라간다.
+  await drag(page, node(page, 'draft-heading'), 20, 160);
+  for (const edge of edges) expect(await pathCommands(page, edge)).toBe('MC');
+  expect(
+    await page
+      .locator(
+        '.react-flow__edge[data-id$=":evidence-heading->draft-heading"] path.react-flow__edge-path',
+      )
+      .getAttribute('d'),
+  ).not.toBe(straight);
+  await page.screenshot({ path: info.outputPath('05-step-edges-after-drag.png') });
+});
+
+test('a closed verification criteria group behaves as one node (#241)', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1728, height: 1083 });
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openFinished(page);
+  const v1 = node(page, 'v1');
+  const v2 = node(page, 'v2');
+  // 도구·코너는 첫 줄(묶음)에만 있다. 아래 줄에는 없다.
+  await expect(v2.locator('.canvas-node-tool, .canvas-comment-corner')).toHaveCount(0);
+  await expect(v2.locator('[data-canvas-card]')).toHaveAttribute('tabindex', '-1');
+  const card = v1.locator('[data-canvas-card]');
+  await card.focus();
+  const tool = v1.locator('.canvas-node-tool');
+  await expect(tool).toBeVisible();
+  // 노드 도구는 묶음 카드 전체의 세로 가운데에 있다(첫 줄 옆이 아니다).
+  const top = await box(v1);
+  const bottom = await box(v2);
+  const toolBox = await box(tool.locator('.canvas-node-tool-bar'));
+  near(toolBox.y + toolBox.height / 2, (top.y + bottom.y + bottom.height) / 2, 3);
+  // 포커스 테두리도 묶음 카드 전체에 그린다.
+  const ring = await v1.locator('.canvas-node-frame').evaluate((element) => {
+    const style = getComputedStyle(element, '::before');
+    return { outline: style.outlineStyle, height: element.getBoundingClientRect().height };
+  });
+  expect(ring.outline).toBe('solid');
+  near(ring.height, bottom.y + bottom.height - top.y, 2);
+  await page.screenshot({ path: info.outputPath('06-group-focus-tool.png') });
+  // 키보드: 묶음 아래 줄은 건너뛴다.
+  await page.keyboard.press('ArrowDown');
+  await expect(v2.locator('[data-canvas-card]')).not.toBeFocused();
+  // 코멘트 아이콘 → 코너는 묶음 카드 오른쪽 아래(마지막 줄 오른쪽 아래)에 생긴다.
+  await card.focus();
+  await tool.getByRole('button', { name: 'Add a comment: Verification criteria' }).click();
+  const corner = v1.getByRole('button', { name: /^Comments( \(\d+\))?: Verification criteria$/ });
+  await expect(corner).toBeFocused();
+  const cornerBox = await box(corner);
+  near(cornerBox.x + cornerBox.width, bottom.x + bottom.width, 2);
+  near(cornerBox.y + cornerBox.height, bottom.y + bottom.height, 2);
+  await page.keyboard.press('Enter');
+  const input = v1.getByRole('textbox', { name: 'Add a comment: Verification criteria' });
+  await expect(input).toBeFocused();
+  await input.fill('Both rows read as one check.');
+  await page.keyboard.press('Enter');
+  await expect(corner).toBeFocused();
+  // 아래 줄에 마우스를 올려도 묶음 띠(가장 최근 코멘트)가 보인다.
+  await page.mouse.click(5, 700);
+  await v2.locator('[data-canvas-card]').hover();
+  await expect(v1.locator('.canvas-comment-text')).toBeVisible();
+  await expect(v1.locator('.canvas-comment-text')).toContainText('Both rows read as one check.');
+  await page.screenshot({ path: info.outputPath('07-group-band-on-row-hover.png') });
+  // 아래 줄을 누르면 묶음 전체가 첫 줄 자리에서 펼쳐진다.
+  await v2.locator('[data-canvas-card]').click();
+  await expect(v1.locator('.node-open')).toBeVisible();
+  expect(errors).toEqual([]);
+});
 
 test('dragged nodes stay where they were after a reload, from the first paint (#237)', async ({
   page,

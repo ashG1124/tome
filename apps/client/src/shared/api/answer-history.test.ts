@@ -57,6 +57,22 @@ describe('answer history API', () => {
     expect((await api.getAnswer(answer.id)).answer.pinned).toBe(false);
   });
 
+  it('accepts comments on verification criteria, not on mismatches', async () => {
+    const { answer } = await setup();
+    const criterion = answer.verification?.criteria[0];
+    const mismatch = answer.verification?.mismatches[0];
+    expect(criterion).toBeDefined();
+    const result = await api.createNodeComment(answer.id, {
+      nodeId: criterion!.id,
+      body: 'Criterion reason',
+    });
+    expect(result.comment.nodeId).toBe(criterion!.id);
+    if (mismatch)
+      await expect(
+        api.createNodeComment(answer.id, { nodeId: mismatch.id, body: 'x' }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
   it('persists trimmed node comments once per idempotency key, then soft deletes', async () => {
     const { answer } = await setup();
     expect(await api.listNodeComments(answer.id)).toEqual({ comments: [] });

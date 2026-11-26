@@ -909,7 +909,10 @@ export function createNodeComment(
   answer: Answer,
   body: CreateNodeCommentRequest,
 ): CreateNodeCommentResponse {
-  const ids = answer.nodes.nodes.map((node) => node.id);
+  // 서버와 같다: 1~4단계 노드와 5단계 검증 기준에 쓸 수 있고, 불일치는 보기 전용이라 받지 않는다.
+  const ids = [...answer.nodes.nodes, ...(answer.verification?.criteria ?? [])].map(
+    (node) => node.id,
+  );
   if (!ids.includes(body.nodeId)) throw new FakeFailure('VALIDATION_FAILED');
   const record = {
     id: newId(),

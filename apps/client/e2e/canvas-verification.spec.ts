@@ -142,3 +142,53 @@ test('a failed verification save rolls back and shows the common error', async (
   await shot(page, '06-error-rollback');
   expect((await savedVerification(page, answerId)).verification!.criteria[0]!.enabled).toBe(true);
 });
+
+test('verification criteria take comments as one group, from the closed and the open node tool (#241)', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1728, height: 1083 });
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const { answerId } = await openFinishedProject(page);
+  const head = page.locator('[data-id$=":v1"]');
+  // 닫힌 묶음: 노드 도구에 코멘트 버튼이 있다.
+  await head.locator('.canvas-card').focus();
+  await head.getByRole('button', { name: 'Add a comment: Verification criteria' }).click();
+  const corner = head.getByRole('button', { name: /^Comments( \(\d+\))?: Verification criteria$/ });
+  await expect(corner).toBeFocused();
+  await page.keyboard.press('Enter');
+  const input = head.getByRole('textbox', { name: 'Add a comment: Verification criteria' });
+  await input.fill('The lamp check matters most.');
+  await page.keyboard.press('Enter');
+  await expect(head.getByRole('status')).toHaveText('Comment saved.');
+  await page.screenshot({ path: info.outputPath('01-criteria-comment.png') });
+
+  // 펼친 기준 묶음(둘째 줄을 눌러 열어도)의 노드 도구에도 코멘트 버튼이 있고, 묶음 첫 줄에 모인다.
+  await page.locator('[data-id$=":v2"] .canvas-card').click();
+  const panel = head.locator('.node-open[data-kind="criterion"]');
+  await expect(panel).toBeVisible();
+  await page.screenshot({ path: info.outputPath('02-criteria-open-tool.png') });
+  await panel.getByRole('button', { name: 'Add a comment' }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(corner).toBeFocused();
+  await page.keyboard.press('Enter');
+  await input.fill('Second reason.');
+  await page.keyboard.press('Enter');
+  await expect(head.getByRole('status')).toHaveText('Comment saved.');
+
+  const saved = await page.evaluate(async (id) => {
+    const path = '/src/shared/api/index.ts';
+    const { api } = await import(/* @vite-ignore */ path);
+    return (await api.listNodeComments(id)).comments as { nodeId: string; body: string }[];
+  }, answerId);
+  expect(saved.map((comment) => [comment.nodeId, comment.body])).toEqual([
+    ['v1', 'The lamp check matters most.'],
+    ['v1', 'Second reason.'],
+  ]);
+  // 띠를 다시 펼치면 두 코멘트가 오래된 순으로 보인다.
+  await corner.click();
+  const thread = head.getByRole('group', { name: 'Comments: Verification criteria' });
+  await expect(thread.getByRole('listitem')).toHaveCount(2);
+  await page.screenshot({ path: info.outputPath('03-criteria-thread.png') });
+  expect(errors).toEqual([]);
+});
