@@ -11,6 +11,7 @@ export interface LoadSummary {
   answers: number;
   events: number;
   comments: number;
+  nodeComments: number;
   favorites: number;
 }
 
@@ -56,7 +57,7 @@ export async function upsertSeedTopics(tx: SeedTx): Promise<number> {
 /**
  * 주어진 창작자(seed 또는 persona)의 시드 콘텐츠를 계획과 같은 값으로 되돌린다.
  * 고정 id 로 upsert 하고 계획에 없는 세트·답변·이벤트는 지우므로 여러 번 돌려도 같다(중복 0).
- * 이 창작자들의 즐겨찾기도 계획과 같게 맞춘다. 이 창작자들이 쓴 시드 댓글은 남의 프로젝트에 달려 있어도 다시 넣는다.
+ * 이 창작자들의 즐겨찾기도 계획과 같게 맞춘다. 이 창작자들이 쓴 시드 댓글·노드 코멘트는 남의 프로젝트에 달려 있어도 다시 넣는다.
  * 다른 사람이 남긴 댓글·즐겨찾기·조회 이벤트는 건드리지 않는다(그 정리는 리셋이 한다).
  * 파생 원작(seed 프로젝트)은 같은 호출로 넣거나 이미 있어야 한다.
  * 토픽(Topic) 행은 호출 전에 upsertSeedTopics 로 있어야 한다.
@@ -72,6 +73,10 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
   const events = plan.events.filter((e) => owners.has(e.creatorId));
   const comments = plan.comments.filter(
     (c) => projectIds.has(c.projectId) || owners.has(c.authorId),
+  );
+  const answerIds = new Set(answers.map((a) => a.id));
+  const nodeComments = plan.nodeComments.filter(
+    (c) => answerIds.has(c.answerId) || owners.has(c.authorId),
   );
   const favorites = plan.favorites.filter((f) => owners.has(f.creatorId));
   const topicRows = await tx.topic.findMany({ select: { id: true, seedOrder: true } });
@@ -212,6 +217,23 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
     });
   }
 
+  // 노드 코멘트: 고정 id 로 upsert(지웠던 시드 코멘트도 되살린다). 남이 단 코멘트는 건드리지 않는다.
+  for (const comment of nodeComments) {
+    const fields = {
+      answerId: comment.answerId,
+      nodeId: comment.nodeId,
+      authorId: comment.authorId,
+      body: comment.body,
+      createdAt: comment.createdAt,
+      deletedAt: null,
+    };
+    await tx.nodeComment.upsert({
+      where: { id: comment.id },
+      update: fields,
+      create: { id: comment.id, ...fields },
+    });
+  }
+
   await tx.favorite.deleteMany({ where: { creatorId: { in: creatorIds } } });
   await tx.favorite.createMany({ data: favorites });
 
@@ -226,6 +248,7 @@ export async function loadSeedContent(tx: SeedTx, creatorIds: string[]): Promise
     answers: answers.length,
     events: events.length,
     comments: comments.length,
+    nodeComments: nodeComments.length,
     favorites: favorites.length,
   };
 }

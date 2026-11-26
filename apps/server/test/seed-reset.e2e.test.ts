@@ -15,7 +15,9 @@ import {
   ConnectionListResponseSchema,
   CreateProjectResponseSchema,
   CreateSessionResponseSchema,
+  CreatorProfileResponseSchema,
   MeResponseSchema,
+  NodeCommentListResponseSchema,
   IdentityResponseSchema,
   ProjectListResponseSchema,
   RemixCandidatesResponseSchema,
@@ -24,6 +26,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { LoginRateLimiter } from '../src/modules/session/login-rate-limiter';
+import { registerShowcaseAccessCode } from '../src/seed/access-code';
 import { SHOWCASE_CREATOR_ID, seedCreatorIds } from '../src/seed/creators';
 import { uploadSeedImages } from '../src/seed/images';
 import { loadSeedContent, upsertSeedCreators, upsertSeedTopics } from '../src/seed/load';
@@ -178,6 +181,12 @@ describe.skipIf(!url)(
     const personaProjectCount = plan.projects.filter((p) => p.ownerKind === 'persona').length;
     const showcaseProjects = plan.projects.filter((p) => p.ownerId === SHOWCASE_CREATOR_ID);
     const showcaseFavorites = plan.favorites.filter((f) => f.creatorId === SHOWCASE_CREATOR_ID);
+    const seedNodeCommentIds = plan.nodeComments.map((c) => c.id);
+    /** 살아 있는(지우지 않은) 시드 노드 코멘트 수 */
+    const liveSeedNodeComments = (where: Record<string, unknown> = {}) =>
+      prisma.nodeComment.count({
+        where: { id: { in: seedNodeCommentIds }, deletedAt: null, ...where },
+      });
 
     beforeAll(async () => {
       storageDir = await mkdtemp(join(tmpdir(), 'tome-e2e-seed-'));
@@ -342,6 +351,19 @@ describe.skipIf(!url)(
       expect(before.counts.projects).toBe(expectedSeed.projects + personaProjectCount);
       expect(before.counts.answers).toBe(plan.answers.length);
       expect(before.counts.events).toBe(plan.events.length);
+      // 노드 코멘트(#247): 두 번 적재해도 계획 수 그대로, 같은 값.
+      expect(await liveSeedNodeComments()).toBe(plan.nodeComments.length);
+      const rows = await prisma.nodeComment.findMany({
+        where: { id: { in: seedNodeCommentIds } },
+        orderBy: { id: 'asc' },
+      });
+      expect(
+        rows.map((r) => [r.id, r.answerId, r.nodeId, r.authorId, r.body, r.createdAt.getTime()]),
+      ).toEqual(
+        [...plan.nodeComments]
+          .sort((a, b) => (a.id < b.id ? -1 : 1))
+          .map((c) => [c.id, c.answerId, c.nodeId, c.authorId, c.body, c.createdAt.getTime()]),
+      );
       // 시드 accepted 답변은 확정 시각(acceptedAt)이 createdAt 으로 채워진다.
       const accepted = await prisma.answer.findMany({
         where: { id: { in: plan.answers.map((a) => a.id) }, status: 'accepted' },
@@ -399,7 +421,13 @@ describe.skipIf(!url)(
         ).title,
       ).toBe(plan.projects.find((p) => p.key === 'priya-1')!.title);
       expect(await prisma.favorite.count({ where: { creatorId: priya } })).toBe(0);
-      expect(await prisma.agoraComment.count({ where: { authorId: priya } })).toBe(0);
+      // persona 가 단 시드 댓글·노드 코멘트(#247)만 되돌아온다(방금 단 것은 지워졌다).
+      expect(await prisma.agoraComment.count({ where: { authorId: priya } })).toBe(
+        plan.comments.filter((c) => c.authorId === priya).length,
+      );
+      expect(await prisma.nodeComment.count({ where: { authorId: priya } })).toBe(
+        plan.nodeComments.filter((c) => c.authorId === priya).length,
+      );
       expect(await prisma.identitySnapshot.count({ where: { creatorId: priya } })).toBe(0);
       // 세션·동의는 그대로, 토큰도 계속 쓸 수 있다.
       expect(await prisma.demoSession.count({ where: { creatorId: priya } })).toBe(sessionsBefore);
@@ -507,7 +535,10 @@ describe.skipIf(!url)(
       expect(
         await prisma.agoraComment.count({ where: { project: { ownerId: { in: seedIds } } } }),
       ).toBe(commentsOnSeed);
-      expect(await prisma.nodeComment.count({ where: { answerId: seedAnswer.id } })).toBe(0);
+      expect(await prisma.nodeComment.count({ where: { answerId: seedAnswer.id } })).toBe(
+        plan.nodeComments.filter((c) => c.answerId === seedAnswer.id).length,
+      );
+      expect(await liveSeedNodeComments()).toBe(plan.nodeComments.length);
       expect(await prisma.project.count({ where: { ownerId: { in: visitorIds } } })).toBe(0);
       expect(await prisma.demoSession.count({ where: { creatorId: { in: visitorIds } } })).toBe(0);
       expect((await counts(personaIds)).projects).toBe(personaProjectCount);
@@ -599,6 +630,66 @@ describe.skipIf(!url)(
       expect(restored.title).toBe(showcaseProjects[0]!.title);
       expect(restored.deletedAt).toBeNull();
       expect((await call('GET', '/me', token)).status).toBe(200);
+    }, 60_000);
+
+    it('showcase details (#247): node comments, profile reach, agora comments and the showcase code', async () => {
+      // 쇼케이스 코드: 시드 스크립트와 같은 함수로 등록하면 그 코드로 쇼케이스 계정에 들어간다.
+      // 이 테스트 DB 의 실제 label(showcase)은 건드리지 않도록 접두어 label 을 쓴다.
+      const code = `showcase-${randomUUID()}`;
+      const label = `${prefix} showcase`;
+      const first = await registerShowcaseAccessCode(prisma, code, label);
+      const again = await registerShowcaseAccessCode(prisma, code, label);
+      expect(again.id).toBe(first.id);
+      expect(await prisma.accessCode.count({ where: { label } })).toBe(1);
+      const row = await prisma.accessCode.findUniqueOrThrow({ where: { id: first.id } });
+      expect(row.codeHash).not.toContain(code);
+      expect(row).toMatchObject({
+        target: 'creator',
+        creatorId: SHOWCASE_CREATOR_ID,
+        active: true,
+      });
+      const login = await fetch(`${base}/session`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      expect(login.status).toBe(200);
+      const session = CreateSessionResponseSchema.parse(await login.json());
+      await prisma.accessCode.update({ where: { id: first.id }, data: { active: false } });
+      await call('POST', '/session/consent', session.token, {
+        noticeVersion: session.noticeVersion,
+      });
+      const token = session.token;
+      const me = MeResponseSchema.parse(await (await call('GET', '/me', token)).json());
+      expect(me.creator.id).toBe(SHOWCASE_CREATOR_ID);
+
+      // 노드 코멘트: 6장 쌓인 대표작의 마지막 버전에 내 이유와 남의 코멘트가 함께 보인다.
+      const hero = plan.answers.find((a) => a.projectKey === 'julian-1' && a.number === 6)!;
+      const listed = NodeCommentListResponseSchema.parse(
+        await (await call('GET', `/answers/${hero.id}/comments`, token)).json(),
+      );
+      const planned = plan.nodeComments.filter((c) => c.answerId === hero.id);
+      expect(listed.comments.map((c) => c.id).sort()).toEqual(planned.map((c) => c.id).sort());
+      expect(listed.comments.some((c) => c.mine)).toBe(true);
+      expect(listed.comments.some((c) => !c.mine)).toBe(true);
+      // 내 시드 코멘트는 지울 수 있고, persona 리셋이 시드 상태로 되살린다.
+      const mine = listed.comments.find((c) => c.mine)!;
+      expect((await call('DELETE', `/node-comments/${mine.id}`, token)).status).toBe(204);
+      expect(await liveSeedNodeComments()).toBe(plan.nodeComments.length - 1);
+      await runReset('persona');
+      expect(await liveSeedNodeComments()).toBe(plan.nodeComments.length);
+
+      // 프로필 도달: Remixed by 6 · Derived by 3
+      const profile = CreatorProfileResponseSchema.parse(
+        await (await call('GET', `/creators/${SHOWCASE_CREATOR_ID}`, token)).json(),
+      );
+      expect(profile.remixedBy.count).toBe(6);
+      expect(profile.derivedBy.count).toBe(3);
+
+      // 아고라: Urban Trail 스니커 상세에 댓글 12개
+      const sneaker = plan.projects.find((p) => p.key === 'isla-2')!;
+      expect(await prisma.agoraComment.count({ where: { projectId: sneaker.id } })).toBe(12);
+      // 이 코드 행은 afterAll 이 접두어 label 로 지운다(세션이 가리키고 있어 지금은 못 지운다).
     }, 60_000);
 
     it('avatars: summaries carry the avatar url, the route redirects to the image, others get null/404', async () => {
