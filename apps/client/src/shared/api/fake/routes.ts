@@ -275,6 +275,15 @@ export const FAKE_ROUTES: readonly FakeRoute[] = [
     },
   }),
   route({
+    // 세션 끝내기(서버 DELETE /session). 가짜 서버는 토큰 목록이 없어 응답만 한다. 브라우저 정리는 resetBrowserSession 이 한다.
+    method: 'DELETE',
+    pattern: '/session',
+    response: NoContentParser,
+    status: 204,
+    requiresConsent: false,
+    handle: () => undefined,
+  }),
+  route({
     method: 'POST',
     pattern: '/session/consent',
     response: ConsentResponseSchema,

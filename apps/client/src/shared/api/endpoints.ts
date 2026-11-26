@@ -95,6 +95,9 @@ export const api = {
       schema: ConsentResponseSchema,
     }),
 
+  /** 이 토큰을 서버에서 끝낸다(204). 동의 전에도 부를 수 있다. */
+  endSession: () => request({ method: 'DELETE', path: '/session', schema: NoContentParser }),
+
   getMe: () => request({ method: 'GET', path: '/me', schema: MeResponseSchema }),
 
   // ---- 서가(프로젝트)

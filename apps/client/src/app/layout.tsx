@@ -1,4 +1,5 @@
 import { Outlet, useMatches } from 'react-router';
+import { ResetFlash } from '../pages/reset';
 import { useWakingStore } from '../shared/api';
 import { COPY } from '../shared/copy';
 import { StatusBanner } from '../shared/ui';
@@ -16,6 +17,8 @@ export function Layout() {
     <main className={fullBleed ? undefined : 'p-[var(--space-padding-8)]'}>
       {waking ? <StatusBanner message={COPY['S-05']} withIcon={false} /> : null}
       <Outlet />
+      {/* 세션 초기화(/reset) 뒤 처음 화면에 잠깐 뜨는 알림. 화면을 옮겨도 남도록 레이아웃에 둔다(#251). */}
+      <ResetFlash />
     </main>
   );
 }
