@@ -12,10 +12,12 @@ import { AgoraSection } from './AgoraSection';
 import { AuthorAvatar } from './AuthorAvatar';
 import { CreatorPill } from './CreatorPill';
 import { TopicBundle } from './TopicBundle';
+import { useDragScroll } from './useDragScroll';
 
 /**
  * 제목 아래 가로 한 줄(Content Feed 5170:135848). 줄은 왼쪽 18에서 시작해 화면 오른쪽 끝까지 가고,
  * 넘치는 카드는 줄 안에서 가로로 스크롤된다(시안처럼 오른쪽이 잘려 보이고 스크롤바는 그리지 않는다).
+ * 마우스로 줄을 잡아끌어도 옮겨진다(#263). 끈 뒤에는 카드가 눌리지 않는다.
  * 줄 둘레의 작은 여백은 포커스 테두리가 잘리지 않게 하려는 것이고, 같은 크기의 음수 여백으로 위치를 되돌린다.
  */
 function Row({
@@ -30,12 +32,16 @@ function Row({
   gapClass: string;
   children: ReactNode;
 }) {
+  const dragScroll = useDragScroll<HTMLUListElement>();
   return (
     <AgoraSection id={id} title={title}>
       <ul
+        {...dragScroll}
         className={[
           'm-0 -mt-[var(--space-padding-2)] -mb-[var(--space-padding-2)] -ml-[var(--space-padding-2)] flex list-none overflow-x-auto p-[var(--space-padding-2)]',
           '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          // 잡아끄는 줄: 글자가 긁히지 않게 하고, 끄는 동안에는 줄 안 어디서나 쥔 손 모양을 보인다
+          'cursor-grab select-none data-[dragging]:cursor-grabbing data-[dragging]:**:cursor-grabbing',
           gapClass,
         ].join(' ')}
       >
