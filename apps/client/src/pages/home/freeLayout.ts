@@ -149,9 +149,12 @@ export function stepCell(
 }
 
 /**
- * 카드 하나가 오른쪽으로 넓어지면(넓은 카드 3칸, Figma Home_hover) 같은 줄에서 바로 뒤에 붙은 카드만 비켜 선다.
- * 넓어진 카드 끝 다음 칸부터 차례로 밀고, 빈 칸을 만나 더 밀 필요가 없으면 거기서 멈춘다.
- * 돌려주는 값은 카드별로 밀리는 칸 수(밀리지 않는 카드는 빠진다).
+ * 카드 하나가 넓어지면(넓은 카드 3칸, Figma Home_hover) 같은 줄에서 넓어지는 쪽에 바로 붙은 카드만 비켜 선다.
+ * - 오른쪽으로 넓어지면 넓어진 카드 끝 다음 칸부터 차례로 오른쪽으로 민다.
+ * - 오른쪽 끝 칸이라 왼쪽으로 넓어지면(#250) 똑같이 넓어진 카드 앞 칸부터 차례로 왼쪽으로 민다.
+ * 빈 칸을 만나 더 밀 필요가 없으면 거기서 멈춘다.
+ * 돌려주는 값은 카드별로 밀리는 칸 수(오른쪽 +, 왼쪽 -). 밀리지 않는 카드는 빠진다.
+ * 줄 밖으로 밀린 카드를 숨기는 일은 pushStyle(layout.ts) 이 맡는다.
  */
 export function pushShifts(
   cells: CellMap,
@@ -161,17 +164,33 @@ export function pushShifts(
 ): Map<string, number> {
   const shifts = new Map<string, number>();
   const open = openId === null ? undefined : cells.get(openId);
-  if (open === undefined || opensLeft) return shifts;
+  if (open === undefined) return shifts;
+  // 넓어지는 쪽 카드를 넓어진 카드에 가까운 것부터 늘어놓는다.
   const sameRow = [...cells]
-    .filter(([id, cell]) => id !== openId && cell.row === open.row && cell.col > open.col)
-    .sort(([, a], [, b]) => a.col - b.col);
-  let need = open.col + span;
+    .filter(
+      ([id, cell]) =>
+        id !== openId &&
+        cell.row === open.row &&
+        (opensLeft ? cell.col < open.col : cell.col > open.col),
+    )
+    .sort(([, a], [, b]) => (opensLeft ? b.col - a.col : a.col - b.col));
+  // need: 다음 카드가 비켜 서야 하는 칸(오른쪽이면 이 칸 이상, 왼쪽이면 이 칸 이하에 있어야 한다).
+  const step = opensLeft ? -1 : 1;
+  let need = open.col + step * span;
   for (const [id, cell] of sameRow) {
-    if (cell.col >= need) break;
+    if (opensLeft ? cell.col <= need : cell.col >= need) break;
     shifts.set(id, need - cell.col);
-    need += 1;
+    need += step;
   }
   return shifts;
+}
+
+/**
+ * 그 줄에서 카드가 놓이는 첫 칸. 맨 윗줄은 + Project 칸 다음 칸이다.
+ * 왼쪽으로 밀려 이 칸보다 앞으로 가는 카드는 줄 밖(또는 + Project 칸 위)이라 잠깐 숨긴다.
+ */
+export function firstCardColumn(row: number): number {
+  return row === NEW_PROJECT_CELL.row ? NEW_PROJECT_CELL.col + 1 : 0;
 }
 
 /**

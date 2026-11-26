@@ -234,3 +234,57 @@ test('끌어 옮긴 직후가 아니면 카드 상자를 눌러 프로젝트가 
   await page.mouse.click(box.x + box.width - 8, box.y + 8);
   await expect(page).toHaveURL(/\/projects\/0b8c1f5e-3c1d-4f6a-8a9b-1d2e3f4a5b6c$/);
 });
+
+// ---- #250: 오른쪽 끝 카드가 왼쪽으로 넓어지면 왼쪽 옆 카드도 밀린다(오른쪽 밀기와 거울) ----
+for (const { width, height, columns } of [
+  { width: 1728, height: 1083, columns: 13 },
+  { width: 1536, height: 960, columns: 11 },
+]) {
+  test(`${width}: 오른쪽 끝 카드가 왼쪽으로 넓어지면 왼쪽 옆 카드가 256px 밀리고 겹치지 않는다 (#250)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await enterShelf(page);
+    const neonLink = page.getByRole('link', { name: 'Neon street at night' });
+    const lampLink = page.getByRole('link', { name: 'Desk lamp study' });
+    const neon = page.locator(NEON);
+    const lamp = page.locator('li[data-project-id]').filter({ has: lampLink });
+    // 키보드로 둘째 줄 오른쪽 끝 두 칸에 나란히 놓는다: Desk lamp(끝-1) · Neon(끝)
+    await neonLink.focus();
+    await page.keyboard.press('Alt+ArrowDown');
+    for (let n = 1; n < columns - 1; n += 1) await page.keyboard.press('Alt+ArrowRight');
+    await expect(neon).toHaveAttribute('data-cell', `${columns - 1},1`);
+    await lampLink.focus();
+    await page.keyboard.press('Alt+ArrowDown');
+    for (let n = 2; n < columns - 2; n += 1) await page.keyboard.press('Alt+ArrowRight');
+    await expect(lamp).toHaveAttribute('data-cell', `${columns - 2},1`);
+    await lampLink.blur();
+    await page.mouse.move(5, 5);
+
+    const gapBetween = async () => (await neon.boundingBox())!.x - (await lamp.boundingBox())!.x;
+    await expect.poll(gapBetween).toBe(128);
+    const neonAt = (await neon.boundingBox())!;
+    const lampAt = (await lamp.boundingBox())!;
+
+    // 마우스를 올리면 Neon 이 왼쪽으로 넓어지고(오른쪽 끝은 그대로) Desk lamp 가 두 칸 왼쪽으로 비켜 선다
+    await neon.hover();
+    const card = neon.locator('[data-cover] > div');
+    await expect.poll(async () => (await card.boundingBox())?.width).toBe(364);
+    await expect.poll(async () => (await lamp.boundingBox())?.x).toBe(lampAt.x - 256);
+    const open = (await card.boundingBox())!;
+    expect(open.x + open.width).toBe(neonAt.x + neonAt.width);
+    const moved = (await lamp.boundingBox())!;
+    expect(moved.x + moved.width).toBeLessThanOrEqual(open.x - 20);
+    await expect(lamp).toHaveCSS('opacity', '1');
+
+    // 마우스를 떼면 제자리로 돌아온다
+    await page.mouse.move(5, 5);
+    await expect.poll(async () => (await lamp.boundingBox())?.x).toBe(lampAt.x);
+
+    // 키보드 포커스로 넓어져도 똑같이 민다
+    await neonLink.focus();
+    await expect.poll(async () => (await card.boundingBox())?.width).toBe(364);
+    await expect.poll(async () => (await lamp.boundingBox())?.x).toBe(lampAt.x - 256);
+    await expect(neonLink).toBeFocused();
+  });
+}
