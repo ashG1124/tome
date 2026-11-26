@@ -369,6 +369,16 @@ export const COPY = {
   'FG-03': 'Voice input', // 마이크 낭독 이름(시안에는 글자 없음)
   'FG-04': 'Start a new project with {name}', // 리믹스 상대가 있는 빈 페이지의 프롬프트 바 자리 문구 4898:93350 (#198)
   'FG-05': 'Send prompt', // 임시 ID(#228) — 여러 줄 프롬프트 바 보내기 버튼 낭독 이름(시안 3468:30243 에는 글자 없음)
+  // 세션 초기화(#251): 임시 ID — 문구 표에 옮길 때 확정. Figma 프레임이 없는 운영자 화면(/reset) 문구. 취소는 D-09a 를 쓴다.
+  'RS-01': 'For exhibition staff',
+  'RS-02': 'Reset this browser',
+  'RS-03':
+    'Signs out the current visitor and clears everything TÓME saved in this browser: sign-in, consent, canvas positions, and shelf layout. Projects saved on the server are kept.',
+  'RS-04': 'Reset this browser?',
+  'RS-05': 'The next visitor will start from the beginning.',
+  'RS-06': 'Reset',
+  'RS-07': 'Back to TÓME',
+  'RS-08': 'Session reset.',
 } as const;
 
 export type CopyKey = keyof typeof COPY;

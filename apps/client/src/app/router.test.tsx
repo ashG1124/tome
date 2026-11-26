@@ -44,6 +44,13 @@ describe('라우트', () => {
     expect(router.state.location.pathname).toBe('/enter');
   });
 
+  it.each([false, true])('세션 초기화 화면(/reset)은 세션이 %s 여도 열린다', async (signedIn) => {
+    if (signedIn) setSession(FAKE_TOKEN, FAKE_NOTICE_VERSION);
+    const router = renderAt('/reset');
+    expect(await screen.findByRole('heading', { level: 1, name: COPY['RS-02'] })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/reset');
+  });
+
   it('세션이 없으면 / 는 랜딩을 보여 주고 경로가 / 로 남는다', async () => {
     const router = renderAt('/');
     expect(
