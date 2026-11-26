@@ -18,6 +18,12 @@ describe('parseEnv', () => {
     expect(parseEnv({ ...base, ADMIN_TOKEN: '' }).ADMIN_TOKEN).toBeUndefined();
   });
 
+  it('reads SEED_SHOWCASE_CODE as optional and treats an empty one as unset', () => {
+    expect(parseEnv(base).SEED_SHOWCASE_CODE).toBeUndefined();
+    expect(parseEnv({ ...base, SEED_SHOWCASE_CODE: '' }).SEED_SHOWCASE_CODE).toBeUndefined();
+    expect(parseEnv({ ...base, SEED_SHOWCASE_CODE: 'c' }).SEED_SHOWCASE_CODE).toBe('c');
+  });
+
   it('coerces PORT to a number', () => {
     expect(parseEnv({ ...base, PORT: '4000' }).PORT).toBe(4000);
   });

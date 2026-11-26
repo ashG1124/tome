@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { loadEnv } from '../../src/config';
 import { PrismaClient } from '../../src/generated/prisma/client';
+import { registerShowcaseAccessCode, SHOWCASE_CODE_LABEL } from '../../src/seed/access-code';
 import { seedCreatorIds } from '../../src/seed/creators';
 import { DEFAULT_SEED_ASSETS_DIR, uploadSeedImages } from '../../src/seed/images';
 import { loadSeedContent, upsertSeedCreators, upsertSeedTopics } from '../../src/seed/load';
@@ -37,6 +38,13 @@ async function main(): Promise<void> {
     console.log(`Seeded ${JSON.stringify(summary)}.`);
     const samples = await loadSampleResults(prisma, storage);
     console.log(`Seeded ${samples} sample results.`);
+    // 쇼케이스 계정 접속 코드: 값은 로그에 남기지 않는다.
+    if (env.SEED_SHOWCASE_CODE) {
+      await registerShowcaseAccessCode(prisma, env.SEED_SHOWCASE_CODE);
+      console.log(`Registered showcase access code (label ${SHOWCASE_CODE_LABEL}).`);
+    } else {
+      console.log('Skipped showcase access code (set SEED_SHOWCASE_CODE to register one).');
+    }
   } finally {
     await prisma.$disconnect();
   }

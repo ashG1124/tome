@@ -38,7 +38,8 @@ describe('seed plan (no DB)', () => {
     const seedProjects = plan.projects.filter((p) => p.ownerKind === 'seed');
     expect(seedProjects).toHaveLength(25);
     const personaProjects = plan.projects.filter((p) => p.ownerKind === 'persona');
-    expect(personaProjects.filter((p) => p.ownerId !== SHOWCASE_CREATOR_ID)).toHaveLength(5);
+    // persona 1~3 의 5개 + 쇼케이스 게시작에서 파생한 3개(#247)
+    expect(personaProjects.filter((p) => p.ownerId !== SHOWCASE_CREATOR_ID)).toHaveLength(8);
     expect(personaProjects.filter((p) => p.ownerId === SHOWCASE_CREATOR_ID)).toHaveLength(20);
     expect(plan.topics.length).toBeGreaterThanOrEqual(3);
     expect(plan.topics.length).toBeLessThanOrEqual(5);
