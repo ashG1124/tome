@@ -51,9 +51,9 @@ export interface ProjectSpec {
   figma?: string;
   /** 상태. 기본 posted(완료·게시). finished = 완료만, building = 작업 중 */
   state?: ProjectState;
-  /** 리믹스 상대(seed 창작자의 seedOrder) */
-  remixPartner?: number;
-  /** 파생 원작 프로젝트 키. 첫 세트의 첫 버전이 원작 대표 답변의 복사본이다 */
+  /** 리믹스 상대(seed 창작자의 seedOrder, 또는 쇼케이스 계정 'showcase') */
+  remixPartner?: number | 'showcase';
+  /** 파생 원작 프로젝트 키(seed 또는 쇼케이스 프로젝트). 첫 세트의 첫 버전이 원작 대표 답변의 복사본이다 */
   derivedFrom?: string;
   /** 저장소 이미지(project-images/<key>.jpg)가 없을 때 대신 쓰는 다른 프로젝트 키 */
   imageFrom?: string;
@@ -151,6 +151,8 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
         attributes: ['red mirror rim', 'curved reflection', 'close framing', 'nostalgic mood'],
         sets: [s(3, 1, 7), s(2, 1, 7)],
         figma: 'mv-street-mirror',
+        // 쇼케이스 계정(Julian)을 리믹스 상대로 골랐다(프로필 Remixed by).
+        remixPartner: 'showcase',
       },
       {
         key: 'mara-3',
@@ -353,6 +355,8 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
         attributes: ['clean daylight', 'woven aluminium', 'low angle', 'serene mood'],
         sets: [s(1, 0, 2), s(1, 0, 2)],
         figma: 'sculpt-teal-wave',
+        // 쇼케이스 계정(Julian)을 리믹스 상대로 골랐다(프로필 Remixed by).
+        remixPartner: 'showcase',
       },
       {
         key: 'rhys-4',
@@ -441,6 +445,8 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
         attributes: ['crisp shadow', 'knit texture', 'side view', 'clean mood'],
         sets: [s(3, 2, 10)],
         figma: 'trail-hightop',
+        // 쇼케이스 계정(Julian)을 리믹스 상대로 골랐다(프로필 Remixed by).
+        remixPartner: 'showcase',
       },
       {
         key: 'isla-4',
@@ -603,6 +609,8 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
         attributes: ['soft daylight', 'white tile', 'upward view', 'calm mood'],
         sets: [s(2, 1, 6)],
         figma: 'sculpt-white-balcony',
+        // 쇼케이스 계정(Julian)을 리믹스 상대로 골랐다(프로필 Remixed by).
+        remixPartner: 'showcase',
       },
     ],
   },
@@ -631,6 +639,8 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
         attributes: ['neon green glow', 'wire mesh', 'tilted framing', 'restless mood'],
         sets: [s(3, 2, 8), s(3, 2, 8)],
         figma: 'mv-city-fence',
+        // 쇼케이스 계정(Julian)을 리믹스 상대로 골랐다(프로필 Remixed by).
+        remixPartner: 'showcase',
       },
     ],
   },
@@ -666,6 +676,8 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
         attributes: ['dappled light', 'soft grass', 'eye-level view', 'easy mood'],
         sets: [s(1, 0, 2)],
         figma: 'park-picnic',
+        // 쇼케이스 계정(Julian)을 리믹스 상대로 골랐다(프로필 Remixed by).
+        remixPartner: 'showcase',
       },
     ],
   },
@@ -674,16 +686,20 @@ const BASE_CREATOR_SPECS: CreatorSpec[] = [
 /** 쇼케이스 계정(전시 코드 하나가 들어가는 persona). 서가·리믹스·파생·아이덴티티가 미리 차 있다. */
 export const SHOWCASE_PERSONA_ORDER = 4;
 
+/** seed 프로젝트(없으면 쇼케이스 프로젝트)를 key 로 찾는다. */
 const baseProject = (key: string): ProjectSpec => {
-  const found = BASE_CREATOR_SPECS.flatMap((c) => c.projects).find((p) => p.key === key);
+  const found =
+    BASE_CREATOR_SPECS.flatMap((c) => c.projects).find((p) => p.key === key) ??
+    SHOWCASE_SPEC.projects.find((p) => p.key === key);
   if (!found) throw new Error(`Unknown seed project ${key}`);
   return found;
 };
 
-/** 원작(seed 프로젝트)의 대표 답변을 복사해 시작한 파생 프로젝트. 제목·프롬프트·노드·이미지는 원작을 따른다. */
+/** 원작의 대표 답변을 복사해 시작한 파생 프로젝트. 프롬프트·노드·이미지는 원작을 따르고, 제목은 따로 줄 수 있다. */
 const deriveOf = (
   sourceKey: string,
-  own: Pick<ProjectSpec, 'key' | 'sets'> & Partial<Pick<ProjectSpec, 'state' | 'topic' | 'pinned'>>,
+  own: Pick<ProjectSpec, 'key' | 'sets'> &
+    Partial<Pick<ProjectSpec, 'state' | 'topic' | 'pinned' | 'title'>>,
 ): ProjectSpec => {
   const source = baseProject(sourceKey);
   return {
@@ -716,7 +732,8 @@ const work = (
   subject,
   keywords,
   attributes,
-  sets: n % 3 === 0 ? [s(2, 0, 2), s(1, 0, 2)] : n % 2 === 0 ? [s(2, 0, 2)] : [s(1, 0, 2)],
+  // 버전 여러 장은 대표작(1·2·4·5)에 모으고 나머지는 한 장씩 둔다(아이덴티티 방향성 D 목표를 지킨다).
+  sets: n % 3 === 0 ? [s(1, 0, 2), s(1, 0, 2)] : [s(1, 0, 2)],
   figma,
   imageFrom,
   ...extra,
@@ -740,7 +757,8 @@ const SHOWCASE_SPEC: CreatorSpec = {
       'A {k1} on a {k2}, {k3}, {k4}',
       ['rounded cream boucle lounge chair', 'warm beige background', 'soft light', 'product photo'],
       ['soft shadow', 'boucle texture', 'three-quarter view', 'cozy mood'],
-      { pinned: true },
+      // 시안 작업장처럼 버전이 여러 장 쌓인 대표작(Answer 06, 마지막 버전 핀).
+      { pinned: true, sets: [s(6, 0, 2)] },
     ),
     work(
       2,
@@ -751,7 +769,7 @@ const SHOWCASE_SPEC: CreatorSpec = {
       'A {k1} with {k2} against a {k3}, {k4}',
       ['glossy red steel shelf', 'thin planes', 'blush wall', 'studio product photo'],
       ['hard shadow', 'lacquered steel', 'close crop', 'bold mood'],
-      { remixPartner: 2 },
+      { remixPartner: 2, sets: [s(3, 0, 2), s(1, 0, 2)] },
     ),
     work(
       3,
@@ -773,6 +791,7 @@ const SHOWCASE_SPEC: CreatorSpec = {
       'A {k1} in {k2} on {k3}, {k4}',
       ['pair of tall glazed vases', 'ruby and cobalt', 'white plinths', 'gallery still life'],
       ['glossy highlights', 'reactive glaze', 'eye-level view', 'quiet mood'],
+      { sets: [s(5, 0, 2)] },
     ),
     work(
       5,
@@ -783,7 +802,7 @@ const SHOWCASE_SPEC: CreatorSpec = {
       'A {k1} with a {k2} {k3}, {k4}',
       ['powder blue pendant lamp', 'walnut cap', 'glowing softly', 'close product photo'],
       ['warm bulb glow', 'satin metal', 'low angle', 'calm mood'],
-      { remixPartner: 4 },
+      { remixPartner: 4, sets: [s(6, 0, 2)] },
     ),
     work(
       6,
@@ -914,7 +933,68 @@ const SHOWCASE_SPEC: CreatorSpec = {
   ],
 };
 
-export const CREATOR_SPECS: CreatorSpec[] = [...BASE_CREATOR_SPECS, SHOWCASE_SPEC];
+/**
+ * 다른 persona 가 쇼케이스 계정의 게시작에서 파생해 간 작업(프로필 Derived by, 아고라 Derivative 목록).
+ * persona 서가 맨 뒤에 붙는다. persona 리셋이 원작과 함께 지우고 다시 넣는다.
+ */
+const SHOWCASE_DERIVES: Record<number, ProjectSpec[]> = {
+  // Erick
+  1: [
+    deriveOf('julian-6', {
+      key: 'erick-d1',
+      title: 'Coral trail runner',
+      sets: [s(3, 1, 6)],
+      topic: 'urban-shoes',
+    }),
+  ],
+  // Hayden
+  2: [deriveOf('julian-4', { key: 'hayden-d1', title: 'Night glaze vases', sets: [s(4, 2, 8)] })],
+  // Nick
+  3: [
+    deriveOf('julian-1', {
+      key: 'nick-d1',
+      title: 'Lounge chair by the window',
+      sets: [s(2, 0, 2)],
+    }),
+  ],
+};
+
+export const CREATOR_SPECS: CreatorSpec[] = [
+  ...BASE_CREATOR_SPECS.map((c) =>
+    c.kind === 'persona'
+      ? { ...c, projects: [...c.projects, ...(SHOWCASE_DERIVES[c.order] ?? [])] }
+      : c,
+  ),
+  SHOWCASE_SPEC,
+];
+
+/**
+ * 계획을 만드는 순서. 파생 원작이 먼저 계획돼야 하므로 쇼케이스 계정을 다른 persona 앞에 둔다
+ * (적재도 이 순서라 원작 프로젝트 행이 먼저 들어간다).
+ */
+export const PLAN_ORDER: CreatorSpec[] = [
+  ...CREATOR_SPECS.filter((c) => c.kind === 'seed'),
+  SHOWCASE_SPEC,
+  ...CREATOR_SPECS.filter((c) => c.kind === 'persona' && c !== SHOWCASE_SPEC),
+];
+
+/**
+ * 프로젝트 번호(노드 라이브러리·집계 초기값의 씨앗). 예전 순서(seed → persona → 쇼케이스)를 그대로 두고
+ * 쇼케이스 파생작(#247)은 맨 뒤 번호를 받는다. 계획 순서가 바뀌어도 기존 프로젝트의 값은 같다.
+ */
+const PROJECT_INDEX = new Map(
+  [
+    ...BASE_CREATOR_SPECS.flatMap((c) => c.projects),
+    ...SHOWCASE_SPEC.projects,
+    ...Object.values(SHOWCASE_DERIVES).flat(),
+  ].map((p, i) => [p.key, i]),
+);
+
+export function projectIndexOf(key: string): number {
+  const index = PROJECT_INDEX.get(key);
+  if (index === undefined) throw new Error(`Unknown seed project ${key}`);
+  return index;
+}
 
 /** 저장소 대체 이미지 파일 키(project-images/<키>.jpg). 파생은 원작 이미지를 따른다. */
 export function imageFileKeyOf(spec: ProjectSpec): string {
@@ -933,9 +1013,17 @@ export function figmaImageOf(spec: ProjectSpec): string | null {
 export const needsOwnImage = (spec: ProjectSpec): boolean => imageFileKeyOf(spec) === spec.key;
 
 const seed = (order: number): CreatorRef => ({ kind: 'seed', order });
-const showcase: CreatorRef = { kind: 'persona', order: SHOWCASE_PERSONA_ORDER };
+const persona = (order: number): CreatorRef => ({ kind: 'persona', order });
+const showcase: CreatorRef = persona(SHOWCASE_PERSONA_ORDER);
+const erick = persona(1);
+const hayden = persona(2);
+const nick = persona(3);
 
-/** 시드 댓글. 앞 5개는 seed 작성자끼리, 뒤는 쇼케이스 계정이 주고받은 것. 순서가 id 이므로 뒤에만 더한다. */
+/**
+ * 시드 댓글(아고라). 앞 5개는 seed 작성자끼리, 그 뒤 3개는 쇼케이스 계정이 주고받은 것.
+ * 9번째부터(#247)는 시안 프로젝트 상세(Comments (12))처럼 댓글이 여럿 달린 모습: Urban Trail 의 청키 스니커에 12개,
+ * 쇼케이스 게시작에 seed·persona 댓글. seed 끼리의 댓글은 앞 5개뿐이다. 순서가 id 이므로 뒤에만 더한다.
+ */
 export const SEED_COMMENTS: { project: string; author: CreatorRef; body: string }[] = [
   { project: 'isla-1', author: seed(1), body: 'The sole shape looks ready for any trail.' },
   { project: 'dove-1', author: seed(3), body: 'That copper glow is so warm.' },
@@ -945,6 +1033,346 @@ export const SEED_COMMENTS: { project: string; author: CreatorRef; body: string 
   { project: 'dove-4', author: showcase, body: 'This shelf gave me the idea for my red version.' },
   { project: 'julian-1', author: seed(5), body: 'Lovely soft shape, very calm.' },
   { project: 'julian-11', author: seed(5), body: 'Nice take on my lamp, the light feels softer.' },
+  // 청키 트레일 스니커(시안 Urban Trail 상세) — 12개
+  {
+    project: 'isla-2',
+    author: erick,
+    body: 'The sculpted sole carries the whole shoe. I would wear this on a city trail.',
+  },
+  {
+    project: 'isla-2',
+    author: hayden,
+    body: 'Mint laces against the grey knit are such a quiet surprise.',
+  },
+  {
+    project: 'isla-2',
+    author: nick,
+    body: 'The floating shadow sells the weight of the sole without any props.',
+  },
+  {
+    project: 'isla-2',
+    author: showcase,
+    body: 'Going to derive this and try a coral sole next to the mint.',
+  },
+  {
+    project: 'isla-2',
+    author: erick,
+    body: 'How many versions did the sole take? The layering looks very deliberate.',
+  },
+  { project: 'isla-2', author: hayden, body: 'This should be the cover of the Urban Trail topic.' },
+  {
+    project: 'isla-2',
+    author: nick,
+    body: 'Clean background, clear subject. Nothing extra to explain.',
+  },
+  {
+    project: 'isla-2',
+    author: showcase,
+    body: 'The side view makes the tread read like architecture.',
+  },
+  { project: 'isla-2', author: erick, body: 'Saving this as a reference for my sandal straps.' },
+  {
+    project: 'isla-2',
+    author: hayden,
+    body: 'I would love to see it at night with wet pavement under it.',
+  },
+  { project: 'isla-2', author: nick, body: 'The knit texture holds up even at thumbnail size.' },
+  {
+    project: 'isla-2',
+    author: showcase,
+    body: 'Quiet palette, loud sole. Exactly the balance I look for.',
+  },
+  // 시안 프로젝트 상세의 댓글 예시 문장
+  {
+    project: 'rhys-5',
+    author: hayden,
+    body: 'The Cerulean Blue typography treatment is pure perfection. Taking that iconic monologue and turning it into a Swiss grid layout gave me chills. Going to remix this into my workspace right now.',
+  },
+  // 쇼케이스 게시작에 달린 댓글
+  {
+    project: 'julian-1',
+    author: erick,
+    body: 'The boucle looks soft enough to touch.',
+  },
+  {
+    project: 'julian-1',
+    author: seed(3),
+    body: 'Six versions and the shadow finally sits right. Worth it.',
+  },
+  {
+    project: 'julian-2',
+    author: seed(2),
+    body: 'You kept my quiet shadow and made the red louder. Nice remix.',
+  },
+  {
+    project: 'julian-4',
+    author: seed(1),
+    body: 'Ruby next to cobalt is a bold pair. The plinths keep it calm.',
+  },
+  {
+    project: 'julian-5',
+    author: seed(4),
+    body: 'Love how far you pushed the blue away from my version.',
+  },
+  {
+    project: 'julian-6',
+    author: seed(4),
+    body: 'That coral sole is so good. It feels like a summer trail shoe.',
+  },
+  {
+    project: 'julian-8',
+    author: seed(3),
+    body: 'The chrome legs read sharp even through the smoked glass.',
+  },
+  {
+    project: 'julian-6',
+    author: erick,
+    body: 'Borrowed this for my own trail runner. Thank you for posting it.',
+  },
+];
+
+/**
+ * 시드 노드 코멘트(캔버스 노드의 분홍 코너·띠, 시안 1720:92379 Corner 멘트). 대부분 주인이 노드를 바꾼 이유를
+ * "…, so I'm … this node." 로 남긴 것이다. set·version 은 1부터(version = 답변 번호 Answer 0N).
+ * nodeId 는 그 답변 스냅샷의 노드(k·d·s·e·a) 또는 검증 기준(v1·v2)이다(불일치 m 은 안 된다).
+ * 주인의 이유는 앞 버전에서 실제로 바뀐 노드에 단다(buildNodes): k1 은 버전 2, k2 는 2~5, a1 은 2~7, a3 은 3 에서
+ * 바뀐다(파생은 원작 버전 번호를 이어서 센다).
+ * 순서가 id 이므로 뒤에만 더한다.
+ */
+export interface NodeCommentSpec {
+  project: string;
+  set: number;
+  version: number;
+  nodeId: string;
+  author: CreatorRef;
+  body: string;
+}
+
+export const SEED_NODE_COMMENTS: NodeCommentSpec[] = [
+  // julian-1 Cloud lounge chair (Answer 01~06)
+  {
+    project: 'julian-1',
+    set: 1,
+    version: 2,
+    nodeId: 'k1',
+    author: showcase,
+    body: "The chair is the whole story, so I'm turning this node up.",
+  },
+  {
+    project: 'julian-1',
+    set: 1,
+    version: 3,
+    nodeId: 'a3',
+    author: showcase,
+    body: "The three-quarter view shows the curve of the back, so I'm making this node stronger.",
+  },
+  {
+    project: 'julian-1',
+    set: 1,
+    version: 4,
+    nodeId: 'k2',
+    author: showcase,
+    body: "A warmer beige keeps the cream from looking grey, so I'm moving this node.",
+  },
+  {
+    project: 'julian-1',
+    set: 1,
+    version: 5,
+    nodeId: 'a1',
+    author: showcase,
+    body: "The shadow was pulling focus from the boucle, so I'm softening this node.",
+  },
+  {
+    project: 'julian-1',
+    set: 1,
+    version: 6,
+    nodeId: 'v1',
+    author: showcase,
+    body: "The chair reads at a glance now, so I'm keeping this check on.",
+  },
+  {
+    project: 'julian-1',
+    set: 1,
+    version: 6,
+    nodeId: 'k1',
+    author: seed(3),
+    body: 'This weight is what makes the chair feel heavy and soft at once.',
+  },
+  // julian-2 Red steel shelf (리믹스, 상대 Ceredic)
+  {
+    project: 'julian-2',
+    set: 1,
+    version: 2,
+    nodeId: 'a1',
+    author: showcase,
+    body: "Ceredic would keep the shadow quiet, so I'm lowering this node.",
+  },
+  {
+    project: 'julian-2',
+    set: 1,
+    version: 3,
+    nodeId: 'k2',
+    author: showcase,
+    body: "The thin planes read cleaner from lower down, so I'm moving this node.",
+  },
+  {
+    project: 'julian-2',
+    set: 1,
+    version: 3,
+    nodeId: 'a3',
+    author: showcase,
+    body: "A close crop hides the wall seams, so I'm rewriting this node.",
+  },
+  // julian-4 Glazed vase pair (Answer 01~05)
+  {
+    project: 'julian-4',
+    set: 1,
+    version: 2,
+    nodeId: 'k1',
+    author: showcase,
+    body: "The pair should own the frame, so I'm raising this node.",
+  },
+  {
+    project: 'julian-4',
+    set: 1,
+    version: 3,
+    nodeId: 'a3',
+    author: showcase,
+    body: "Eye level makes the two heights read clearly, so I'm making this node stronger.",
+  },
+  {
+    project: 'julian-4',
+    set: 1,
+    version: 5,
+    nodeId: 'a1',
+    author: showcase,
+    body: "Glossy highlights hid the glaze, so I'm softening this node.",
+  },
+  // julian-5 Powder blue pendant (리믹스, 상대 Judy, Answer 01~06)
+  {
+    project: 'julian-5',
+    set: 1,
+    version: 2,
+    nodeId: 'k1',
+    author: showcase,
+    body: "The lamp should fill the frame, so I'm raising this node.",
+  },
+  {
+    project: 'julian-5',
+    set: 1,
+    version: 3,
+    nodeId: 'a3',
+    author: showcase,
+    body: "A low angle shows the inside of the shade, so I'm making this node stronger.",
+  },
+  {
+    project: 'julian-5',
+    set: 1,
+    version: 4,
+    nodeId: 'k2',
+    author: showcase,
+    body: "The walnut cap got lost at the top, so I'm moving this node.",
+  },
+  {
+    project: 'julian-5',
+    set: 1,
+    version: 5,
+    nodeId: 'a1',
+    author: showcase,
+    body: "The glow washed out the blue, so I'm turning this node down.",
+  },
+  {
+    project: 'julian-5',
+    set: 1,
+    version: 6,
+    nodeId: 'v2',
+    author: showcase,
+    body: "The style finally matches the prompt, so I'm leaving this check as it is.",
+  },
+  // julian-11 Warm task lamp 파생(원작 Jay)과 그 원작
+  {
+    project: 'julian-11',
+    set: 1,
+    version: 2,
+    nodeId: 'a1',
+    author: showcase,
+    body: "The bulb glow reads warmer with less shine, so I'm lowering this node.",
+  },
+  {
+    project: 'teo-1',
+    set: 1,
+    version: 2,
+    nodeId: 'k1',
+    author: seed(5),
+    body: "The lamp has to stand out from the desk, so I'm raising this node.",
+  },
+  // julian-6 Coral runner(한 버전): 검증 기준
+  {
+    project: 'julian-6',
+    set: 1,
+    version: 1,
+    nodeId: 'v1',
+    author: showcase,
+    body: "The coral sole is the subject, so I'm keeping this check on.",
+  },
+  // 쇼케이스 계정을 리믹스 상대로 고른 작업들
+  {
+    project: 'mara-2',
+    set: 1,
+    version: 2,
+    nodeId: 'a1',
+    author: seed(1),
+    body: "Julian would keep the rim calmer, so I'm softening this node.",
+  },
+  {
+    project: 'isla-3',
+    set: 1,
+    version: 3,
+    nodeId: 'a3',
+    author: seed(4),
+    body: "Julian frames things tight, so I'm pushing this node further.",
+  },
+  {
+    project: 'priya-2',
+    set: 1,
+    version: 2,
+    nodeId: 'k2',
+    author: erick,
+    body: "Julian lets a facade breathe, so I'm moving this node.",
+  },
+  {
+    project: 'owen-1',
+    set: 1,
+    version: 2,
+    nodeId: 'a1',
+    author: hayden,
+    body: "The glow was too loud next to Julian's calm take, so I'm lowering this node.",
+  },
+  // 쇼케이스 게시작에서 파생한 작업
+  {
+    project: 'erick-d1',
+    set: 1,
+    version: 2,
+    nodeId: 'k1',
+    author: erick,
+    body: "The runner needs more presence on the trail, so I'm raising this node.",
+  },
+  {
+    project: 'hayden-d1',
+    set: 1,
+    version: 2,
+    nodeId: 'a1',
+    author: hayden,
+    body: "Night light needs less shine on the glaze, so I'm lowering this node.",
+  },
+  {
+    project: 'nick-d1',
+    set: 1,
+    version: 2,
+    nodeId: 'a1',
+    author: nick,
+    body: "Window light already softens the shadow, so I'm lowering this node.",
+  },
 ];
 
 /** 프로젝트마다 다른 집계 초기값(결정적). index 는 CREATOR_SPECS 순서의 프로젝트 번호. */

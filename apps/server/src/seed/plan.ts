@@ -2,12 +2,17 @@
 import { answerImageKey } from '../storage/object-storage';
 import { SEED_CREATORS } from './creators';
 import { generateEvents, type SeedEvent } from './events';
-import { assembleFor, buildNodes } from './nodes';
+import { assembleFor, buildNodes, SEED_VERIFICATION } from './nodes';
 import { seedUuid } from './seed-ids';
+import { CreateAgoraCommentRequestSchema, CreateNodeCommentRequestSchema } from '@tome/shared';
+import { commentableNodeIds } from '../modules/comments/comments.rules';
 import {
-  CREATOR_SPECS,
   initialStat,
+  PLAN_ORDER,
+  projectIndexOf,
   SEED_COMMENTS,
+  SEED_NODE_COMMENTS,
+  SHOWCASE_PERSONA_ORDER,
   TOPICS,
   type CreatorRef,
   type CreatorSpec,
@@ -82,6 +87,16 @@ export interface PlanComment {
   createdAt: Date;
 }
 
+export interface PlanNodeComment {
+  id: string;
+  answerId: string;
+  /** 답변 스냅샷의 노드 id 또는 검증 기준 id */
+  nodeId: string;
+  authorId: string;
+  body: string;
+  createdAt: Date;
+}
+
 export interface PlanFavorite {
   creatorId: string;
   targetCreatorId: string;
@@ -102,6 +117,7 @@ export interface SeedPlan {
   answers: PlanAnswer[];
   events: SeedEvent[];
   comments: PlanComment[];
+  nodeComments: PlanNodeComment[];
   favorites: PlanFavorite[];
   stats: {
     projectId: string;
@@ -128,6 +144,18 @@ function creatorIdOf(spec: CreatorRef): string {
   return pick.id;
 }
 
+/** 서버가 받는 요청 모양(댓글 1~300자, 노드 id 형식)과 같은지 본다. 앞뒤 공백도 두지 않는다. */
+function checkCommentBody(
+  schema: typeof CreateAgoraCommentRequestSchema | typeof CreateNodeCommentRequestSchema,
+  input: { body: string; nodeId?: string },
+  where: string,
+): void {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success || parsed.data.body !== input.body) {
+    throw new Error(`Comment not accepted by the server rules: ${where}`);
+  }
+}
+
 /** 이 계획이 만드는 답변 이미지 객체 키(리셋이 지우지 않는 키). */
 export const answerKeysOf = (answerId: string): string[] => [
   answerImageKey(answerId, 'full', 'image/jpeg'),
@@ -152,12 +180,11 @@ export function buildSeedPlan(): SeedPlan {
     answers: [],
     events: [],
     comments: [],
+    nodeComments: [],
     favorites: [],
     stats: [],
   };
-  let projectIndex = 0;
-
-  for (const spec of CREATOR_SPECS) {
+  for (const spec of PLAN_ORDER) {
     const creatorId = creatorIdOf(spec);
     const creatorKey = `${spec.kind}-${spec.order}`;
     plan.creators.push({ key: creatorKey, id: creatorId, spec });
@@ -176,9 +203,14 @@ export function buildSeedPlan(): SeedPlan {
         state: p.state ?? 'posted',
         source,
         sourceCover,
-        remixPartnerId: p.remixPartner
-          ? creatorIdOf({ kind: 'seed', order: p.remixPartner })
-          : null,
+        remixPartnerId:
+          p.remixPartner === undefined
+            ? null
+            : creatorIdOf(
+                p.remixPartner === 'showcase'
+                  ? { kind: 'persona', order: SHOWCASE_PERSONA_ORDER }
+                  : { kind: 'seed', order: p.remixPartner },
+              ),
         pageId: seedUuid(`page:${p.key}`),
         sets: p.sets.map((setSpec, n) => ({
           spec: setSpec,
@@ -234,6 +266,7 @@ export function buildSeedPlan(): SeedPlan {
     // 3) 프로젝트·세트·답변 행.
     refs.forEach((r, shelf) => {
       const times = generated.projectTimes.get(r.id)!;
+      const projectIndex = projectIndexOf(r.spec.key);
       const libraryIndex = r.source ? r.source.libraryIndex : projectIndex;
       // 파생의 편집 버전은 원작 대표 답변의 다음 버전부터 이어진다.
       const versionOffset = r.sourceCover ? r.sourceCover.number! - 1 : 0;
@@ -269,7 +302,6 @@ export function buildSeedPlan(): SeedPlan {
         projectId: r.id,
         ...(r.spec.stat ?? initialStat(projectIndex, spec.kind)),
       });
-      projectIndex += 1;
 
       r.sets.forEach((set, n) => {
         const setTime = generated.setTimes.get(set.id)!;
@@ -355,12 +387,38 @@ export function buildSeedPlan(): SeedPlan {
   SEED_COMMENTS.forEach((c, i) => {
     const project = plan.projects.find((p) => p.key === c.project)!;
     if (!project.postedAt) throw new Error(`Comment on unposted project ${c.project}`);
+    checkCommentBody(CreateAgoraCommentRequestSchema, { body: c.body }, `comment ${i}`);
     plan.comments.push({
       id: seedUuid(`comment:${i}`),
       projectId: project.id,
       authorId: creatorIdOf(c.author),
       body: c.body,
       createdAt: new Date(project.postedAt.getTime() + DAY_MS + i * 3_600_000),
+    });
+  });
+
+  // 노드 코멘트: 그 답변 스냅샷에 실제로 있는 노드(또는 검증 기준)에만 단다. 시각은 답변 직후(분 단위).
+  SEED_NODE_COMMENTS.forEach((c, i) => {
+    const where = `node comment ${i} (${c.project} ${c.set}/${c.version} ${c.nodeId})`;
+    const project = plan.projects.find((p) => p.key === c.project);
+    const set =
+      project && plan.sets.find((s) => s.projectId === project.id && s.position === c.set);
+    const answer =
+      set &&
+      plan.answers.find(
+        (a) => a.setId === set.id && a.status === 'accepted' && a.number === c.version,
+      );
+    if (!answer) throw new Error(`No answer for ${where}`);
+    const ids = commentableNodeIds({ nodes: answer.nodes, verification: SEED_VERIFICATION });
+    if (!ids.has(c.nodeId)) throw new Error(`Unknown node for ${where}`);
+    checkCommentBody(CreateNodeCommentRequestSchema, { nodeId: c.nodeId, body: c.body }, where);
+    plan.nodeComments.push({
+      id: seedUuid(`node-comment:${i}`),
+      answerId: answer.id,
+      nodeId: c.nodeId,
+      authorId: creatorIdOf(c.author),
+      body: c.body,
+      createdAt: new Date(answer.createdAt.getTime() + (i + 1) * 60_000),
     });
   });
 
