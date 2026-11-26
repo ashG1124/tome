@@ -121,6 +121,25 @@ it('opens the band with the Figma guide, posts with Enter on the first row id an
   await waitFor(() => expect(document.activeElement).toBe(corner()));
 });
 
+it('marks the character count for display only near the limit, but always describes the input with it (#252)', async () => {
+  const { api } = setup([], { active: true });
+  await waitFor(() => expect(api.listComments).toHaveBeenCalled());
+  fireEvent.click(corner());
+  const input = screen.getByRole('textbox');
+  const count = () => {
+    const ids = input.getAttribute('aria-describedby')!.split(' ');
+    return document.getElementById(ids[ids.length - 1]!)!;
+  };
+  fireEvent.change(input, { target: { value: 'Light first' } });
+  expect(count().textContent).toBe('11 / 300');
+  expect(count().hasAttribute('data-warning')).toBe(false);
+  fireEvent.change(input, { target: { value: 'A'.repeat(279) } });
+  expect(count().hasAttribute('data-warning')).toBe(false);
+  fireEvent.change(input, { target: { value: 'A'.repeat(280) } });
+  expect(count().hasAttribute('data-warning')).toBe(true);
+  expect(count().textContent).toBe('280 / 300');
+});
+
 it('Escape collapses to the corner, then releases the target from the corner', async () => {
   const { api, onClose } = setup([], { active: true });
   await waitFor(() => expect(api.listComments).toHaveBeenCalled());

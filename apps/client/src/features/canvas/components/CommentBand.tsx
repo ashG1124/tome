@@ -42,7 +42,7 @@ export interface CommentBandProps {
   onClose: (restoreFocus?: boolean) => void;
 }
 
-/** 남은 글자가 이보다 적으면 글자 수를 굵게 보인다. */
+/** 남은 글자가 이 수 이하일 때만 글자 수를 화면에 보인다(시안 띠에는 글자 수가 없다, #252). 화면 읽기 프로그램은 늘 읽는다. */
 const COUNT_WARNING = 20;
 
 /** 절대 날짜·시각(전시 기기 로케일). "6d ago" 같은 상대 표기는 쓰지 않는다. */
@@ -50,6 +50,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 
 /**
  * 노드 오른쪽 아래의 분홍 코멘트 코너와 띠(#241). 시안: Corner 1480:135821(closed·open1·open2), comment & connection 1185:59843.
+ * - 띠는 시안 그대로 핑크 면에 흰 글자다. 쓰는 동안 검은 포커스 테두리·스크롤 막대를 그리지 않는다(#252).
  * - 닫힘: 코너만. 마우스를 올리면 띠가 펼쳐져 가장 최근 코멘트를 두 줄까지 보인다.
  * - 노드 도구의 코멘트 아이콘을 누르면 코멘트가 없어도 코너가 생기고 코너로 포커스가 간다.
  * - 코너를 누르면 띠가 펼쳐진다. 이전 코멘트(오래된 순)와 내 코멘트 지우기, 그 아래 띠 안 입력칸(안내 Please provide a reason.)이 있다.
@@ -326,7 +327,6 @@ export const CommentBand = memo(function CommentBand({
           <span
             id={`${id}-count`}
             className="canvas-comment-count"
-            data-empty={body.length === 0 || undefined}
             data-warning={remaining <= COUNT_WARNING || undefined}
           >
             {body.length} / {LIMITS.COMMENT_MAX}

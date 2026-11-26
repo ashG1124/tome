@@ -71,13 +71,42 @@ for (const viewport of [
     const input = k1.getByRole('textbox', { name: /^Add a comment:/ });
     await expect(input).toBeFocused();
     await expect(input).toHaveAttribute('placeholder', 'Please provide a reason.');
-    // 무거운 이중 테두리 대신 공통 포커스 테두리 하나(띠 둘레)
+    // 시안 그대로(#252): 쓰는 동안 검은 테두리·스크롤 막대(위·아래 화살표) 없이 핑크 띠에 흰 글자.
     const sheet = k1.locator('.canvas-comment-sheet');
-    expect(await input.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('none');
-    expect(await sheet.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid');
+    const look = () =>
+      input.evaluate((element) => {
+        const style = getComputedStyle(element);
+        const band = getComputedStyle(element.closest('.canvas-comment-sheet')!);
+        return {
+          inputOutline: style.outlineStyle,
+          sheetOutline: band.outlineStyle,
+          scrollbar: style.scrollbarWidth,
+          resize: style.resize,
+          color: style.color,
+          placeholder: getComputedStyle(element, '::placeholder').color,
+          bandColor: band.color,
+          bandFill: band.backgroundColor,
+        };
+      });
+    const white = 'rgb(255, 255, 255)';
+    expect(await look()).toEqual({
+      inputOutline: 'none',
+      sheetOutline: 'none',
+      scrollbar: 'none',
+      resize: 'none',
+      color: white,
+      placeholder: white,
+      bandColor: white,
+      bandFill: 'rgb(255, 163, 179)',
+    });
+    await input.fill('Light first');
+    // 시안에 글자 수가 없다: 끝에 가까울 때만 보인다.
+    await expect(k1.getByText('11 / 300')).toBeHidden();
+    expect((await look()).sheetOutline).toBe('none');
     const body = 'A'.repeat(300);
     await input.fill(body);
     await expect(k1.getByText('300 / 300')).toBeVisible();
+    await expect(sheet).toBeVisible();
     await page.screenshot({ path: info.outputPath('02a-comment-typing.png') });
     await page.keyboard.press('Enter');
     await expect(k1.getByRole('status')).toHaveText('Comment saved.');
@@ -216,6 +245,15 @@ test('the open node tool comment button folds the node and makes a corner there 
   const box = (await node.locator('.canvas-comment-sheet').boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(1728);
   expect(box.y + box.height).toBeLessThanOrEqual(1083);
+  // 시안 open1(1185:60701): 띠 350×62(글 320 + 안쪽 10·20), 코너 막대가 띠 높이만큼 이어진다(캔버스 배율로 나눠 잰다).
+  const zoom = await page
+    .locator('.react-flow__viewport')
+    .evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).a);
+  expect(Math.abs(box.width / zoom - 350)).toBeLessThan(1);
+  expect(Math.abs(box.height / zoom - 62)).toBeLessThan(1);
+  const openCorner = (await corner.boundingBox())!;
+  expect(Math.abs(openCorner.height - box.height)).toBeLessThan(1);
+  expect(Math.abs(openCorner.y + openCorner.height - (box.y + box.height))).toBeLessThan(1);
   await page.screenshot({ path: info.outputPath('07-corner-open-guide.png') });
   // Esc 는 띠를 접어 코너로, 한 번 더 누르면 (코멘트가 없으니) 코너도 사라지고 노드 도구의 코멘트 버튼으로 돌아온다.
   await page.keyboard.press('Escape');
