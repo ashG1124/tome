@@ -115,3 +115,17 @@ it('discrepancies stay view-only: no node tool even with a comment handler', () 
   });
   expect(screen.queryByRole('button')).toBeNull();
 });
+
+it('clicking the open criteria group again closes it; the minus buttons and saving do not (#261)', () => {
+  const { onClose, onToggle } = setup();
+  fireEvent.click(screen.getByRole('switch', { name: `Include: ${v1.text}` }));
+  fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
+  expect(onToggle).toHaveBeenCalledOnce();
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText(v1.text));
+  expect(onClose).toHaveBeenCalledOnce();
+  cleanup();
+  const saving = setup({ saving: ['v1'] });
+  fireEvent.click(screen.getByText(v1.text));
+  expect(saving.onClose).not.toHaveBeenCalled();
+});

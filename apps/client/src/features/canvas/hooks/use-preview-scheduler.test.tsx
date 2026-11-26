@@ -121,3 +121,16 @@ it('clears NO_CHANGES without showing a generation failure', async () => {
   expect(result.current.state.status).toBe('idle');
   expect(result.current.canApply).toBe(false);
 });
+
+it('shows a preview that was already made without waiting or requesting again (#261)', async () => {
+  const request = vi.fn().mockResolvedValue({ id: 'other' } as Answer);
+  const { result } = renderHook(() => usePreviewScheduler(request));
+  // 다른 값으로 만들던 것은 버리고, 넘겨받은 미리보기를 바로 보인다.
+  act(() => result.current.schedule({ ...snapshot, subjectTemplate: 'Desk' }));
+  act(() => result.current.show(snapshot, answer));
+  expect(result.current.state).toEqual({ status: 'ready', answer });
+  expect(result.current.canApply).toBe(true);
+  await tick(3000);
+  expect(request).not.toHaveBeenCalled();
+  expect(result.current.state).toEqual({ status: 'ready', answer });
+});

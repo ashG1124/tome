@@ -251,6 +251,9 @@ export const COPY = {
   'NE-12': 'Preview ready',
   'NE-13': 'Use Left or Down to decrease, Right or Up to increase, Home for 0, and End for 9.',
   'NE-14': 'Use arrow keys to move one step. Home returns to the center.',
+  // Preview 이전/다음(#261): 임시 ID — 문구 표에 옮길 때 확정. 시안에는 화살표만 있어 화면 읽기 프로그램용 이름으로 정함.
+  'NE-15': 'Previous edit',
+  'NE-16': 'Next edit',
   // 인트로 랜딩(#46) — 온보딩 시안 3445:27232·3330:206106·3330:206270·3445:27495
   'ON-01': 'Main menu',
   'ON-02a': 'My Work',
@@ -457,6 +460,8 @@ export const NODE_EDITOR_COPY = {
   ready: COPY['NE-12'],
   weightInstructions: COPY['NE-13'],
   meaningInstructions: COPY['NE-14'],
+  previousEdit: COPY['NE-15'],
+  nextEdit: COPY['NE-16'],
   delete: COPY['S-07b'],
   comment: COPY['S-07a'],
 } as const;

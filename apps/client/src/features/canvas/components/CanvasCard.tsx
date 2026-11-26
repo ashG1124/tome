@@ -1,7 +1,8 @@
 import { memo, useCallback, useContext, useRef, type CSSProperties } from 'react';
 import { Handle, Position, useStore, type NodeProps, type ReactFlowState } from '@xyflow/react';
 import { viewableOrigin, type CanvasNode } from '../model';
-import { CanvasNavigation, openRole } from '../navigation';
+import { CanvasNavigation, openMatch } from '../navigation';
+import { isCloseClick } from '../close-click';
 import { COPY } from '../../../shared/copy';
 import { Icon } from '../../../shared/ui';
 import { AnswerVersions } from './AnswerVersions';
@@ -78,13 +79,26 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     pointing.current = false;
     navigation.focus(id, !fromPointer);
   };
-  /** 펼치기 전 닫힌 카드 높이를 캔버스에 적어 두고 연다. 펼친 노드는 이 높이에서 늘어나고, 접을 때 이 높이로 돌아간다. */
+  // 펼쳐 둔 노드들 가운데 이 카드가 맡은 것(여러 노드를 함께 펼쳐 둘 수 있다, #261).
+  const match = openMatch(navigation.editor?.selected, data.setId, data.output, data.groupPosition);
+  const openSetId = match?.selection.setId;
+  const openNodeId = match?.selection.nodeId;
+  const registerSlot = navigation.editor?.slot;
+  // 펼친 자리를 그 노드의 것으로 알린다. 렌더마다 새 함수면 ref 가 매번 다시 불리므로 고정해 둔다.
+  const slotRef = useCallback(
+    (element: HTMLElement | null) => {
+      if (registerSlot && openSetId && openNodeId) registerSlot(openSetId, openNodeId, element);
+    },
+    [registerSlot, openSetId, openNodeId],
+  );
+  /**
+   * 펼치기 전 닫힌 카드 높이를 그 카드에 적어 두고 연다. 펼친 노드는 이 높이에서 늘어나고, 접을 때 이 높이로 돌아간다.
+   * 여러 노드를 함께 펼치므로 캔버스가 아니라 카드마다 적는다.
+   */
   const openFrom = (card: Element | null) => {
     if (!data.output) return;
     if (card instanceof HTMLElement)
-      card
-        .closest<HTMLElement>('.generation-canvas')
-        ?.style.setProperty('--node-closed-height', `${card.offsetHeight}px`);
+      card.style.setProperty('--node-closed-height', `${card.offsetHeight}px`);
     navigation.editor?.open(data.setId, data.output.id);
   };
   const markPointer = () => {
@@ -123,7 +137,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     data.output.kind !== 'mismatch' &&
     !!navigation.editor?.canOpen(data.setId, data.output.id);
   const nodeName = data.groupLabel ?? data.label;
-  const role = openRole(navigation.editor?.selected, data.setId, data.output, data.groupPosition);
+  const role = match?.role ?? null;
   const editing = role === 'open';
   const draft = navigation.editor?.draft;
   const drafted =
@@ -148,10 +162,10 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
     selectedComment?.nodeId === data.output.id;
   // 답변(그림) 카드는 눌러서(또는 Enter) 크게 보기 모달을 연다(#230).
   // 파생의 흐린(비활성) 카드는 먼저 활성으로 돌아가고(덮개 버튼), 활성인 카드를 누르면 모달이 열린다.
-  // 미리보기(아직 확정 전)·만드는 중인 카드는 열지 않는다.
+  // 만드는 중인 카드는 열지 않는다.
   // 파생의 원작 답변 카드도 같은 규칙이다(#237): 활성일 때 원작 그림(카드에 보이는 그림)을 원작 제목으로 연다. 원작이 지워졌으면 열지 않는다.
   const answerToOpen =
-    data.state === 'done' && !data.inactive && !data.previewing && navigation.openAnswer
+    data.state === 'done' && !data.inactive && navigation.openAnswer
       ? data.kind === 'answer'
         ? data.answer
         : data.kind === 'origin'
@@ -176,7 +190,7 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         enabled={drafted?.enabled}
         covered={role === 'covered'}
         answerFooter={
-          data.kind === 'answer' && data.answer && !data.previewing && navigation.history ? (
+          data.kind === 'answer' && data.answer && navigation.history ? (
             <AnswerVersions
               answer={data.answer}
               answers={(navigation.history.answersBySet[data.setId] ?? []).filter(
@@ -221,7 +235,13 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
             event.target.closest('button, input, [role="slider"]')
           )
             return;
-          if (editing) return;
+          // 펼친 노드를 다시 누르면 그 노드만 접는다(#261). 편집 화면 안쪽 누름은 편집 화면이 받는다
+          // (포털이라 여기로 올라오지 않는다). 여기는 편집 화면 바깥의 카드 여백이다.
+          if (editing) {
+            if (match && isCloseClick(event))
+              navigation.editor?.close?.(match.selection.setId, match.selection.nodeId);
+            return;
+          }
           if (answerToOpen) {
             // 모달을 닫으면 포커스가 이 카드로 돌아오게, 열기 전에 카드에 포커스를 둔다(마우스 누름은 포커스를 옮기지 않을 수 있다).
             if (document.activeElement !== event.currentTarget)
@@ -262,9 +282,9 @@ export const CanvasCard = memo(function CanvasCard({ id, data }: NodeProps<Canva
         ) : null}
         {editing ? (
           <div
-            ref={navigation.editor?.slot}
+            ref={slotRef}
             className="canvas-node-open-slot"
-            data-closing={navigation.editor?.closing || undefined}
+            data-closing={match?.selection.closing || undefined}
           />
         ) : null}
         {connection ? (

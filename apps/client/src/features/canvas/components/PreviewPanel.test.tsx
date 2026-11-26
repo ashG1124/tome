@@ -105,3 +105,48 @@ it('shows previous/next only when there are several previews', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Next preview' }));
   expect(onNext).toHaveBeenCalledOnce();
 });
+
+it('moves through the edit history from the first step and locks it while applying (#261)', () => {
+  const onPrevious = vi.fn();
+  const onNext = vi.fn();
+  const navigation = {
+    index: 0,
+    count: 3,
+    previous: 'Previous edit',
+    next: 'Next edit',
+    onPrevious,
+    onNext,
+  };
+  // 처음 값(미리보기 없음)에서도 다음으로 갈 수 있다.
+  const { rerender } = render(
+    <PreviewPanel {...props} generating={false} answer={undefined} navigation={navigation} />,
+  );
+  const previous = () => screen.getByRole('button', { name: 'Previous edit' }) as HTMLButtonElement;
+  const next = () => screen.getByRole('button', { name: 'Next edit' }) as HTMLButtonElement;
+  expect(previous().disabled).toBe(true);
+  expect(next().disabled).toBe(false);
+  fireEvent.click(next());
+  expect(onNext).toHaveBeenCalledOnce();
+  rerender(
+    <PreviewPanel
+      {...props}
+      generating={false}
+      hasPreview
+      navigation={{ ...navigation, index: 2 }}
+    />,
+  );
+  expect(next().disabled).toBe(true);
+  fireEvent.click(previous());
+  expect(onPrevious).toHaveBeenCalledOnce();
+  rerender(
+    <PreviewPanel
+      {...props}
+      generating={false}
+      hasPreview
+      applying
+      navigation={{ ...navigation, index: 1 }}
+    />,
+  );
+  expect(previous().disabled).toBe(true);
+  expect(next().disabled).toBe(true);
+});

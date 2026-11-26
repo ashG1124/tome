@@ -187,8 +187,6 @@ export type CardData = {
   activateAnswerId?: string;
   /** 파생: 비활성 My answer 카드가 그릴 내 최신 버전(작은 그림만 있다) */
   summary?: AnswerSummary;
-  /** 파생: 고친 값으로 만드는 미리보기를 My answer 자리에 그린다(아직 확정 전, 버전 표시 없음) */
-  previewing?: boolean;
   /** 버전 넘기기에서 뺄 답변(파생 복사본은 원작 답변 카드가 대신한다) */
   hiddenVersionIds?: string[];
   /** 화면 번호에서 뺄 수(파생: 원작 복사본이 1번이라 내 버전은 1을 빼 Answer 01 부터 보인다, #235) */
@@ -294,17 +292,6 @@ function titleCase(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : text;
 }
 
-/**
- * 파생 세트에서 지금 만드는 미리보기(노드를 고친 뒤). answer 가 없으면 만드는 중이다.
- * error 가 있으면 미리보기 생성이 실패한 것이다. My answer 카드는 그 자리에 남아 오류와 Retry 를 보인다(#237).
- */
-export interface DerivePreview {
-  setId: string;
-  answer?: Answer;
-  error?: CardError;
-  onRetry?: () => Promise<void>;
-}
-
 /** 파생 첫 세트의 원작 답변 · My answer 상태(#229). */
 export interface DeriveAnswerState {
   /** 파생 때 원작 대표 답변을 복사한 버전(번호 1). 원작 노드 그대로다. */
@@ -315,7 +302,6 @@ export interface DeriveAnswerState {
   shown: boolean;
   /** 비활성 My answer 카드에 그릴 내 최신 버전 */
   standby?: AnswerSummary;
-  preview?: DerivePreview;
   /** My answer 뒤에 겹쳐 그리는 이전 버전 장 수(0~2) */
   stackDepth: number;
 }
@@ -332,24 +318,22 @@ export function shownNumber(number: number, offset = 0): number {
 export function deriveState(
   set: Pick<PromptSet, 'id' | 'answers'>,
   displayed: Pick<Answer, 'id'> | undefined,
-  preview: DerivePreview | undefined,
 ): DeriveAnswerState {
   const versions = [...set.answers].sort(
     (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.createdAt.localeCompare(b.createdAt),
   );
   const copyId = versions[0]?.id;
   const own = versions.slice(1);
-  const live = preview?.setId === set.id ? preview : undefined;
   const showingOwn = !!displayed && displayed.id !== copyId;
-  const active = !!live || showingOwn;
+  // 노드를 고쳐 만드는 미리보기는 Preview 에서만 보인다. Apply 로 내 버전이 생겨야 My answer 가 활성이 된다(#261).
+  const active = showingOwn;
   const index = showingOwn ? own.findIndex((entry) => entry.id === displayed.id) : -1;
   return {
     ...(copyId ? { copyId } : {}),
     active,
     shown: active || own.length > 0,
     ...(own.length > 0 ? { standby: own[own.length - 1] } : {}),
-    ...(live ? { preview: live } : {}),
-    stackDepth: !live && index > 0 ? Math.min(2, index) : 0,
+    stackDepth: index > 0 ? Math.min(2, index) : 0,
   };
 }
 
@@ -359,7 +343,6 @@ export function buildCanvas(
   labels: CanvasLabels,
   geometry: CanvasGeometry,
   derivedFrom?: WorkspaceDerivedFrom,
-  derivePreview?: DerivePreview,
 ) {
   const nodes: CanvasNode[] = [];
   const edges: Edge[] = [];
@@ -588,9 +571,10 @@ export function buildCanvas(
     const lastHeading = id(`${VISIBLE_STAGES[VISIBLE_STAGES.length - 1]}-heading`);
     // 파생: 원작 답변과 "My answer" 중 하나만 활성이다(#229).
     // - 파생 직후(복사본만 있고 고친 것이 없음): 원작 답변만 활성, My answer 는 아직 없다.
-    // - 노드를 고쳐 미리보기가 만들어지거나(만드는 중·실패 포함, #237) 내 버전이 확정되면 My answer 가 생기고 활성, 원작 답변은 비활성.
+    // - 노드를 고쳐 Apply 로 내 버전이 확정되면 My answer 가 생기고 활성, 원작 답변은 비활성.
+    //   Apply 전 미리보기(만드는 중·실패 포함)는 Preview 에서만 보이고 여기에는 그리지 않는다(#261).
     // - 원작 답변을 누르면 복사본(원작 노드)으로 돌아가 원작이 활성, My answer 는 비활성. My answer 를 누르면 그 반대.
-    const mine = derive ? deriveState(set, answer, derivePreview) : undefined;
+    const mine = derive ? deriveState(set, answer) : undefined;
     const mineShown = !mine || mine.shown;
     if (mineShown)
       edges.push({
@@ -698,27 +682,6 @@ export function buildCanvas(
           state: 'done',
           inactive: true,
           activateAnswerId: mine.standby.id,
-        },
-        { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },
-      );
-    else if (mine?.preview)
-      add(
-        'answer',
-        6,
-        1,
-        {
-          kind: 'answer',
-          label: answerHeading,
-          ...(mine.preview.answer ? { answer: mine.preview.answer } : {}),
-          // 미리보기 생성이 실패하면 카드를 그대로 두고 오류·Retry 를 보인다(#237).
-          ...(mine.preview.error
-            ? {
-                state: 'failed' as const,
-                error: mine.preview.error,
-                ...(mine.preview.onRetry ? { onRetry: mine.preview.onRetry } : {}),
-              }
-            : { state: mine.preview.answer ? ('done' as const) : ('running' as const) }),
-          previewing: true,
         },
         { y: mineCardY, xOffset: LAYOUT.mineShift, draggable: true },
       );

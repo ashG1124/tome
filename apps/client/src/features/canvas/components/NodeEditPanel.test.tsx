@@ -82,3 +82,39 @@ it('locks all editing controls while applying', () => {
   expect(onChange).not.toHaveBeenCalled();
   expect(onReset).not.toHaveBeenCalled();
 });
+
+it('clicking the open node again closes it; its controls and a locked panel do not (#261)', () => {
+  const keyword = { ...node, id: 'k1', kind: 'keyword', stage: 'analyze', text: 'Lamp' } as Node;
+  const onClose = vi.fn();
+  const view = (disabled = false) => (
+    <NodeEditPanel
+      node={keyword}
+      snapshot={{ schemaVersion: 1, subjectTemplate: 'Lamp', nodes: [keyword] }}
+      labels={labels}
+      onChange={vi.fn()}
+      onReorder={vi.fn()}
+      onReset={vi.fn()}
+      onClose={onClose}
+      disabled={disabled}
+    />
+  );
+  const { container, rerender } = render(view());
+  // 숫자 휠과 그 둘레, 탭, 노드 도구는 닫기가 아니다.
+  fireEvent.click(screen.getByRole('slider', { name: 'Weighting' }));
+  fireEvent.click(container.querySelector('.node-edit-dial')!);
+  fireEvent.click(container.querySelector('.node-edit-control')!);
+  fireEvent.click(screen.getByRole('tab', { name: 'Meaning' }));
+  fireEvent.click(screen.getByRole('tablist'));
+  fireEvent.click(container.querySelector('.node-open-tool')!);
+  fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
+  expect(onClose).not.toHaveBeenCalled();
+  // 제목이나 빈 곳을 누르면 닫는다.
+  fireEvent.click(screen.getByText('Lamp'));
+  expect(onClose).toHaveBeenCalledOnce();
+  fireEvent.click(container.querySelector('.node-open-inner')!);
+  expect(onClose).toHaveBeenCalledTimes(2);
+  // Apply 하는 동안에는 닫지 않는다.
+  rerender(view(true));
+  fireEvent.click(screen.getByText('Lamp'));
+  expect(onClose).toHaveBeenCalledTimes(2);
+});

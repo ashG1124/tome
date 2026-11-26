@@ -32,7 +32,10 @@ export interface PreviewPanelProps {
   /** 보여 줄 답변. 없으면 빈 자리만 그린다. */
   answer?: Answer;
   renderImage?: (answer: Answer) => ReactNode;
-  /** 미리보기가 둘 이상일 때만 넘긴다. 좌우 이동은 count > 1 일 때만 나온다. */
+  /**
+   * 편집 기록 이동(#261). 이전을 누르면 노드 값이 고치기 전으로 돌아가고, 다음을 누르면 다시 고친 값으로 온다.
+   * 좌우 이동은 count > 1 일 때만 나온다.
+   */
   navigation?: PreviewNavigation;
   /** 제어형: 넘기지 않으면 닫힌 채로 시작한다. */
   open?: boolean;
@@ -123,7 +126,7 @@ export const PreviewPanel = memo(function PreviewPanel({
             <button
               type="button"
               aria-label={paging.previous}
-              disabled={paging.index <= 0}
+              disabled={applying || paging.index <= 0}
               onClick={paging.onPrevious}
             >
               <Icon name="arrow-left" />
@@ -131,7 +134,7 @@ export const PreviewPanel = memo(function PreviewPanel({
             <button
               type="button"
               aria-label={paging.next}
-              disabled={paging.index >= paging.count - 1}
+              disabled={applying || paging.index >= paging.count - 1}
               onClick={paging.onNext}
             >
               <Icon name="arrow-right" />

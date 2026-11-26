@@ -12,20 +12,45 @@ export interface CanvasEditorSelection {
   nodeId: string;
   /** 고른 노드 종류. 검색 우선순위·검증 기준은 묶음 전체가 한 카드로 펼쳐진다. */
   kind?: string;
+  /** 접히는 중(애니메이션)이면 true */
+  closing?: boolean;
+}
+
+/** 펼친 노드를 가리키는 키(세트 + 노드). 펼친 자리(slot)·접기 타이머를 이 키로 찾는다. */
+export function selectionKey(selection: Pick<CanvasEditorSelection, 'setId' | 'nodeId'>): string {
+  return `${selection.setId}:${selection.nodeId}`;
+}
+
+/**
+ * 이 노드가 그 펼침에 들어 있는가. 묶음(우선순위·검증 기준)은 같은 종류 한 줄이 열려 있으면 묶음 전체가 열린 것이다.
+ */
+export function selectionCovers(
+  selection: CanvasEditorSelection,
+  setId: string,
+  nodeId: string,
+  kind?: string,
+): boolean {
+  if (selection.setId !== setId) return false;
+  return (
+    selection.nodeId === nodeId || (!!kind && GROUP_KINDS.has(kind) && selection.kind === kind)
+  );
 }
 
 export interface CanvasEditorConnection {
   label: string;
-  selected?: CanvasEditorSelection;
-  /** 접히는 중(애니메이션)이면 true */
-  closing?: boolean;
+  /**
+   * 펼쳐 둔 노드들(연 순서). 여러 개를 함께 펼쳐 둘 수 있다(#261).
+   * 다른 노드를 열거나 빈 곳을 눌러도 닫히지 않고, 펼친 노드를 다시 누르면 그 노드만 닫힌다.
+   */
+  selected?: readonly CanvasEditorSelection[];
   /** Apply 전 고친 값. 접힌 노드도 이 값(켜짐·꺼짐)으로 그린다. */
   draft?: { setId: string; nodes: readonly Node[] };
   canOpen: (setId: string, nodeId: string) => boolean;
   open: (setId: string, nodeId: string) => void;
-  close?: () => void;
-  /** 펼친 노드 카드 안의 빈 자리. 편집 화면이 이 자리에 그려진다. */
-  slot?: (element: HTMLElement | null) => void;
+  /** 펼친 노드를 다시 눌렀을 때 그 노드만 접는다. */
+  close?: (setId: string, nodeId: string) => void;
+  /** 펼친 노드 카드 안의 빈 자리. 편집 화면이 이 자리에 그려진다(노드마다 하나). */
+  slot?: (setId: string, nodeId: string, element: HTMLElement | null) => void;
 }
 
 /** 펼친 노드의 위치. 검색 우선순위·검증 기준은 묶음 첫 줄 카드가 묶음 전체를 대신한다. */
@@ -39,6 +64,20 @@ export function openRole(
   if (selected.kind && GROUP_KINDS.has(selected.kind) && output.kind === selected.kind)
     return groupPosition === 'first' || groupPosition === 'only' ? 'open' : 'covered';
   return selected.nodeId === output.id ? 'open' : null;
+}
+
+/** 펼쳐 둔 노드들 가운데 이 카드가 맡은 것과 그 자리(펼친 카드·덮인 줄). 없으면 undefined */
+export function openMatch(
+  selected: readonly CanvasEditorSelection[] | undefined,
+  setId: string,
+  output: { id: string; kind: string } | undefined,
+  groupPosition: string | undefined,
+): { selection: CanvasEditorSelection; role: 'open' | 'covered' } | undefined {
+  for (const selection of selected ?? []) {
+    const role = openRole(selection, setId, output, groupPosition);
+    if (role) return { selection, role };
+  }
+  return undefined;
 }
 
 export const CanvasNavigation = createContext<{

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { openRole } from './navigation';
+import { openMatch, openRole, selectionCovers, selectionKey } from './navigation';
 
 describe('openRole', () => {
   const selected = { setId: 's1', nodeId: 'k1', kind: 'keyword' };
@@ -25,5 +25,35 @@ describe('openRole', () => {
     expect(openRole(mismatch, 's1', { id: 'm1', kind: 'mismatch' }, 'first')).toBeNull();
     expect(openRole(mismatch, 's1', { id: 'm2', kind: 'mismatch' }, 'last')).toBe('open');
     expect(openRole(mismatch, 's1', { id: 'v1', kind: 'criterion' }, 'first')).toBeNull();
+  });
+});
+
+describe('여러 노드 펼쳐 두기(#261)', () => {
+  const k1 = { setId: 's1', nodeId: 'k1', kind: 'keyword' };
+  const priority = { setId: 's1', nodeId: 'p2', kind: 'priority', closing: true };
+  const opened = [k1, priority];
+
+  it('펼쳐 둔 노드마다 그 카드가 open 이고, 묶음은 첫 줄이 open·나머지가 covered 다', () => {
+    expect(openMatch(opened, 's1', { id: 'k1', kind: 'keyword' }, 'only')).toEqual({
+      selection: k1,
+      role: 'open',
+    });
+    expect(openMatch(opened, 's1', { id: 'p1', kind: 'priority' }, 'first')).toEqual({
+      selection: priority,
+      role: 'open',
+    });
+    expect(openMatch(opened, 's1', { id: 'p3', kind: 'priority' }, 'last')?.role).toBe('covered');
+    expect(openMatch(opened, 's1', { id: 'k2', kind: 'keyword' }, 'only')).toBeUndefined();
+    expect(openMatch(opened, 's2', { id: 'k1', kind: 'keyword' }, 'only')).toBeUndefined();
+    expect(openMatch(undefined, 's1', { id: 'k1', kind: 'keyword' }, 'only')).toBeUndefined();
+  });
+
+  it('키는 세트와 노드로 만들고, 묶음은 같은 종류 한 줄이 열려 있으면 다른 줄도 열린 것으로 본다', () => {
+    expect(selectionKey(k1)).toBe('s1:k1');
+    expect(selectionCovers(k1, 's1', 'k1', 'keyword')).toBe(true);
+    expect(selectionCovers(k1, 's1', 'k2', 'keyword')).toBe(false);
+    expect(selectionCovers(k1, 's2', 'k1', 'keyword')).toBe(false);
+    expect(selectionCovers(priority, 's1', 'p1', 'priority')).toBe(true);
+    expect(selectionCovers(priority, 's1', 'd1', 'dataType')).toBe(false);
   });
 });
