@@ -40,6 +40,8 @@ const BaseEnvSchema = z.object({
   ASSET_URL_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
   // 시드 스크립트(db:seed)만 쓴다: 시안 이미지 폴더(seed/projects·seed/avatars 가 든 곳). 없으면 기본 위치를 본다.
   SEED_ASSETS_DIR: z.string().min(1).optional(),
+  // 시드 스크립트(db:seed)만 쓴다: 주면 쇼케이스 계정 접속 코드(label showcase)를 등록한다. 값은 로그·오류에 남기지 않는다.
+  SEED_SHOWCASE_CODE: z.string().min(1).optional(),
 });
 
 export const EnvSchema = BaseEnvSchema.superRefine((env, ctx) => {
