@@ -85,8 +85,6 @@ export function ProfileView({
   timeZone,
 }: ProfileViewProps) {
   const [tab, setTab] = useState<ProfileTab>(initialTab);
-  // 닫기(X)는 지금 탭의 패널만 접는다. 탭을 바꾸면 그 탭의 패널이 다시 열린다.
-  const [panelOpen, setPanelOpen] = useState(true);
   const [filter, setFilter] = useState<CreatorFilter>(DEFAULT_FILTER);
   const [highlightId, setHighlightId] = useState<Id | null>(null);
 
@@ -118,7 +116,6 @@ export function ProfileView({
 
   const changeTab = (next: ProfileTab) => {
     setTab(next);
-    setPanelOpen(true);
     setHighlightId(null);
   };
 
@@ -161,32 +158,28 @@ export function ProfileView({
           </Tabs>
         </div>
       </div>
-      {panelOpen ? (
-        tab === 'work' ? (
-          <SidePanel
-            title={mine ? COPY['P-23a'] : COPY['P-23b']}
-            onClose={() => setPanelOpen(false)}
-          >
-            <InsightsPanel
-              metrics={metrics}
-              // 남의 비공개면 "바뀔 수 있음"(P-08)은 뜻이 맞지 않아 보이지 않는다
-              provisional={view.provisional && !identityPrivate}
-              {...(identityPrivate ? { privateMessage: COPY['P-20'] } : {})}
-            />
-          </SidePanel>
-        ) : (
-          <SidePanel title={COPY['P-25']} onClose={() => setPanelOpen(false)}>
-            <CreatorFilterPanel
-              filter={filter}
-              onFilterChange={setFilter}
-              matches={matches}
-              focalName={mine ? null : creator.displayName}
-              onHighlight={setHighlightId}
-              onRemix={onSelectPartner}
-            />
-          </SidePanel>
-        )
-      ) : null}
+      {/* 패널은 늘 열려 있다. 닫기(X)가 없다(닫으면 다시 열 방법이 없었다, #262). */}
+      {tab === 'work' ? (
+        <SidePanel title={mine ? COPY['P-23a'] : COPY['P-23b']}>
+          <InsightsPanel
+            metrics={metrics}
+            // 남의 비공개면 "바뀔 수 있음"(P-08)은 뜻이 맞지 않아 보이지 않는다
+            provisional={view.provisional && !identityPrivate}
+            {...(identityPrivate ? { privateMessage: COPY['P-20'] } : {})}
+          />
+        </SidePanel>
+      ) : (
+        <SidePanel title={COPY['P-25']}>
+          <CreatorFilterPanel
+            filter={filter}
+            onFilterChange={setFilter}
+            matches={matches}
+            focalName={mine ? null : creator.displayName}
+            onHighlight={setHighlightId}
+            onRemix={onSelectPartner}
+          />
+        </SidePanel>
+      )}
     </div>
   );
 }

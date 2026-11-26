@@ -185,14 +185,13 @@ describe('ProfileView', () => {
     expect(screen.getByText('48').closest('[hidden]')).not.toBeNull();
   });
 
-  it('닫기(X)는 패널을 접고, 탭을 바꾸면 그 탭의 패널이 다시 열린다', async () => {
+  it('패널에는 닫기(X)가 없고, 탭을 바꾸면 그 탭의 패널이 보인다(#262)', async () => {
     setup({ tab: 'work' });
-    fireEvent.click(screen.getByRole('button', { name: COPY['D-11'] }));
-    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(within(panel(COPY['P-23a'])).queryByRole('button', { name: COPY['D-11'] })).toBeNull();
     const identityTab = screen.getByRole('tab', { name: COPY['P-01b'] });
     act(() => identityTab.focus());
     await waitFor(() => expect(identityTab.getAttribute('aria-selected')).toBe('true'));
-    expect(panel(COPY['P-25'])).toBeTruthy();
+    expect(within(panel(COPY['P-25'])).queryByRole('button', { name: COPY['D-11'] })).toBeNull();
   });
 
   it('탭 2개(Work·Identity), ←/→ 로 옮기면 선택과 포커스가 같이 움직인다', async () => {

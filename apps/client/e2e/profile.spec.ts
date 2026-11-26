@@ -132,13 +132,33 @@ test.describe('탭·비교 동작', () => {
     await expect(page).toHaveURL(/\/projects\//);
   });
 
-  test('패널 구역 접기·닫기(X)', async ({ page }) => {
+  test('패널 구역은 접히고, 패널에는 닫기(X)가 없다(#262)', async ({ page }) => {
     await openProfile(page);
     const panel = page.getByRole('complementary', { name: 'About your identity' });
     await panel.getByRole('button', { name: 'Identity Type' }).click();
     await expect(panel.getByText('session')).toBeHidden();
-    await panel.getByRole('button', { name: 'Close' }).click();
-    await expect(page.getByRole('complementary')).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Close' })).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Identity' }).click();
+    await expect(
+      page.getByRole('complementary', { name: 'Other Creators' }).getByRole('button', {
+        name: 'Close',
+      }),
+    ).toHaveCount(0);
+  });
+
+  test('헤더의 내 사진 둘레 선: 내 프로필에서는 있고, 남의 프로필에서는 없다(#262)', async ({
+    page,
+  }) => {
+    await openProfile(page);
+    const avatar = page.locator('header').getByRole('link', { name: 'My profile' });
+    await expect(avatar).toHaveAttribute('data-avatar-ring', '');
+    await openProfile(page, LIND);
+    await expect(page.getByRole('heading', { level: 1, name: 'Lind' })).toBeVisible();
+    await expect(avatar).not.toHaveAttribute('data-avatar-ring');
+    // 선이 없으면 사진 칸이 헤더 아바타 크기 그대로다(선·간격만큼 커지지 않는다)
+    const box = (await avatar.boundingBox())!;
+    expect(box.width).toBe(box.height);
+    expect(await avatar.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('0px');
   });
 
   test('남의 프로필: 이름표가 그 사람 이름, 작품은 아고라 상세로 간다', async ({ page }) => {
