@@ -8,9 +8,10 @@ import { AgoraFrame, SearchStatus } from './AgoraFrame';
 import { TopicBundle } from './TopicBundle';
 
 /**
- * 아고라 Topic 탭 = 핫토픽 전체 목록(/agora/topics, Topic List 3190:179268): 393×308 묶음을 가로·세로 간격 20 으로 늘어놓는다.
- * Figma 에는 1299 폭 예시(3열)만 있어, 1728 화면에서는 칸 크기·간격을 그대로 두고 화면 폭만큼 열을 늘린다(1536 은 3열, 1728·1920 은 4열).
- * 헤더 아래 위치는 홈 구역과 같다(왼쪽 18, 제목 y 124). 새 API 없이 아고라 홈 응답의 hotTopics 를 쓰고, 검색어는 주제 제목으로 거른다.
+ * 아고라 Topic 탭 = 핫토픽 전체 목록(/agora/topics, Topic List 3190:179268): 묶음을 3열, 가로·세로 간격 20 으로 늘어놓는다.
+ * 시안 예시처럼 3열이 화면 폭(좌우 18 안쪽)을 꽉 채우고, 콜라주는 393:269 비율로 칸 폭을 따라 커진다
+ * (1728 에서 칸 약 551 = 핫토픽 화면 카드 550 과 같은 폭). 헤더 아래 위치는 홈 구역과 같다(왼쪽 18, 제목 y 124).
+ * 새 API 없이 아고라 홈 응답의 hotTopics 를 쓰고, 검색어는 주제 제목으로 거른다.
  */
 export function TopicListPage() {
   const home = useQuery({ queryKey: ['agora-home'], queryFn: api.getAgoraHome });
@@ -40,10 +41,10 @@ export function TopicListPage() {
           </p>
         ) : null}
         {topics.length > 0 ? (
-          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,var(--size-agora-topic-width))] gap-[var(--grid-gutter)] p-0">
+          <ul className="m-0 grid list-none grid-cols-3 gap-[var(--grid-gutter)] p-0">
             {topics.map((entry) => (
-              <li key={entry.topic.id}>
-                <TopicBundle entry={entry} />
+              <li key={entry.topic.id} className="min-w-0">
+                <TopicBundle entry={entry} layout="grid" />
               </li>
             ))}
           </ul>

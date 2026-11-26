@@ -11,8 +11,9 @@ import { CreatorPill } from './CreatorPill';
 
 /**
  * 창작자 칸 목록. Figma 에 이 화면 프레임이 없어, 같은 알약(Creator 3190:178168)을 Agora Example 의
- * Creator List(3190:179201)처럼 여러 줄로 늘어놓는다: 칸 293 + 간격 16(가로·세로) = 칸 간격 309(시안 308.75),
- * 화면 폭만큼 칸이 는다(1536 은 4칸, 1728 은 5칸, 1920 은 6칸). 알약은 칸 왼쪽에 붙고, 칸보다 길면 말줄임한다.
+ * Creator List(3190:179201)처럼 여러 줄로 늘어놓는다. 시안 예시는 같은 폭 칸 4개가 목록 폭을 꽉 채운다(칸 292.75 + 간격 16).
+ * 그래서 칸은 293 이상으로 들어가는 만큼 만들고 남는 폭을 칸끼리 나눠 오른쪽 끝(18 안쪽)까지 채운다
+ * (1536 은 4칸, 1728 은 5칸 약 326, 1920 은 6칸). 알약은 칸 왼쪽에 붙고, 칸보다 길면 말줄임한다.
  */
 function CreatorGrid({
   id,
@@ -25,7 +26,7 @@ function CreatorGrid({
 }) {
   return (
     <AgoraSection id={id} title={title}>
-      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,var(--size-agora-creator-column))] gap-[var(--space-agora-row-gap)] p-0 pr-[var(--space-agora-content-x)]">
+      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(var(--size-agora-creator-column),1fr))] gap-[var(--space-agora-row-gap)] p-0 pr-[var(--space-agora-content-x)]">
         {creators.map((creator) => (
           <li key={creator.id} className="flex min-w-0">
             <CreatorPill creator={creator} />

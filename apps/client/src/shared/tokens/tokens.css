@@ -552,3 +552,26 @@
   --space-prompt-multiline-y: 18px; /* 디자인 변수 없음, 원값 18px — 여러 줄 프롬프트 바 위아래 안쪽 (3468:30233) */
   --color-prompt-tool-icon: #a4a9b3; /* Color/Font Color/Helper Text 원값 — 여러 줄 프롬프트 바 + 아이콘(장식) (3468:30236) */
 }
+
+/* ===== 아고라 1728 꽉 채우기(#253) — Agora 3100:129594(1728×1117, 메뉴 막대 34 를 빼면 화면 1083) · Topic List 3190:179268 · Creator List 3190:179201 ===== */
+:root {
+  --size-agora-feed-design-height: 1083px; /* 디자인 변수 없음, 원값 1117 − 메뉴 막대 34 — Project 탭이 화면을 꼭 채우는 높이 (3100:129594) */
+  --space-agora-feed-fit: clamp(
+    -140px,
+    100dvh - var(--size-agora-feed-design-height),
+    140px
+  ); /* 레이아웃 값 — 화면 높이와 1083 의 차(±140 까지). 추천 카드·핫토픽 콜라주 높이가 284 : 269 로 나눠 가진다 (3100:129597) */
+  --size-agora-recommended-fit-height: calc(
+    var(--size-agora-recommended-height) + var(--space-agora-feed-fit) * 284 / 553
+  ); /* 원값 284 — 화면 1083 에서 284, 높이 차의 284/553 만큼 늘고 준다 (3188:177923) */
+  --size-agora-recommended-fit-width: calc(
+    var(--size-agora-recommended-fit-height) * 364 / 284
+  ); /* 원값 364 — 추천 카드 비율 364×284 유지 (3188:177923) */
+  --size-agora-topic-fit-height: calc(
+    var(--size-agora-topic-height) + var(--space-agora-feed-fit) * 269 / 553
+  ); /* 원값 269 — 홈 핫토픽 콜라주 높이, 화면 1083 에서 269 (3100:129721) */
+  --size-agora-topic-fit-width: calc(
+    var(--size-agora-topic-fit-height) * 393 / 269
+  ); /* 원값 393 — 홈 핫토픽 묶음 비율 393×269 유지 (3100:129720) */
+  --size-agora-topic-ratio: 393 / 269; /* 원값 393×269 — Topic 탭에서 칸 폭에 맞춰 늘어나는 콜라주 비율 (3190:179270) */
+}

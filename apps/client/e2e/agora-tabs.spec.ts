@@ -122,6 +122,89 @@ test('검색어는 지금 탭 안에서 거르고, 탭을 옮겨도 그대로 �
   await expect(page.getByRole('link', { name: 'Urban Trail' })).toBeVisible();
 });
 
+// #253 전시 맥(1728×1117, 메뉴 막대 34 를 뺀 1083)에서 시안 Agora(3100:129594)처럼 화면을 꽉 채운다.
+test('1728×1083: Project 탭은 시안 자리·크기 그대로 화면 높이를 꼭 채운다', async ({ page }) => {
+  await page.setViewportSize({ width: 1728, height: 1083 });
+  await page.goto('/agora');
+  const heading = (name: string) => page.getByRole('heading', { level: 2, name, exact: true });
+  await expect(heading('Hot Topic')).toBeVisible();
+  expect((await heading('Recommended Project').boundingBox())!.y).toBeCloseTo(124, 0);
+  expect((await heading('Rising Creator').boundingBox())!.y).toBeCloseTo(506, 0);
+  expect((await heading('Hot Topic').boundingBox())!.y).toBeCloseTo(671, 0);
+
+  const card = (await page
+    .getByRole('region', { name: 'Recommended Project' })
+    .getByRole('link')
+    .first()
+    .boundingBox())!;
+  expect(card).toEqual({ x: 18, y: 172, width: 364, height: 284 });
+  // 추천 줄은 화면 오른쪽 끝까지 간다(카드가 오른쪽에서 잘려 보인다)
+  const row = (await page
+    .getByRole('region', { name: 'Recommended Project' })
+    .getByRole('list')
+    .boundingBox())!;
+  expect(row.x + row.width).toBeCloseTo(1728, 0);
+
+  const topic = (await page
+    .getByRole('region', { name: 'Hot Topic' })
+    .getByRole('link')
+    .first()
+    .boundingBox())!;
+  expect(topic).toEqual({ x: 18, y: 719, width: 393, height: 308 });
+  // 아래 여백 56 으로 화면이 끝난다(세로로 남거나 넘치지 않는다)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1083);
+});
+
+for (const height of [1000, 1117, 960]) {
+  test(`높이 ${height}: Project 탭 카드가 화면 높이를 따라 줄거나 늘어 화면을 꼭 채운다`, async ({
+    page,
+  }) => {
+    const width = height === 960 ? 1536 : 1728;
+    await page.setViewportSize({ width, height });
+    await page.goto('/agora');
+    const topics = page.getByRole('region', { name: 'Hot Topic' });
+    await expect(topics).toBeVisible();
+    // 넘치지 않고(세로 스크롤 없음), 핫토픽 묶음 아래 여백 56 으로 화면이 끝난다
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
+    const topic = (await topics.getByRole('link').first().boundingBox())!;
+    expect(Math.abs(topic.y + topic.height + 56 - height)).toBeLessThanOrEqual(2);
+    // 비율은 시안 그대로(추천 364:284, 핫토픽 콜라주+제목 393:308 의 폭)
+    const card = (await page
+      .getByRole('region', { name: 'Recommended Project' })
+      .getByRole('link')
+      .first()
+      .boundingBox())!;
+    expect(card.width / card.height).toBeCloseTo(364 / 284, 1);
+  });
+}
+
+test('1728×1083: Topic 탭 3열과 Creator 탭 칸이 화면 폭(좌우 18 안쪽)을 꽉 채운다', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1728, height: 1083 });
+  await page.goto('/agora/topics');
+  const bundles = page.locator('ul > li > a[href^="/agora/topics/"]');
+  await expect(bundles).toHaveCount(3);
+  const first = (await bundles.nth(0).boundingBox())!;
+  const third = (await bundles.nth(2).boundingBox())!;
+  expect(first.x).toBeCloseTo(18, 0);
+  expect(third.y).toBeCloseTo(first.y, 0);
+  expect(third.x + third.width).toBeCloseTo(1710, 0);
+  // 콜라주는 393:269 비율 그대로 칸 폭을 따라 커진다(1728 에서 약 551×377)
+  expect(first.width).toBeGreaterThan(540);
+
+  await page.goto('/agora/creators');
+  const list = page.getByRole('region', { name: 'Rising Creator' }).getByRole('list');
+  await expect(list).toBeVisible();
+  const columns = await list.evaluate((el) =>
+    getComputedStyle(el).gridTemplateColumns.split(' ').map(Number.parseFloat),
+  );
+  expect(columns).toHaveLength(5);
+  const box = (await list.boundingBox())!;
+  const used = columns.reduce((sum, w) => sum + w, 0) + 16 * (columns.length - 1);
+  expect(box.x + used).toBeCloseTo(1710, 0);
+});
+
 /** 두 상자가 겹치는지(맞닿기만 하면 겹침이 아니다) */
 function overlaps(
   a: { x: number; y: number; width: number; height: number },
