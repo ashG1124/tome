@@ -23,14 +23,22 @@ export function opensToLeft(cellIndex: number, columns: number, span = OPEN_CARD
 }
 
 /**
- * 카드 하나가 오른쪽으로 넓어지면(Figma Home_hover) 같은 줄 바로 뒤 카드가 shift 칸만큼 밀린다(freeLayout pushShifts).
- * 밀려서 줄 끝(col + shift ≥ columns)을 넘는 카드는 잠깐 숨긴다(마우스를 떼면 제자리로 돌아온다).
+ * 카드 하나가 넓어지면(Figma Home_hover) 같은 줄 옆 카드가 shift 칸만큼 밀린다(freeLayout pushShifts).
+ * shift 가 양수면 오른쪽, 음수면 왼쪽(오른쪽 끝 카드가 왼쪽으로 넓어질 때, #250)으로 민다.
+ * 밀려서 줄 끝(col + shift ≥ columns)을 넘거나 줄 첫 카드 칸(firstCol, 맨 윗줄은 + Project 다음 칸)보다
+ * 앞으로 가는 카드는 잠깐 숨긴다(마우스를 떼면 제자리로 돌아온다).
  */
-export function pushStyle(shift: number, col: number, columns: number): CSSProperties | undefined {
-  if (shift <= 0) return undefined;
+export function pushStyle(
+  shift: number,
+  col: number,
+  columns: number,
+  firstCol = 0,
+): CSSProperties | undefined {
+  if (shift === 0) return undefined;
   const moved: CSSProperties = {
     transform: `translateX(calc((var(--size-shelf-card-width) + var(--grid-gutter)) * ${shift}))`,
   };
-  if (col + shift >= columns) return { ...moved, opacity: 0, pointerEvents: 'none' };
+  const to = col + shift;
+  if (to >= columns || to < firstCol) return { ...moved, opacity: 0, pointerEvents: 'none' };
   return moved;
 }

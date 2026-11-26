@@ -7,6 +7,7 @@ import { AppHeader, ErrorNotice, Flash, Icon, ShelfGrid, type FlashKind } from '
 import { FLASH_MS, flashFromState } from './flash';
 import {
   BASE_COLUMNS,
+  firstCardColumn,
   lastRow,
   MAX_ROWS,
   placeCard,
@@ -106,7 +107,7 @@ export function HomePage() {
   const [moveNotice, setMoveNotice] = useState('');
   const refocusId = useRef<string | null>(null);
   const hintId = useId();
-  // 넓어진 카드(마우스·키보드 포커스) id. 같은 줄에서 바로 뒤에 붙은 카드를 오른쪽으로 민다.
+  // 넓어진 카드(마우스·키보드 포커스) id. 같은 줄에서 넓어지는 쪽(보통 오른쪽, 오른쪽 끝이면 왼쪽)에 붙은 카드를 민다.
   const [openId, setOpenId] = useState<string | null>(null);
   const [list, setList] = useState<HTMLOListElement | null>(null);
   const columns = useShelfColumns(list);
@@ -287,7 +288,12 @@ export function HomePage() {
                       gridColumnStart: cell.col + 1,
                       gridRowStart: cell.row + 1,
                       ...(drag.styleFor(project.id) ??
-                        pushStyle(shifts.get(project.id) ?? 0, cell.col, columns)),
+                        pushStyle(
+                          shifts.get(project.id) ?? 0,
+                          cell.col,
+                          columns,
+                          firstCardColumn(cell.row),
+                        )),
                     }}
                     className={[
                       // 누른 채 끌 때 글자가 선택되지 않게 하고, 끄는 동안은 잡은 손 모양

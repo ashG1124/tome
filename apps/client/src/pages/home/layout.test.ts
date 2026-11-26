@@ -43,4 +43,13 @@ describe('pushStyle (hover 때 같은 줄 뒤 카드 밀기)', () => {
     expect(pushStyle(2, 11, 13)).toMatchObject({ opacity: 0 });
     expect(pushStyle(2, 10, 13)?.opacity).toBeUndefined();
   });
+  it('음수면 왼쪽으로 밀고(#250), 줄 첫 카드 칸보다 앞으로 가면 숨긴다', () => {
+    expect(pushStyle(-2, 11, 13)?.transform).toContain('* -2');
+    expect(pushStyle(-2, 11, 13)?.opacity).toBeUndefined();
+    expect(pushStyle(-2, 2, 13)?.opacity).toBeUndefined();
+    expect(pushStyle(-2, 1, 13)).toMatchObject({ opacity: 0, pointerEvents: 'none' });
+    // 맨 윗줄은 + Project 칸(0)에 겹치지 않게 1 칸보다 앞이면 숨긴다
+    expect(pushStyle(-2, 2, 13, 1)).toMatchObject({ opacity: 0, pointerEvents: 'none' });
+    expect(pushStyle(-2, 3, 13, 1)?.opacity).toBeUndefined();
+  });
 });

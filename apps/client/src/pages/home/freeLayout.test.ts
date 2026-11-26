@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   clampCell,
+  firstCardColumn,
   lastRow,
   LAYOUT_ENTRIES_MAX,
   layoutStorageKey,
@@ -127,9 +128,14 @@ describe('pushShifts (hover 로 넓어진 카드 옆 밀기, Figma Home_hover)',
     expect(Object.fromEntries(shifts)).toEqual({ red: 2, white: 2 });
   });
 
-  it('왼쪽으로 넓어지거나 아무것도 안 열렸으면 밀지 않는다', () => {
-    expect(pushShifts(cells, 'open', 3, true).size).toBe(0);
+  it('아무것도 안 열렸거나 모르는 카드면 밀지 않는다', () => {
     expect(pushShifts(cells, null, 3, false).size).toBe(0);
+    expect(pushShifts(cells, 'nope', 3, false).size).toBe(0);
+  });
+
+  it('왼쪽으로 넓어지면 앞(왼쪽) 카드는 그대로 두고 뒤 카드도 밀지 않는다', () => {
+    // 1 칸 카드가 왼쪽으로 넓어질 일은 없지만, 오른쪽 카드는 건드리지 않는다
+    expect(pushShifts(cells, 'open', 3, true).size).toBe(0);
   });
 
   it('밀린 카드가 다음 카드를 이어서 민다', () => {
@@ -140,6 +146,49 @@ describe('pushShifts (hover 로 넓어진 카드 옆 밀기, Figma Home_hover)',
       ['z', cell(3, 0)],
     ]);
     expect(Object.fromEntries(pushShifts(row, 'open', 3, false))).toEqual({ z: 1, x: 1, y: 1 });
+  });
+});
+
+describe('pushShifts 왼쪽으로 넓어질 때 (#250, 오른쪽 밀기와 거울)', () => {
+  it('붙어 있는 앞 카드만 넓은 카드 앞 칸으로 왼쪽으로 밀고, 빈 칸에서 멈춘다', () => {
+    // 13칸 줄: 12 칸 카드가 10~12 칸으로 넓어진다
+    const row = new Map([
+      ['open', cell(12, 1)],
+      ['a', cell(11, 1)],
+      ['b', cell(10, 1)],
+      ['far', cell(7, 1)],
+      ['above', cell(11, 0)],
+      ['after', cell(12, 2)],
+    ]);
+    expect(Object.fromEntries(pushShifts(row, 'open', 3, true))).toEqual({ a: -2, b: -2 });
+  });
+
+  it('밀린 카드가 앞 카드를 이어서 민다', () => {
+    const row = new Map([
+      ['open', cell(11, 1)],
+      ['x', cell(8, 1)],
+      ['y', cell(7, 1)],
+      ['z', cell(9, 1)],
+      ['gap', cell(5, 1)],
+    ]);
+    expect(Object.fromEntries(pushShifts(row, 'open', 3, true))).toEqual({ z: -1, x: -1, y: -1 });
+  });
+
+  it('바로 앞 칸이 비어 있으면 두 칸 앞 카드만 한 칸 민다', () => {
+    const row = new Map([
+      ['open', cell(12, 1)],
+      ['a', cell(10, 1)],
+      ['b', cell(8, 1)],
+    ]);
+    expect(Object.fromEntries(pushShifts(row, 'open', 3, true))).toEqual({ a: -1 });
+  });
+});
+
+describe('firstCardColumn', () => {
+  it('맨 윗줄은 + Project 다음 칸, 나머지 줄은 0 칸', () => {
+    expect(firstCardColumn(0)).toBe(1);
+    expect(firstCardColumn(1)).toBe(0);
+    expect(firstCardColumn(5)).toBe(0);
   });
 });
 
