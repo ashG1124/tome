@@ -206,3 +206,51 @@ test('the prompt node follows Node/Prompt (1192:65515)', async ({ page }) => {
     clip: { x: box.x - 24, y: box.y - 24, width: box.width + 48, height: box.height + 48 },
   });
 });
+
+// #264 예시 프롬프트 글 변경: 칩을 누르면 새 글이 들어가고, 긴 글이어도 화면이 넘치지 않는다.
+test('a preset chip fills its reworded sentence and the long text fits the bar (#264)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1728, height: 1117 });
+  await page.addInitScript(() => {
+    localStorage.setItem('tome.token', 'fake-token');
+    localStorage.setItem('tome.fake.consented', '1');
+  });
+  await page.goto(SEED);
+  await expect(page.getByRole('region', { name: 'Generation canvas' })).toBeVisible();
+  const { id, presets } = await page.evaluate(async () => {
+    const modulePath = '/src/shared/api/index.ts';
+    const { api } = await import(/* @vite-ignore */ modulePath);
+    const sharedPath = '/@id/@tome/shared';
+    const shared = await import(/* @vite-ignore */ sharedPath);
+    const created = await api.createProject({});
+    return {
+      id: created.project.id as string,
+      presets: (shared.PROMPT_PRESETS as { label: string; prompt: string }[]).map((p) => ({
+        label: p.label,
+        prompt: p.prompt,
+      })),
+    };
+  });
+  await page.goto(`/projects/${id}`);
+
+  for (const label of ['Studio desk lamp', 'Sneaker redesign', 'Eco-friendly library']) {
+    const preset = presets.find((p) => p.label === label)!;
+    expect(preset.prompt.startsWith('Please visualise the concept for a ')).toBe(true);
+    await page.getByRole('button', { name: label }).click();
+    await expect(textbox(page)).toHaveValue(preset.prompt);
+    const bar = await barGeometry(page);
+    expect(bar.multiline).toBe(true);
+    expect(bar.pageOverflow).toBe(false);
+    await expect(page.getByRole('button', { name: 'Send prompt' })).toBeEnabled();
+  }
+  if (process.env.SHOT_DIR)
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/264-01-preset-filled.png` });
+
+  // 그대로 보내면 프롬프트 노드에 새 글이 그대로 실린다.
+  await page.getByRole('button', { name: 'Send prompt' }).click();
+  await expect(page.locator('[data-canvas-card$=":prompt"]')).toHaveCount(1);
+  await expect(page.locator('[data-canvas-card$=":prompt"]')).toContainText(
+    "'sustainable eco-friendly library'",
+  );
+});
