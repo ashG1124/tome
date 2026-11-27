@@ -1,5 +1,6 @@
 import { PROMPT_PRESETS, type WorkspaceResponse } from '@tome/shared';
 import { describe, expect, it } from 'vitest';
+import { COPY } from '../../shared/copy';
 import { canSubmitPrompt, isMultilinePrompt, presetKeyFor, promptBarInfo } from './prompt';
 
 const PAGE_ID = 'c4a1e7d2-8b5f-4e39-a6c0-2f1d3b4a5c6e';
@@ -63,6 +64,16 @@ describe('canSubmitPrompt', () => {
     expect(canSubmitPrompt('a')).toBe(true);
     expect(canSubmitPrompt('a'.repeat(500))).toBe(true);
     expect(canSubmitPrompt('a'.repeat(501))).toBe(false);
+  });
+});
+
+describe('preset copy', () => {
+  it('S-11*-prompt copies match the shared preset sentences (#264)', () => {
+    const keys = ['S-11a', 'S-11b', 'S-11c', 'S-11d', 'S-11e'] as const;
+    PROMPT_PRESETS.forEach((preset, index) => {
+      expect(COPY[`${keys[index]!}-prompt`]).toBe(preset.prompt);
+      expect(COPY[keys[index]!]).toBe(preset.label);
+    });
   });
 });
 

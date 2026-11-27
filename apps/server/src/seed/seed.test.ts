@@ -1,4 +1,9 @@
-import { EventEnvelopeSchema, NodeSnapshotSchema, PROMPT_PRESETS } from '@tome/shared';
+import {
+  EventEnvelopeSchema,
+  NodeSnapshotSchema,
+  PROMPT_PRESETS,
+  presetPrompts,
+} from '@tome/shared';
 import { describe, expect, it } from 'vitest';
 import { calculateIdentity, type CalcEvent } from '../modules/identity/identity-calc';
 import { SEED_CREATORS, SHOWCASE_CREATOR_ID } from './creators';
@@ -84,7 +89,7 @@ describe('seed plan (no DB)', () => {
     }
   });
 
-  it('projects with a preset key use the exact preset prompt (sample results can be reused)', () => {
+  it('projects with a preset key use a sentence of that preset (sample results can be reused)', () => {
     const presetProjects = plan.projects.filter((p) => p.spec.presetKey !== undefined);
     expect(
       new Set(presetProjects.filter((p) => p.ownerKind === 'seed').map((p) => p.spec.presetKey))
@@ -94,7 +99,8 @@ describe('seed plan (no DB)', () => {
       const preset = PROMPT_PRESETS.find((x) => x.key === project.spec.presetKey)!;
       const set = plan.sets.find((s) => s.projectId === project.id && s.position === 1)!;
       expect(set.presetKey, project.key).toBe(preset.key);
-      expect(set.prompt, project.key).toBe(preset.prompt);
+      // 시드 프로젝트는 대체 결과를 만든 문장(지금 또는 예전 프리셋 문장)을 그대로 쓴다(#264).
+      expect(presetPrompts(preset.key), project.key).toContain(set.prompt);
     }
   });
 
