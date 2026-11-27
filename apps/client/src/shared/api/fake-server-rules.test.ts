@@ -107,6 +107,20 @@ describe('생성 상한(?fakeLimit=daily|budget)', () => {
     expect(answer?.number).toBeNull();
     expect(steps.every((r) => r.step.provider !== 'mock')).toBe(true);
   });
+
+  it('예전 프리셋 문장으로 만든 세트도 그 프리셋으로 보아 대체 결과로 채운다(#264)', async () => {
+    const reworded = PROMPT_PRESETS.find((p) => p.previousPrompts.length > 0)!;
+    const earlier: string = reworded.previousPrompts[0]!;
+    const { projectId, pageId } = await newProject();
+    fakeState.limit = 'daily';
+    const { job } = await api.createSet(projectId, {
+      pageId,
+      prompt: earlier,
+      presetKey: reworded.key,
+    });
+    const answer = (await runAll(job.id)).find((r) => r.step.stage === 'image')?.step.answer;
+    expect(answer?.isSample).toBe(true);
+  });
 });
 
 describe('대체 결과 답변(?fakeSample=1)', () => {

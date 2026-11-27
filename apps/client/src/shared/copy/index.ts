@@ -36,16 +36,16 @@ export const COPY = {
     'A neon-lit music video scene of a singer walking through rainy Seoul streets at night, cinematic wide shot',
   'S-11b': 'Studio desk lamp',
   'S-11b-prompt':
-    'A minimalist studio desk lamp glowing warmly on a wooden desk, soft product photo',
+    "Please visualise the concept for a 'studio desk lamp' to sit on my workbench. It's stainless steel with a half-dome shade. Since it goes on a desk, set the height to around 40cm, and two joints feels about right. I'd like the structural design of the joints to read clearly, with a round base that isn't too thick. Keep it clean, with no added decoration.",
   'S-11c': 'Sneaker redesign',
   'S-11c-prompt':
-    'A pair of sneakers redesigned in a cyberpunk neon style, side view on a clean background',
+    "Please visualise the concept for a 'city-to-trail everyday sneaker' for commuters in their 20s and 30s who walk a lot. I'd like it to be centred around a recycled knit upper and a chunky but lightweight sole, with a calm, muted colour palette.",
   'S-11d': 'Cozy sofa',
   'S-11d-prompt':
     'A cozy mid-century sofa in a sunlit living room, warm natural tones, interior photo',
   'S-11e': 'Eco-friendly library',
   'S-11e-prompt':
-    'A sustainable eco-friendly library with wooden structures, green plants, and soft natural light',
+    "Please visualise the concept for a 'sustainable eco-friendly library' themed around an urban forest, along with the initial massing design. I'd like it to be centred around a timber structure and have a high degree of liveability.",
   'S-12': 'Reference image',
   // ---- 홈 서가(#23): 확정 ID(#128). 문장은 Figma 원문(1185:57987, 1185:58199, 1226:78464)
   'H-01': 'Project',

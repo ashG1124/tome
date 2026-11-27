@@ -2,6 +2,7 @@
   "scenarioKey": "sneaker",
   "title": "Sneaker redesign",
   "promptVariants": [
+    "Please visualise the concept for a 'city-to-trail everyday sneaker' for commuters in their 20s and 30s who walk a lot. I'd like it to be centred around a recycled knit upper and a chunky but lightweight sole, with a calm, muted colour palette.",
     "A pair of sneakers redesigned in a cyberpunk neon style, side view on a clean background"
   ],
   "nodes": {

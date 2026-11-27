@@ -1,4 +1,4 @@
-import { PROMPT_PRESETS, type PresetKey } from '@tome/shared';
+import { PROMPT_PRESETS, presetPrompts, type PresetKey } from '@tome/shared';
 import { MODELS } from '../../ai';
 
 /** 하루 무료 neurons 와 그 위 단가(Workers AI 공식 가격표). */
@@ -58,7 +58,10 @@ export function normalizePrompt(text: string): string {
   return text.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/** 세트의 presetKey 가 있고 prompt 가 그 프리셋 문장과 정규화 후 같을 때만 그 키를 돌려준다. */
+/**
+ * 세트의 presetKey 가 있고 prompt 가 그 프리셋 문장과 정규화 후 같을 때만 그 키를 돌려준다.
+ * 프리셋 문장을 바꾸기 전에 만든 세트도 알아보도록 예전 문장도 같은 것으로 본다(#264).
+ */
 export function matchPreset(
   presetKey: string | null | undefined,
   prompt: string,
@@ -66,7 +69,10 @@ export function matchPreset(
   if (!presetKey) return null;
   const preset = PROMPT_PRESETS.find((p) => p.key === presetKey);
   if (!preset) return null;
-  return normalizePrompt(preset.prompt) === normalizePrompt(prompt) ? preset.key : null;
+  const wanted = normalizePrompt(prompt);
+  return presetPrompts(preset.key).some((text) => normalizePrompt(text) === wanted)
+    ? preset.key
+    : null;
 }
 
 /** 오늘(UTC)의 YYYY-MM-DD. */

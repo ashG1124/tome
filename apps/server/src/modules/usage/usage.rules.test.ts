@@ -54,6 +54,16 @@ describe('matchPreset', () => {
     expect(matchPreset('nope', preset.prompt)).toBeNull();
     expect(matchPreset(PROMPT_PRESETS[0].key, preset.prompt)).toBeNull();
   });
+  it('still matches the sentence a preset used before it was reworded (#264)', () => {
+    const earlier: readonly string[] = preset.previousPrompts;
+    expect(earlier.length).toBeGreaterThan(0);
+    for (const text of earlier) {
+      expect(matchPreset(preset.key, text)).toBe(preset.key);
+      expect(matchPreset(preset.key, ` ${text.toUpperCase()} `)).toBe(preset.key);
+      expect(matchPreset(preset.key, `${text}.`)).toBeNull();
+      expect(matchPreset(PROMPT_PRESETS[0].key, text)).toBeNull();
+    }
+  });
   it('normalization does not strip punctuation', () => {
     expect(normalizePrompt('  A,  B ')).toBe('a, b');
   });

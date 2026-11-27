@@ -13,6 +13,7 @@ import {
   type CreateRevisionResponse,
   type NodeSnapshot,
   PROMPT_PRESETS,
+  presetPrompts,
   type AdvanceJobResponse,
   type Answer,
   type AnswerSummary,
@@ -274,12 +275,17 @@ function toPromptSet(set: SetRecord): PromptSet {
   };
 }
 
-/** 서버 normalizePrompt·matchPreset 과 같다: 프리셋 문장 그대로(공백·대소문자 무시)일 때만 그 키. */
+/**
+ * 서버 normalizePrompt·matchPreset 과 같다: 프리셋 문장 그대로(공백·대소문자 무시)일 때만 그 키.
+ * 예전 프리셋 문장도 같은 것으로 본다(#264).
+ */
 function matchPreset(presetKey: string | undefined, prompt: string): string | null {
   if (presetKey === undefined) return null;
   const preset = PROMPT_PRESETS.find((p) => p.key === presetKey);
   const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
-  return preset !== undefined && normalize(preset.prompt) === normalize(prompt) ? preset.key : null;
+  if (preset === undefined) return null;
+  const wanted = normalize(prompt);
+  return presetPrompts(preset.key).some((text) => normalize(text) === wanted) ? preset.key : null;
 }
 
 function limitCode(
