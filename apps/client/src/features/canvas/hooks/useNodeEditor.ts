@@ -19,6 +19,20 @@ import {
 } from '../edit-model';
 import { usePreviewScheduler } from './use-preview-scheduler';
 
+/**
+ * 편집 기록의 한 칸. 맨 앞 칸은 고치기 전 값이고(미리보기 없음), 그 뒤는 값을 고칠 때마다 한 칸씩 생긴다.
+ * answer 는 그 값으로 만든 미리보기다(아직 만들지 않았거나 실패했으면 없다).
+ */
+interface EditStep {
+  snapshot: NodeSnapshot;
+  answer?: Answer;
+}
+
+interface EditHistory {
+  steps: readonly EditStep[];
+  index: number;
+}
+
 export interface NodeEditorOptions {
   base: Answer;
   requestPreview: (snapshot: NodeSnapshot, signal: AbortSignal) => Promise<Answer>;
@@ -39,8 +53,37 @@ export function useNodeEditor({
   const [stacked, setStacked] = useState(false);
   const locked = useRef(false);
   const mounted = useRef(true);
-  const scheduler = usePreviewScheduler(requestPreview);
-  const { cancel, schedule, state } = scheduler;
+  // 편집 기록(Preview 이전/다음, #261). 화면에 그릴 값(state)과 콜백에서 바로 읽을 값(ref)을 함께 둔다.
+  const [history, setHistory] = useState<EditHistory>(() => ({
+    steps: [{ snapshot: base.nodes }],
+    index: 0,
+  }));
+  const trail = useRef(history);
+  const commit = useCallback((next: EditHistory) => {
+    trail.current = next;
+    setHistory(next);
+  }, []);
+  // 서버에 살아 있는 미리보기(draft). 세트마다 하나뿐이라, 새 미리보기가 만들어지면 앞의 것은 버려진다.
+  const live = useRef<string | undefined>(undefined);
+  /** 미리보기를 만들고, 다 만들면 지금 칸에 붙여 둔다. 그 사이 값이 또 바뀌었으면(취소됨) 붙이지 않는다. */
+  const request = useCallback(
+    async (input: NodeSnapshot, signal: AbortSignal) => {
+      const answer = await requestPreview(input, signal);
+      if (signal.aborted) return answer;
+      live.current = answer.id;
+      const { steps, index } = trail.current;
+      const here = steps[index];
+      if (here && sameEditableValues(here.snapshot, input))
+        commit({
+          steps: steps.map((step, at) => (at === index ? { ...step, answer } : step)),
+          index,
+        });
+      return answer;
+    },
+    [requestPreview, commit],
+  );
+  const scheduler = usePreviewScheduler(request);
+  const { cancel, schedule, show, state } = scheduler;
   const ready = useRef<Answer | undefined>(undefined);
   useLayoutEffect(() => {
     ready.current = state.status === 'ready' ? state.answer : undefined;
@@ -53,6 +96,19 @@ export function useNodeEditor({
     };
   }, []);
 
+  /**
+   * 그 칸의 값에 맞는 미리보기 상태로 맞춘다. 고치기 전 값이면 미리보기가 없고, 그 칸의 미리보기가 아직 서버에
+   * 살아 있으면 그대로 보이고(Apply 할 수 있다), 이미 버려졌으면 같은 값으로 다시 만든다.
+   */
+  const settle = useCallback(
+    (step: EditStep) => {
+      if (sameEditableValues(step.snapshot, base.nodes)) cancel();
+      else if (step.answer && step.answer.id === live.current) show(step.snapshot, step.answer);
+      else schedule(step.snapshot);
+    },
+    [base, cancel, schedule, show],
+  );
+
   const update = useCallback(
     (next: NodeSnapshot) => {
       if (locked.current || base.status !== 'accepted' || sameEditableValues(next, current.current))
@@ -62,10 +118,39 @@ export function useNodeEditor({
       setSnapshot(next);
       setApplyError(undefined);
       setStacked(false);
-      if (sameEditableValues(next, base.nodes)) cancel();
-      else schedule(next);
+      // 기록: 지금 칸 뒤(다음으로 갈 수 있던 칸)는 버린다. 미리보기를 만들기 전에 이어서 고친 값은 한 칸으로 친다.
+      const { steps, index } = trail.current;
+      const pending = index > 0 && !steps[index]?.answer;
+      const kept = steps.slice(0, pending ? index : index + 1);
+      const last = kept[kept.length - 1];
+      if (last && sameEditableValues(last.snapshot, next)) {
+        // 손으로 바로 앞 칸의 값으로 되돌렸다. 새 칸을 만들지 않고 그 칸으로 간다.
+        commit({ steps: kept, index: kept.length - 1 });
+        settle(last);
+        return;
+      }
+      const step = { snapshot: next };
+      commit({ steps: [...kept, step], index: kept.length });
+      settle(step);
     },
-    [base, cancel, schedule],
+    [base, commit, settle],
+  );
+
+  /** 기록의 다른 칸으로 간다. 노드 값이 그 칸의 값으로 돌아간다(Preview 이전/다음, #261). */
+  const go = useCallback(
+    (index: number) => {
+      const { steps, index: from } = trail.current;
+      const step = steps[index];
+      if (!step || index === from || locked.current || base.status !== 'accepted') return;
+      commit({ steps, index });
+      current.current = step.snapshot;
+      ready.current = undefined;
+      setSnapshot(step.snapshot);
+      setApplyError(undefined);
+      setStacked(false);
+      settle(step);
+    },
+    [base, commit, settle],
   );
 
   const edit = useCallback(
@@ -154,6 +239,17 @@ export function useNodeEditor({
     applyError,
     stacked,
     preview: scheduler.state,
+    /**
+     * 편집 기록(Preview 이전/다음, #261). index 0 은 고치기 전 값이다.
+     * answer 는 지금 칸에서 전에 만들어 둔 미리보기(다시 만드는 동안에도 보여 줄 수 있다).
+     */
+    history: {
+      index: history.index,
+      count: history.steps.length,
+      answer: history.steps[history.index]?.answer,
+      previous: () => go(trail.current.index - 1),
+      next: () => go(trail.current.index + 1),
+    },
     canApply:
       scheduler.canApply &&
       !applying &&

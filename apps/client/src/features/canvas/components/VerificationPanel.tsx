@@ -3,6 +3,7 @@ import * as RadixSwitch from '@radix-ui/react-switch';
 import type { Node } from '@tome/shared';
 import { ErrorNotice, Icon } from '../../../shared/ui';
 import type { NodeEditorLabels } from './NodeEditPanel';
+import { isCloseClick } from '../close-click';
 import '../node-edit.css';
 
 export interface VerificationPanelProps {
@@ -54,6 +55,10 @@ export const VerificationPanel = memo(function VerificationPanel({
       data-kind={node.kind}
       aria-label={`${labels.title}: ${node.text}`}
       tabIndex={-1}
+      onClick={(event) => {
+        // 펼친 노드를 다시 누르면 접는다(#261). 빼기·도구 단추를 누를 때는 접지 않는다.
+        if (!locked && isCloseClick(event)) onClose();
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !locked) {
           event.preventDefault();

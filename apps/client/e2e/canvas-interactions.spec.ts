@@ -141,7 +141,7 @@ test('upper nodes carry their lower nodes; lower nodes do not move alone; clicks
   near((await box(s1)).y - groupBefore.s1.y, labelDy);
   near((await box(d1)).y, groupBefore.d1.y);
 
-  // 누르기(움직이지 않음)는 여전히 노드를 연다. 펼친 동안에는 알약을 끌어도 열이 움직이지 않는다.
+  // 누르기(움직이지 않음)는 여전히 노드를 연다. 펼쳐 둔 동안에도 알약을 끌면 열이 함께 움직인다(#261: 노드를 펼쳐 둔 채 쓴다).
   await k1.locator('[data-canvas-card]').click();
   await expect(k1.locator('.node-open')).toBeVisible();
   // 펼치는 동안 아래 노드가 밀려 내려간다. 다 펼쳐 멈춘 뒤 간격을 잰다.
@@ -156,7 +156,9 @@ test('upper nodes carry their lower nodes; lower nodes do not move alone; clicks
     .toBe(true);
   const openGap = (await box(k2)).y - (await box(pill1)).y;
   const pillToPill = (await box(pill2)).x - (await box(pill1)).x;
+  const pillOpenY = (await box(pill1)).y;
   await drag(page, pill1, 0, 80);
+  moved((await box(pill1)).y - pillOpenY, 80);
   near((await box(pill2)).x - (await box(pill1)).x, pillToPill);
   near((await box(k2)).y - (await box(pill1)).y, openGap);
   await k1.getByRole('slider', { name: 'Weighting', exact: true }).focus();

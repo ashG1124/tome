@@ -283,3 +283,125 @@ it('restores a priority position without leaving duplicate order values', async 
   await advance();
   expect(requestPreview).not.toHaveBeenCalled();
 });
+
+/** 만들 때마다 다른 미리보기(draft)를 준다. 서버처럼 새 미리보기가 생기면 앞의 것은 버려진다고 본다. */
+function numberedPreviews() {
+  let count = 0;
+  return vi.fn().mockImplementation(() => {
+    count += 1;
+    return Promise.resolve({ ...draft, id: `draft-${count}` } as Answer);
+  });
+}
+
+it('steps back to the values before an edit and forward again (#261)', async () => {
+  const requestPreview = numberedPreviews();
+  const { result } = renderHook(() =>
+    useNodeEditor({ base, requestPreview, acceptPreview: vi.fn(), onAccepted: vi.fn() }),
+  );
+  expect(result.current.history).toMatchObject({ index: 0, count: 1 });
+  act(() => result.current.edit({ ...node, weight: 7 }));
+  await advance();
+  act(() => result.current.edit({ ...node, weight: 9 }));
+  await advance();
+  expect(result.current.history).toMatchObject({ index: 2, count: 3, answer: { id: 'draft-2' } });
+  expect(result.current.canApply).toBe(true);
+
+  // 이전: 노드 값이 한 번 고치기 전(7)으로 돌아간다. 그 미리보기는 이미 버려졌으므로 그림은 보여 주되 다시 만든다.
+  act(() => result.current.history.previous());
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(7);
+  expect(result.current.history).toMatchObject({ index: 1, count: 3, answer: { id: 'draft-1' } });
+  expect(result.current.preview.status).toBe('waiting');
+  expect(result.current.canApply).toBe(false);
+  await advance();
+  expect(requestPreview).toHaveBeenCalledTimes(3);
+  expect(requestPreview.mock.calls[2]![0].nodes[0].weight).toBe(7);
+  expect(result.current.preview).toMatchObject({ status: 'ready', answer: { id: 'draft-3' } });
+  expect(result.current.history.answer?.id).toBe('draft-3');
+
+  // 한 번 더 이전: 처음 값(5). 미리보기가 없고 Apply 할 것도 없다.
+  act(() => result.current.history.previous());
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(5);
+  expect(result.current.history).toMatchObject({ index: 0, count: 3 });
+  expect(result.current.history.answer).toBeUndefined();
+  expect(result.current.preview.status).toBe('idle');
+  expect(result.current.canApply).toBe(false);
+  // 맨 앞에서 더 가지 않는다.
+  act(() => result.current.history.previous());
+  expect(result.current.history.index).toBe(0);
+
+  // 다음: 방금 다시 만든 미리보기가 아직 살아 있어서 기다리지 않고 바로 보인다.
+  act(() => result.current.history.next());
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(7);
+  expect(result.current.preview).toMatchObject({ status: 'ready', answer: { id: 'draft-3' } });
+  expect(result.current.canApply).toBe(true);
+  await advance();
+  expect(requestPreview).toHaveBeenCalledTimes(3);
+
+  act(() => result.current.history.next());
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(9);
+  expect(result.current.history).toMatchObject({ index: 2, count: 3 });
+  act(() => result.current.history.next());
+  expect(result.current.history.index).toBe(2);
+});
+
+it('applies the preview of the step it went back to (#261)', async () => {
+  const requestPreview = numberedPreviews();
+  const acceptPreview = vi
+    .fn()
+    .mockResolvedValue({ answer: { id: 'draft-3', number: 2, status: 'accepted' } });
+  const onAccepted = vi.fn();
+  const { result } = renderHook(() =>
+    useNodeEditor({ base, requestPreview, acceptPreview, onAccepted }),
+  );
+  act(() => result.current.edit({ ...node, weight: 7 }));
+  await advance();
+  act(() => result.current.edit({ ...node, weight: 9 }));
+  await advance();
+  act(() => result.current.history.previous());
+  // 다시 만드는 동안에는 Apply 하지 않는다(버려진 미리보기를 확정하지 않는다).
+  await act(async () => {
+    await result.current.apply();
+  });
+  expect(acceptPreview).not.toHaveBeenCalled();
+  await advance();
+  await act(async () => {
+    await result.current.apply();
+  });
+  expect(acceptPreview).toHaveBeenCalledOnce();
+  expect(acceptPreview.mock.calls[0]![0]).toBe('draft-3');
+  expect(onAccepted).toHaveBeenCalledOnce();
+});
+
+it('a new edit after stepping back drops the steps ahead, and quick edits count as one step (#261)', async () => {
+  const requestPreview = numberedPreviews();
+  const { result } = renderHook(() =>
+    useNodeEditor({ base, requestPreview, acceptPreview: vi.fn(), onAccepted: vi.fn() }),
+  );
+  // 미리보기가 만들어지기 전에 이어서 고친 값은 한 칸이다.
+  act(() => result.current.edit({ ...node, weight: 6 }));
+  act(() => result.current.edit({ ...node, weight: 7 }));
+  expect(result.current.history).toMatchObject({ index: 1, count: 2 });
+  await advance();
+  expect(requestPreview).toHaveBeenCalledOnce();
+  act(() => result.current.edit({ ...node, weight: 9 }));
+  await advance();
+  expect(result.current.history).toMatchObject({ index: 2, count: 3 });
+
+  act(() => result.current.history.previous());
+  act(() => result.current.edit({ ...node, weight: 8 }));
+  expect(result.current.history).toMatchObject({ index: 2, count: 3 });
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(8);
+  act(() => result.current.history.previous());
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(7);
+  act(() => result.current.history.next());
+  expect(result.current.snapshot.nodes[0]!.weight).toBe(8);
+
+  // 미리보기 전에 손으로 처음 값으로 되돌리면 그 칸은 사라진다.
+  act(() => result.current.history.previous());
+  act(() => result.current.history.previous());
+  act(() => result.current.edit({ ...node, weight: 6 }));
+  expect(result.current.history).toMatchObject({ index: 1, count: 2 });
+  act(() => result.current.reset(node.id));
+  expect(result.current.history).toMatchObject({ index: 0, count: 1 });
+  expect(result.current.preview.status).toBe('idle');
+});

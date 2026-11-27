@@ -1,19 +1,18 @@
 import { useId, useState, type ReactNode } from 'react';
-import { COPY } from '../../shared/copy';
 import { Icon } from '../../shared/ui';
 
 interface SidePanelProps {
   title: string;
-  onClose: () => void;
   children: ReactNode;
 }
 
 /**
- * 프로필 오른쪽 패널(4181:35168): 384 폭, #F9FAFC 바탕, 위에 제목(H1)과 닫기.
+ * 프로필 오른쪽 패널(4181:35168): 384 폭, #F9FAFC 바탕, 위에 제목(H1).
+ * 닫기(X)는 두지 않는다. 닫으면 다시 열 방법이 없어서다(#262). 구역은 제목 줄을 눌러 접고 편다.
  * 패널 높이는 왼쪽 내용(또는 화면 높이)을 따른다. 내용이 길면 패널 안에서 스크롤한다.
  * (안쪽을 absolute 로 띄워 패널 내용 길이가 화면 높이를 늘리지 않게 한다.)
  */
-export function SidePanel({ title, onClose, children }: SidePanelProps) {
+export function SidePanel({ title, children }: SidePanelProps) {
   const titleId = useId();
   return (
     <aside
@@ -24,18 +23,10 @@ export function SidePanel({ title, onClose, children }: SidePanelProps) {
         <div className="relative h-[var(--size-profile-panel-head)] shrink-0">
           <h2
             id={titleId}
-            className="absolute top-[var(--space-profile-panel-title-top)] right-[calc(var(--space-header-x)+var(--space-padding-8)+var(--space-padding-3))] left-[var(--space-profile-panel-title-x)] m-0 truncate [font:var(--text-heading-h1)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-main-text)]"
+            className="absolute top-[var(--space-profile-panel-title-top)] right-[var(--space-profile-panel-title-x)] left-[var(--space-profile-panel-title-x)] m-0 truncate [font:var(--text-heading-h1)] tracking-[var(--letter-spacing-heading-h1)] text-[color:var(--color-font-main-text)]"
           >
             {title}
           </h2>
-          <button
-            type="button"
-            aria-label={COPY['D-11']}
-            onClick={onClose}
-            className="absolute top-[var(--space-profile-panel-title-top)] right-[var(--space-header-x)] flex cursor-pointer items-center justify-center rounded-[var(--radius-1)] border-0 bg-transparent p-0 text-[color:var(--color-font-helper-text)] hover:text-[color:var(--color-font-sub-text)]"
-          >
-            <Icon name="close" size={24} />
-          </button>
         </div>
         {children}
       </div>

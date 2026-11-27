@@ -44,6 +44,19 @@
   inset: 0;
   height: 100%;
   opacity: 0;
+  /* 마우스·터치는 숫자 띠(.node-edit-dial)가 받는다. 이 입력은 키보드·보조기기용이다(#261). */
+  pointer-events: none;
+}
+
+/* 숫자 띠를 잡아끈다: 왼쪽으로 끌면 값이 커지고 오른쪽으로 끌면 작아진다(#261). */
+.node-edit-dial {
+  cursor: ew-resize;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.node-edit-dial[data-disabled] {
+  cursor: not-allowed;
 }
 
 /* 키보드로 들어왔을 때만 테두리를 보인다(마우스로 누를 때는 없음, #197) */

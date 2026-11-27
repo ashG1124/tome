@@ -69,6 +69,15 @@ export function usePreviewScheduler(
     },
     [invalidate, start],
   );
+  /** 이미 만들어 둔 미리보기를 다시 만들지 않고 그대로 보인다(Preview 이전/다음, #261). */
+  const show = useCallback(
+    (snapshot: NodeSnapshot, answer: Answer) => {
+      invalidate();
+      latest.current = structuredClone(snapshot);
+      setState({ status: 'ready', answer });
+    },
+    [invalidate],
+  );
   const retry = useCallback(() => {
     if (!latest.current || controller.current || state.status !== 'error') return;
     const input = structuredClone(latest.current);
@@ -76,5 +85,5 @@ export function usePreviewScheduler(
     void start(input, revision.current);
   }, [invalidate, start, state.status]);
 
-  return { state, schedule, cancel, retry, canApply: state.status === 'ready' };
+  return { state, schedule, cancel, show, retry, canApply: state.status === 'ready' };
 }

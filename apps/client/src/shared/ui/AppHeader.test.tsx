@@ -4,9 +4,20 @@ import { describe, expect, it } from 'vitest';
 import { COPY } from '../copy';
 import { AppHeader, type AppHeaderSection } from './AppHeader';
 
-function renderHeader(current: AppHeaderSection | null, path = '/') {
+function renderHeader(current: AppHeaderSection | null, path = '/', avatarRing?: boolean) {
   const router = createMemoryRouter(
-    [{ path: '*', element: <AppHeader current={current} profileTo="/creators/me-1" /> }],
+    [
+      {
+        path: '*',
+        element: (
+          <AppHeader
+            current={current}
+            profileTo="/creators/me-1"
+            {...(avatarRing === undefined ? {} : { avatarRing })}
+          />
+        ),
+      },
+    ],
     { initialEntries: [path] },
   );
   render(<RouterProvider router={router} />);
@@ -54,6 +65,13 @@ describe('AppHeader', () => {
     const profile = screen.getByRole('link', { name: COPY['HD-02'] });
     expect(profile.hasAttribute('data-avatar-ring')).toBe(true);
     expect(profile.className).toContain('--color-fill-neutral)');
+  });
+
+  it('ETC 여도 avatarRing 을 끄면 프로필에 바깥 테두리가 없다(남의 프로필, #262)', () => {
+    renderHeader(null, '/', false);
+    const profile = screen.getByRole('link', { name: COPY['HD-02'] });
+    expect(profile.hasAttribute('data-avatar-ring')).toBe(false);
+    expect(profile.className).not.toContain('--color-fill-neutral)');
   });
 
   it('TÓME·AGORA 일 때 프로필에는 바깥 테두리가 없다', () => {

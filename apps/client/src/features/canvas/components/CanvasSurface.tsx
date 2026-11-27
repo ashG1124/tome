@@ -179,7 +179,7 @@ export function CanvasSurface({
                 label={data.label}
               />
             ) : null}
-            {/* 파생의 비활성 My answer 는 원작 카드처럼 번호 칩 + 흐림, 미리보기는 그림만 보인다(#229) */}
+            {/* 파생의 비활성 My answer 는 원작 카드처럼 번호 칩 + 흐림을 덮는다(#229) */}
             {data.inactive ? (
               <>
                 <span className="canvas-answer-chip">{data.label}</span>
@@ -187,7 +187,7 @@ export function CanvasSurface({
               </>
             ) : null}
           </div>
-          {data.inactive || data.previewing ? null : (
+          {data.inactive ? null : (
             <div className="canvas-answer-footer">
               {answerFooter ?? <strong>{data.label}</strong>}
               {data.state === 'running' ? <span>{data.labels.generating}</span> : null}

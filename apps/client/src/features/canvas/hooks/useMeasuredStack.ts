@@ -9,13 +9,10 @@ const isStageColumn = (column: number) => column >= 1 && column <= 5;
 /**
  * 노드가 그려진 뒤 실제 높이로 단계 열을 다시 쌓아 노드 사이 간격을 일정하게 둔다(#215).
  * 처음 배치(buildCanvas)는 글자 수로 높이를 어림하므로 긴 글·여러 줄 노드에서 간격이 어긋난다.
- * 노드를 제자리에서 펼친 동안(openId)은 useOpenShift 가 아래 노드를 밀고 있으니 건드리지 않는다.
+ * 펼쳐 둔 노드가 하나라도 있는 동안(paused)은 useOpenShift 가 아래 노드를 밀고 있으니 건드리지 않는다.
  * 사용자가 끌어 옮긴 거리(offsets, #230)는 빼고 쌓은 뒤 다시 더한다. 그래서 다시 쌓아도 끌어 둔 자리가 그대로다.
  */
-export function useMeasuredStack(
-  openId: string | undefined,
-  offsets?: RefObject<ReadonlyMap<string, Point>>,
-) {
+export function useMeasuredStack(paused: boolean, offsets?: RefObject<ReadonlyMap<string, Point>>) {
   const flow = useReactFlow<CanvasNode, Edge>();
   // 단계 열 노드들의 측정 높이를 한 줄 문자열로 묶어, 높이가 바뀔 때만 다시 쌓는다.
   const heights = useStore((state) => {
@@ -27,7 +24,7 @@ export function useMeasuredStack(
     return key;
   });
   useEffect(() => {
-    if (openId || !heights) return;
+    if (paused || !heights) return;
     const moved = (data: CanvasNode['data']) =>
       offsets?.current ? dragOffset(offsets.current, data) : { x: 0, y: 0 };
     const columns = new Map<string, ColumnEntry[]>();
@@ -58,5 +55,5 @@ export function useMeasuredStack(
         }));
       }
     }
-  }, [heights, openId, flow, offsets]);
+  }, [heights, paused, flow, offsets]);
 }
